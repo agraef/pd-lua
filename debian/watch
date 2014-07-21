@@ -1,0 +1,4 @@
+# to be processed with uscan(1)
+version=3
+http://sf.net/pure-data/pdlua-(.*)\.tar\.gz
+

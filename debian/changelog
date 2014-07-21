@@ -1,0 +1,5 @@
+pd-lua (0.6.0-1) unstable; urgency=medium
+
+  * Initial release. (Closes: #755268)
+
+ -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Mon, 21 Jul 2014 18:13:24 +0200
