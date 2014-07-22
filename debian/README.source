@@ -7,19 +7,21 @@ This source package need no special handling for normal package builds.
 Developing this package for Debian
 ----------------------------------
 
-this package uses CDBS as the build system and git for maintainance.
-for a quick start, see
+This package uses CDBS as the build system and git for maintainance.
+NMUs need not (but are encouraged to) make special use of these tools.
+In particular, the debian/control.in file can be completely ignored.
+
+For a quick start, see
 	http://wiki.debian.org/CDBS+git-buildpackage
+
 
 editing debian/control
 ----------------------
-please note that you should NOT modify debian/control directly, as this file
-will be generated from debian/control.in using CDBS.
-therefore you ought to change debian/control.in and trigger a re-creation of
-debian/control using
+Please note, that we would welcome it if you do NOT modify debian/control
+directly, as this file will be generated from debian/control.in using CDBS.
+Therefore you ought to change debian/control.in and trigger a re-creation of
+debian/control using:
 $ DEB_MAINTAINER_MODE=1 dpkg-buildpackage -rfakeroot
-
-
 
  -- IOhannes m zmoelnig <zmoelnig@iem.at>  Thu, 04 Aug 2011 17:10:99 +0200
 
