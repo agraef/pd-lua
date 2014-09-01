@@ -1,3 +1,11 @@
+pd-lua (0.6.0-2) unstable; urgency=medium
+
+  * Added "-fPIC" to build-flags (Closes: #759830)
+  * Fixed installation path for examples/
+  * Document that ignoring debian/control.in is no show-stopper
+
+ -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Mon, 01 Sep 2014 09:32:15 +0200
+
 pd-lua (0.6.0-1) unstable; urgency=medium
 
   * Initial release. (Closes: #755268)
