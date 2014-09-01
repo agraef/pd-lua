@@ -1,4 +1,4 @@
 src/*.pd_*		usr/lib/pd/extra/pdlua/
 src/*.lua		usr/lib/pd/extra/pdlua/
 src/pdlua*.pd		usr/lib/pd/extra/pdlua/
-examples/		usr/lib/pd/extra/pdlua/examples
+examples/		usr/lib/pd/extra/pdlua/
