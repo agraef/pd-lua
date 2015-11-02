@@ -10,7 +10,7 @@ Standards-Version: 3.9.5
 Section: sound
 Homepage: http://download.puredata.info/pdlua
 Vcs-Git: git://anonscm.debian.org/pkg-multimedia/pd-lua.git
-Vcs-Browser: http://anonscm.debian.org/gitweb/?p=pkg-multimedia/pd-lua.git
+Vcs-Browser: https://anonscm.debian.org/cgit/pkg-multimedia/pd-lua.git
 
 Package: pd-lua
 Architecture: any
