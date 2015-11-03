@@ -16,7 +16,7 @@ Package: pd-lua
 Architecture: any
 Depends: ${shlibs:Depends},
  ${misc:Depends},
- puredata-core | pd
+ puredata | pd
 Description: lua bindings for Pure Data
  pd-lua adds a new loader to Pure Data (Pd), that allows one to load
  objectclasses written in the popular lua programming language.
