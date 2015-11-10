@@ -25,3 +25,21 @@ $ DEB_MAINTAINER_MODE=1 dpkg-buildpackage -rfakeroot
 
  -- IOhannes m zmoelnig <zmoelnig@iem.at>  Thu, 04 Aug 2011 17:10:99 +0200
 
+
+git-tuneclone.sh
+----------------
+
+This package comes with a script 'debian/git-tuneclone.sh'.
+Running it after a fresh clone of the packaging repository
+will fine-tune your local copy, namely:
+- make git ignore any .pc/ directory (created by quilt)
+- enable the "-follow-tags" when running 'git-push', so it's harder
+  to forget to push packaging tags along with the branches.
+- do an initial checkout of the 3 packaging branches (master, pristine-tar,
+  upstream)
+The script only needs to run once (though running it multiple times shouldn't
+matter).
+You are of course free to *not* run the script, if you prefer.
+
+ -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Tue, 11 Nov 2015 11:11:03 +0100
+
