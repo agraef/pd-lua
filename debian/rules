@@ -21,7 +21,9 @@ include /usr/share/cdbs/1/class/makefile.mk
 include /usr/share/cdbs/1/class/pd.mk
 include /usr/share/cdbs/1/rules/utils.mk
 
+BUILD_DATE=$(shell date -u -d "$$(dpkg-parsechangelog -SDate)" +"for Debian on %Y/%m/%d at %H:%M:%S UTC")
 
+CPPFLAGS+=-DBUILD_DATE='\"$(BUILD_DATE)\"'
 CFLAGS+=$(shell pkg-config --cflags lua5.2 pd)
 LIBS+=$(shell   pkg-config --libs lua5.2 pd)
 DEB_MAKE_EXTRA_ARGS = CPPFLAGS="$(CPPFLAGS)" LUA_CFLAGS="$(CFLAGS)" LUA_LIBS="$(LIBS)" LDFLAGS="$(LDFLAGS)" $(DEB_MAKE_PARALLEL)
