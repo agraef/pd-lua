@@ -1,3 +1,21 @@
+pd-lua (0.7.3-1) unstable; urgency=medium
+
+  * Imported Upstream version 0.7.3
+
+  * Removed patches applied upstream
+  * Backported patch to fix format-security errors
+  * Updated files to install
+  * Updated build-flags to new upstream build-system
+  * Override build-date for reproducible builds
+  * Depend on 'puredata' rather than 'puredata-core'
+  * Update Vcs-* stanzas
+  * Added debian/git-tuneclone.sh script (see debian/README.source)
+  * Regenerated debian/(control|copyright_hints)
+  * Updated debian/copyright
+  * Bumped Standards-version to 3.9.6
+
+ -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Sun, 24 Jan 2016 22:25:22 +0100
+
 pd-lua (0.6.0-2) unstable; urgency=medium
 
   * Added "-fPIC" to build-flags (Closes: #759830)
