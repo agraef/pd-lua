@@ -21,15 +21,7 @@ include /usr/share/cdbs/1/class/makefile.mk
 include /usr/share/cdbs/1/class/pd.mk
 include /usr/share/cdbs/1/rules/utils.mk
 
-DEB_SRCDIR=src
 
-CFLAGS+=$(CPPFLAGS)				\
-	$(shell pkg-config --cflags lua5.2 pd)	\
-	-fPIC					\
-	-Wno-error=format-security
-LIBS+=$(shell   pkg-config --libs   lua5.2)	\
-	$(LDFLAGS)
-DEB_MAKE_EXTRA_ARGS = CFLAGS="$(CFLAGS)" LIBS="$(LIBS)" $(DEB_MAKE_PARALLEL)
-
-test:
-	make -C src showsetup CFLAGS="$(CFLAGS)" LIBS="$(LIBS)"  $(DEB_MAKE_PARALLEL)
+CFLAGS+=$(shell pkg-config --cflags lua5.2 pd)
+LIBS+=$(shell   pkg-config --libs lua5.2 pd)
+DEB_MAKE_EXTRA_ARGS = CPPFLAGS="$(CPPFLAGS)" LUA_CFLAGS="$(CFLAGS)" LUA_LIBS="$(LIBS)" LDFLAGS="$(LDFLAGS)" $(DEB_MAKE_PARALLEL)
