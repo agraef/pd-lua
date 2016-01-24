@@ -1,0 +1,22 @@
+Description: fix format-security errors
+Author: IOhannes m zmölnig
+Origin: upstream
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- pd-lua.orig/pdlua.c
++++ pd-lua/pdlua.c
+@@ -1643,10 +1643,10 @@
+     post(compiled);
+     post(luaversionStr);
+ #else
+-    logpost(NULL, 3, pdluaver);
+-    logpost(NULL, 3, luaver);
+-    logpost(NULL, 3, compiled);
+-    logpost(NULL, 3, luaversionStr);
++    logpost(NULL, 3, "%s", pdluaver);
++    logpost(NULL, 3, "%s", luaver);
++    logpost(NULL, 3, "%s", compiled);
++    logpost(NULL, 3, "%s", luaversionStr);
+ #endif
+     pdlua_proxyinlet_setup();
+     PDLUA_DEBUG("pdlua pdlua_proxyinlet_setup done", 0);
