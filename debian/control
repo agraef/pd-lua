@@ -12,7 +12,7 @@ Build-Depends: cdbs (>= 0.4.91~),
 Standards-Version: 3.9.6
 Section: sound
 Homepage: http://download.puredata.info/pdlua
-Vcs-Git: git://anonscm.debian.org/pkg-multimedia/pd-lua.git
+Vcs-Git: https://anonscm.debian.org/git/pkg-multimedia/pd-lua.git
 Vcs-Browser: https://anonscm.debian.org/cgit/pkg-multimedia/pd-lua.git
 
 Package: pd-lua
