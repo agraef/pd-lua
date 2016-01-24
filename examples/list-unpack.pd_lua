@@ -50,7 +50,8 @@ function ListUnpack:in_1(sel, atoms)
         -- also unpack selector of anythings
         table.insert(atoms, 1, sel)
     end
-    local size = math.min(self.outlets, table.getn(atoms))
+--    local size = math.min(self.outlets, table.getn(atoms))
+    local size = math.min(self.outlets, #(atoms))
     for i=size, 1, -1 do
         self:Outlet(i, atoms[i])
     end

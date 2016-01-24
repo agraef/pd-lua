@@ -14,7 +14,8 @@ function PeekBag:in_1_float(f)
     if self.add then
         table.insert(self.bag, f)
     else
-        for i=table.getn(self.bag),1,-1 do
+--        for i=table.getn(self.bag),1,-1 do
+        for i = #(self.bag), 1, -1 do
             if self.bag[i]==f then
                 table.remove(self.bag, i)
                 break
@@ -59,9 +60,11 @@ end
 
 function PeekBag:in_1_aslist()
     -- print all values of array as list
-    if table.getn(self.bag) == 1 then
+--    if table.getn(self.bag) == 1 then
+    if #(self.bag) == 1 then
         self:outlet(1, "float", {self.bag[1]})
-    elseif table.getn(self.bag) > 1 then
+--    elseif table.getn(self.bag) > 1 then
+    elseif #(self.bag) > 1 then
         self:outlet(1, "list", self.bag)
     end
 end

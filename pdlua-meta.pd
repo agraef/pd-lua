@@ -5,6 +5,6 @@
 #X text 10 50 LICENSE GNU GPL;
 #X text 10 70 DESCRIPTION lua loader for pd;
 #X text 10 90 AUTHOR Claude Heiland-Allen \, Frank Barknecht \, Martin
-Peach;
-#X text 10 110 VERSION 0.6;
+Peach \, IOhannes m zmölnig;
+#X text 10 110 VERSION 0.7.3;
 #X restore 10 20 pd META;
