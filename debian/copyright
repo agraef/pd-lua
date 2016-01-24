@@ -5,9 +5,10 @@ Source: https://svn.code.sf.net/p/pure-data/svn/trunk/externals/loaders/pdlua
 
 Files: *
 Copyright:
- 2007-2009, Claude Heiland-Allen <claudiusmaximus@goto10.org>
+ 2007-2009, Claude Heiland-Allen <claude@mathr.co.uk>
  2007, Frank Barknecht
  2011-2014, Martin Peach <martin.peach@sympatico.ca>
+ 2014-2016, IOhannes m zmölnig
 License: GPL-2+
 
 Files: debian/*
