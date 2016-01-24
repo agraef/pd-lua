@@ -48,7 +48,8 @@ function ListPak:in_n(i, sel, atoms)
         -- insert selector
         self.stored[i] =  sel
     else
-        if table.getn(atoms) > 0 then
+--        if table.getn(atoms) > 0 then
+        if #(atoms) > 0 then
             self.stored[i] =  atoms[1]
         end
     end
