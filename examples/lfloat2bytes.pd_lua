@@ -19,7 +19,7 @@ function lfloat2bytes:initialize(name, atoms)
     if (type(atoms[1]) ~= "number") then
       self:error("lfloat2bytes: Digit count not a number")
     elseif (atoms[1] > 0) and (atoms[1] <= 24) then
-      digitstr = "%0." .. atoms[1] .. "g"
+      digitstr = string.format("%%0.%dg", atoms[1])
     else
       self:error("lfloat2bytes: Digit count out of range")
     end
