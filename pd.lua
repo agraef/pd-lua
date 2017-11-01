@@ -269,7 +269,7 @@ function pd.Class:destruct()
 end
 
 function pd.Class:dispatch(inlet, sel, atoms)
-  local m = self["in_" .. inlet .. "_" .. sel]
+  local m = self[string.format("in_%d_%s", inlet, sel)]
   if type(m) == "function" then
     if sel == "bang"    then return m(self)           end
     if sel == "float"   then return m(self, atoms[1]) end
@@ -287,7 +287,7 @@ function pd.Class:dispatch(inlet, sel, atoms)
     if sel == "list"    then return m(self, inlet, atoms)    end
     return m(self, inlet, atoms)
   end
-  m = self["in_" .. inlet]
+  m = self[string.format("in_%d", inlet)]
   if type(m) == "function" then
     return m(self, sel, atoms)
   end
@@ -296,9 +296,8 @@ function pd.Class:dispatch(inlet, sel, atoms)
     return m(self, inlet, sel, atoms)
   end
   self:error(
-    "no method for `" .. sel ..
-    "' at inlet " .. inlet ..
-    " of Lua object `" .. self._name .. "'"
+     string.format("no method for `%s' at inlet %d of Lua object `%s'",
+		   sel, inlet, self._name)
   )
 end
 
