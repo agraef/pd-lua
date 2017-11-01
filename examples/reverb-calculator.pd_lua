@@ -11,7 +11,7 @@ function R:initialize(sel, atoms)
 end
 
 local gcd = function(m, n)
-  while m ~= 0 do m, n = math.mod(n, m), m end
+  while m ~= 0 do m, n = n % m, m end
   return n
 end
 
