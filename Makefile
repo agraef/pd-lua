@@ -115,7 +115,7 @@ ifeq ($(UNAME),Darwin)
     SHARED_EXTENSION = dylib
     OS = macosx
     PD_PATH = /Applications/Pd-extended.app/Contents/Resources
-    OPT_CFLAGS = -ftree-vectorize -ftree-vectorizer-verbose=2 -fast
+    OPT_CFLAGS = -ftree-vectorize -fast
 # build universal 32-bit on 10.4 and 32/64 on newer
     ifeq ($(shell uname -r | sed 's|\([0-9][0-9]*\)\.[0-9][0-9]*\.[0-9][0-9]*|\1|'), 8)
       FAT_FLAGS = -arch ppc -arch i386 -mmacosx-version-min=10.4
@@ -128,11 +128,11 @@ ifeq ($(UNAME),Darwin)
         FAT_FLAGS = -arch ppc -arch i386 -arch x86_64 -mmacosx-version-min=10.4
       endif
     endif
-    ALL_CFLAGS += $(FAT_FLAGS) -fPIC -I/sw/include
+    ALL_CFLAGS += $(FAT_FLAGS) -fPIC -I/sw/include -I/opt/local/include
     # if the 'pd' binary exists, check the linking against it to aid with stripping
     BUNDLE_LOADER = $(shell test ! -e $(PD_PATH)/bin/pd || echo -bundle_loader $(PD_PATH)/bin/pd)
     ALL_LDFLAGS += $(FAT_FLAGS) -headerpad_max_install_names -bundle $(BUNDLE_LOADER) \
-	-undefined dynamic_lookup -L/sw/lib
+	-undefined dynamic_lookup -L/sw/lib -L/opt/local/lib
     SHARED_LDFLAGS += $(FAT_FLAGS) -dynamiclib -undefined dynamic_lookup \
 	-install_name @loader_path/$(SHARED_LIB) -compatibility_version 1 -current_version 1.0
     ALL_LIBS += -lc $(LIBS_macosx)
