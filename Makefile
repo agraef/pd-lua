@@ -115,7 +115,10 @@ ifeq ($(UNAME),Darwin)
     SHARED_EXTENSION = dylib
     OS = macosx
     PD_PATH = /Applications/Pd-extended.app/Contents/Resources
-    OPT_CFLAGS = -ftree-vectorize -fast
+    OPT_CFLAGS = -ftree-vectorize
+# uncomment this to build fat binaries
+    #FAT_BINARIES = 1
+    ifdef FAT_BINARIES
 # build universal 32-bit on 10.4 and 32/64 on newer
     ifeq ($(shell uname -r | sed 's|\([0-9][0-9]*\)\.[0-9][0-9]*\.[0-9][0-9]*|\1|'), 8)
       FAT_FLAGS = -arch ppc -arch i386 -mmacosx-version-min=10.4
@@ -127,6 +130,7 @@ ifeq ($(UNAME),Darwin)
       else
         FAT_FLAGS = -arch ppc -arch i386 -arch x86_64 -mmacosx-version-min=10.4
       endif
+    endif
     endif
     ALL_CFLAGS += $(FAT_FLAGS) -fPIC -I/sw/include -I/opt/local/include
     # if the 'pd' binary exists, check the linking against it to aid with stripping

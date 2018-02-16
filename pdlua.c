@@ -78,6 +78,15 @@
 # error "Pd version is too new, please file a bug report"
 #endif
 
+#ifdef UNUSED
+#elif defined(__GNUC__)
+# define UNUSED(x) UNUSED_ ## x __attribute__((unused))
+#elif defined(__LCLINT__)
+# define UNUSED(x) /*@unused@*/ x
+#else
+# define UNUSED(x) x
+#endif
+
 /* BAD: end of bad section */
 
 /* If defined, PDLUA_DEBUG lets pdlua post a lot of text */
@@ -165,7 +174,7 @@ static void pdlua_pushatomtable (int argc, t_atom *argv);
 static t_pdlua *pdlua_new (t_symbol *s, int argc, t_atom *argv);
 /** Pd object destructor. */
 static void pdlua_free (t_pdlua *o );
-static void pdlua_stack_dump (lua_State *L);
+//static void pdlua_stack_dump (lua_State *L);
 /** a handler for the open item in the right-click menu (mrpeach 20111025) */
 /** Here we find the lua code for the object and open it in an editor */
 static void pdlua_menu_open (t_pdlua *o);
@@ -250,7 +259,7 @@ static t_class *pdlua_proxyclock_class;
 /** Lua file reader callback. */
 static const char *pdlua_reader
 (
-    lua_State *L, /**< Lua interpreter state. */
+    lua_State *UNUSED(L), /**< Lua interpreter state. */
     void *rr, /**< Lua file reader state. */
     size_t *size /**< How much data we have read. */
 )
@@ -481,6 +490,7 @@ static void pdlua_free( t_pdlua *o /**< The object to destruct. */)
     return;
 }
 
+#if 0
 static void pdlua_stack_dump (lua_State *L)
 {
     int i;
@@ -511,6 +521,7 @@ static void pdlua_stack_dump (lua_State *L)
     }
     printf("\n");  /* end the listing */
 }
+#endif
 
 /* nw.js support. If this is non-NULL then we're running inside Jonathan
    Wilkes' Pd-L2Ork variant and access to the GUI uses JavaScript. */
@@ -1588,7 +1599,7 @@ static int pdlua_loader_legacy
 
 static int pdlua_loader_pathwise
 (
-    t_canvas    *canvas, /**< Pd canvas to use to find the script. */
+    t_canvas    *UNUSED(canvas), /**< Pd canvas to use to find the script. */
     const char  *objectname, /**< The name of the script (without .pd_lua extension). */
     const char  *path /**< The directory to search for the script */
 )
@@ -1659,10 +1670,10 @@ void pdlua_setup(void)
     post(compiled);
     post(luaversionStr);
 #else
-    logpost(NULL, 3, pdluaver);
-    logpost(NULL, 3, luaver);
-    logpost(NULL, 3, compiled);
-    logpost(NULL, 3, luaversionStr);
+    logpost(NULL, 3, "%s", pdluaver);
+    logpost(NULL, 3, "%s", luaver);
+    logpost(NULL, 3, "%s", compiled);
+    logpost(NULL, 3, "%s", luaversionStr);
 #endif
     pdlua_proxyinlet_setup();
     PDLUA_DEBUG("pdlua pdlua_proxyinlet_setup done", 0);
