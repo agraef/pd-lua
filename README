@@ -1,7 +1,6 @@
 pdlua -- a Lua embedding for Pd
 Copyright (C) 2007,2008,2009 Claude Heiland-Allen <claude@mathr.co.uk>
 
-
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
@@ -17,36 +16,82 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 
-Lua 5.1 is highly recommended, other versions are untested and 
-unsupported - use at your own risk.
+NOTES by aggraef: This works with all Pd flavors out there and makes Pd
+external programming incredibly easy (please check the included examples).
+Originally written by Claude Heiland-Allen, pdlua has gone through the hands
+of many people over the years, including mrpeach, umlaeute (responsible for
+the Debian package) and myself (Arch package, Lua 5.3 support). Since the
+contents of the original README has become rather outdated, I've updated the
+information below.
+
+
+Lua 5.3 is highly recommended, older versions are untested and unsupported -
+use at your own risk.
 
 
 Compilation Instructions:
 
-1. edit Makefile.static to configure your PLATFORM and PDINCLUDE
-2. run "make -f Makefile.static"
-3. use it like "pd -path src -lib lua"
+The source should compile out of the box on (at least) Linux, macOS and
+Windows, just make sure that you have Lua and Pd installed and run `make`.
+Ready-to-use binaries for the older Lua 5.2 version are available from Deken.
+The latest (Lua 5.3) binaries are on https://github.com/agraef/pd-lua.
 
-Alternatively, for the brave:
+If you want/need to compile from source, the following details the
+requirements for the three most popular platforms.
 
-aclocal
-autoheader
-automake -a -c
-autoconf
-./configure
-make
-make install
+Linux:
 
+Both Lua 5.3 and Pd should be available in your package repositories, if not
+then they're easy to install from source, cf. https://www.lua.org/download.html
+and http://msp.ucsd.edu/software.html.
 
-Additional notes for mingw (thanks to David Shimamomto):
+macOS/OS X:
 
-Copy the following files to the same directory as 'Makefile.static':
-1. lua-5.1.3.tar.gz
-2. m_pd.h
-3. pd.dll
+Lua 5.3 is available in Homebrew (https://brew.sh/) and MacPorts
+(https://www.macports.org/), but it's also easy to install from source once
+you have XCode up and running. As distributed, the build requires that you
+have the Pd header files somewhere under /Applications/Pd-*/Contents
+/Resources/include (which should be the case if you're running a recent Pd
+distribution by MSP); otherwise you may have to set the `PD_INCLUDE` make
+variable accordingly.
 
-Edit Makefile.static to have "PDINCLUDE = -I./" (without quotes).
+Windows:
 
-To install, copy the following files to 'extra':
-1. src/lua.dll
-2. src/pd.lua
+Compilation is a breeze using mingw (either the old one at http://mingw.org/
+or the new msys2-based installation at http://www.msys2.org/). The Lua that
+ships with msys2 is still 5.2 at the time of this writing, so you'll want to
+compile Lua 5.3 from source and install it in the mingw environment using
+`make install`. The build also assumes that you have a recent Pd installation
+as distributed by MSP, please check the comments in the mingw section of the
+Makefile for details. This is necessary so that the header files and pd.dll
+are found during compilation and linkage, respectively.
+
+Installation:
+
+After a successful compile, you can go about installing the external with the
+usual `make install` (which copies the external to its own directory named
+pdlua). This should generally do something sensible on each of the supported
+platforms. Note that the installation may require root privileges.
+
+Linux: By default, installation goes into /usr/local/lib/pd-externals, which
+should be one of the directories on Pd's search path.
+
+macOS/OS X: Installation goes into ~/Library/Pd by default. Move the pdlua
+folder to /Library/Pd for a system-wide installation.
+
+Windows/mingw: Installation goes into the extra subdirectory of your Pd
+installation, so it will be available to all users by default.
+
+It's generally advisable to do a staged install using `DESTROOT` first so that
+you can review the installation directory layout beforehand and adjust it if
+needed. To these ends, run `make install`, e.g., as follows:
+
+    make install DESTROOT=$PWD/BUILD
+
+This will leave the installed external in a folder BUILD inside the current
+directory from where you can move the pdlua subdirectory to any location on
+Pd's library search path that you see fit.
+
+Finally, having finished installation, to enable pd-lua in Pd just add `pdlua`
+to your startup libraries (after adding its parent directory to Pd's search
+path if necessary) and you should be set.
