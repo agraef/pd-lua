@@ -244,15 +244,31 @@ ifeq (MINGW,$(findstring MINGW,$(UNAME)))
   EXTENSION = dll
   SHARED_EXTENSION = dll
   OS = windows
-  PD_PATH = $(shell cd "$$PROGRAMFILES/pd" && pwd)
+  # This assumes an installation of Lua 5.3 from source,
+  # cf. https://www.lua.org/download.html
+  LUA_CFLAGS = -I/usr/local/include
+  LUA_LIBS   = -L/usr/local/lib -llua
+  # This assumes that Pd is installed somewhere under "c:\Program*\Pd"
+  # (usually "c:\Program Files (x86)\Pd"), the dll is in the "bin" and the
+  # include files in the "src" subdir, as it is in the latest incarnations of
+  # MSP's installer. (NOTE: You can replace "Pd" with "Purr*Data" if you want
+  # to link against jwilke's Pd-l2ork 2.x a.k.a. Purr Data instead. The
+  # version compiled against vanilla will also work with Purr Data, though.)
+  PD_PATH = $(wildcard /c/Program*/Pd)
+  PD_INCLUDE = $(PD_PATH)/src
+  # Install into the extra subdir of the program directory. Note that at least
+  # on the latest Windows versions you can't install directly there
+  # (permissions issue) so you'll have to install into a staging directory
+  # first (using DESTDIR) and then manually copy files over.
+  pkglibdir = "$(PD_PATH)/extra"
   # MinGW doesn't seem to include cc so force gcc
   CC=gcc
   OPT_CFLAGS = -O3 -funroll-loops -fomit-frame-pointer
   ALL_CFLAGS += -mms-bitfields
   ALL_LDFLAGS += -s -shared -Wl,--enable-auto-import
   SHARED_LDFLAGS += -shared
-  ALL_LIBS += -L"$(PD_PATH)/src" -L"$(PD_PATH)/bin" -L"$(PD_PATH)/obj" \
-	-lpd -lwsock32 -lkernel32 -luser32 -lgdi32 -liberty $(LIBS_windows)
+  ALL_LIBS += "$(PD_PATH)/bin/pd.dll" \
+	-lwsock32 -lkernel32 -luser32 -lgdi32 $(LIBS_windows)
   STRIP = strip --strip-unneeded -R .note -R .comment
   DISTBINDIR=$(DISTDIR)-$(OS)
 endif
