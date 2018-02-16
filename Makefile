@@ -133,6 +133,8 @@ ifeq ($(UNAME),Darwin)
     endif
     endif
     ALL_CFLAGS += $(FAT_FLAGS) -fPIC -I/sw/include -I/opt/local/include
+    # NOTE: To link statically against Lua using MacPorts:
+    #LUA_LIBS = /opt/local/lib/liblua.a
     # if the 'pd' binary exists, check the linking against it to aid with stripping
     BUNDLE_LOADER = $(shell test ! -e $(PD_PATH)/bin/pd || echo -bundle_loader $(PD_PATH)/bin/pd)
     ALL_LDFLAGS += $(FAT_FLAGS) -headerpad_max_install_names -bundle $(BUNDLE_LOADER) \
