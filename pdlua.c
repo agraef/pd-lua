@@ -1626,7 +1626,9 @@ static int pdlua_loader_pathwise
 }
 
 
-#ifndef WIN32
+#ifdef WIN32
+#include <windows.h>
+#else
 #define __USE_GNU // to get RTLD_DEFAULT
 #include <dlfcn.h> // for dlsym
 #ifndef RTLD_DEFAULT
@@ -1743,13 +1745,14 @@ void pdlua_setup(void)
         error("lua: loader will not be registered!");
     }
     PDLUA_DEBUG("pdlua_setup: end. stack top %d", lua_gettop(L));
-#ifndef WIN32
-    /* nw.js support (currently only supported on Linux and Mac). XXXTODO:
-       Make this work on Windows as well. */
+    /* nw.js support. */
+#ifdef WIN32
+    nw_gui_vmess = (void*)GetProcAddress(GetModuleHandle("pd.dll"), "gui_vmess");
+#else
     nw_gui_vmess = dlsym(RTLD_DEFAULT, "gui_vmess");
+#endif
     if (nw_gui_vmess)
       post("pdlua: using JavaScript interface (Pd-l2ork nw.js version)");
-#endif
 
 }
 
