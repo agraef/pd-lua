@@ -263,6 +263,7 @@ ifeq (MINGW,$(findstring MINGW,$(UNAME)))
   # version compiled against vanilla will also work with Purr Data, though.)
   PD_PATH = $(wildcard /c/Program*/Pd)
   PD_INCLUDE = $(PD_PATH)/src
+  PD_LIB = $(PD_PATH)/bin
   # Install into the extra subdir of the program directory. Note that at least
   # on the latest Windows versions you can't install directly there
   # (permissions issue) so you'll have to install into a staging directory
@@ -274,7 +275,7 @@ ifeq (MINGW,$(findstring MINGW,$(UNAME)))
   ALL_CFLAGS += -mms-bitfields
   ALL_LDFLAGS += -s -shared -Wl,--enable-auto-import
   SHARED_LDFLAGS += -shared
-  ALL_LIBS += "$(PD_PATH)/bin/pd.dll" \
+  ALL_LIBS += "$(PD_LIB)/pd.dll" \
 	-lwsock32 -lkernel32 -luser32 -lgdi32 $(LIBS_windows)
   STRIP = strip --strip-unneeded -R .note -R .comment
   DISTBINDIR=$(DISTDIR)-$(OS)
