@@ -19,6 +19,10 @@ if not setfenv then -- Lua 5.2
     return f end
 end
 
+if not loadstring then -- Lua 5.3
+   loadstring = load
+end
+
 local function sandbox(e, f) -- only supports nullary f() with one return
   local g = getfenv(f)
   setfenv(f, e)
