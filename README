@@ -82,11 +82,11 @@ folder to /Library/Pd for a system-wide installation.
 Windows/mingw: Installation goes into the extra subdirectory of your Pd
 installation, so it will be available to all users by default.
 
-It's generally advisable to do a staged install using `DESTROOT` first so that
+It's generally advisable to do a staged install using `DESTDIR` first so that
 you can review the installation directory layout beforehand and adjust it if
 needed. To these ends, run `make install`, e.g., as follows:
 
-    make install DESTROOT=$PWD/BUILD
+    make install DESTDIR=$PWD/BUILD
 
 This will leave the installed external in a folder BUILD inside the current
 directory from where you can move the pdlua subdirectory to any location on
