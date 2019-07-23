@@ -56,6 +56,12 @@ ALL_LIBS =
 #
 #------------------------------------------------------------------------------#
 
+# Target platform (OSX/macOS only): On Mojave (10.14 with Xcode 10) this needs
+# to be at least 10.9, which is the default now. With older Xcode versions you
+# can try earlier versions (>= 10.4) if you need to compile for legacy OSX
+# versions.
+macos_target = 10.9
+
 # these can be set from outside without (usually) breaking the build
 CFLAGS = -Wall -W -g
 LDFLAGS =
@@ -122,14 +128,14 @@ ifeq ($(UNAME),Darwin)
     ifdef FAT_BINARIES
 # build universal 32-bit on 10.4 and 32/64 on newer
     ifeq ($(shell uname -r | sed 's|\([0-9][0-9]*\)\.[0-9][0-9]*\.[0-9][0-9]*|\1|'), 8)
-      FAT_FLAGS = -arch ppc -arch i386 -mmacosx-version-min=10.4
+      FAT_FLAGS = -arch ppc -arch i386 -mmacosx-version-min=$(macos_target)
     else
       SOURCES += $(SOURCES_iphoneos)
 # Starting with Xcode 4.0, the PowerPC compiler is not installed by default
       ifeq ($(wildcard /usr/llvm-gcc-4.2/libexec/gcc/powerpc*), )
-        FAT_FLAGS = -arch i386 -arch x86_64 -mmacosx-version-min=10.5
+        FAT_FLAGS = -arch i386 -arch x86_64 -mmacosx-version-min=$(macos_target)
       else
-        FAT_FLAGS = -arch ppc -arch i386 -arch x86_64 -mmacosx-version-min=10.4
+        FAT_FLAGS = -arch ppc -arch i386 -arch x86_64 -mmacosx-version-min=$(macos_target)
       endif
     endif
     endif
