@@ -120,8 +120,8 @@ ifeq ($(UNAME),Darwin)
     EXTENSION = pd_darwin
     SHARED_EXTENSION = dylib
     OS = macosx
-    PD_PATH = $(wildcard /Applications/Pd-0*.app/Contents/Resources)
-    PD_INCLUDE = $(PD_PATH)/include
+    PD_PATH = $(lastword $(wildcard /Applications/Pd-0*.app/Contents/Resources))
+    PD_INCLUDE = $(PD_PATH)/src
     OPT_CFLAGS = -ftree-vectorize
 # uncomment this to build fat binaries
     #FAT_BINARIES = 1
