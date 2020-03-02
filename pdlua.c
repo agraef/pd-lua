@@ -314,7 +314,8 @@ static void pdlua_proxyinlet_init
 static void pdlua_proxyinlet_setup(void)
 {
     pdlua_proxyinlet_class = class_new(gensym("pdlua proxy inlet"), 0, 0, sizeof(t_pdlua_proxyinlet), 0, 0);
-    class_addanything(pdlua_proxyinlet_class, pdlua_proxyinlet_anything);
+    if (pdlua_proxyinlet_class)
+        class_addanything(pdlua_proxyinlet_class, pdlua_proxyinlet_anything);
 }
 
 /** Proxy receive 'anything' method. */
@@ -357,7 +358,8 @@ static void pdlua_proxyreceive_free(t_pdlua_proxyreceive *r /**< The proxy recei
 static void pdlua_proxyreceive_setup()
 {
     pdlua_proxyreceive_class = class_new(gensym("pdlua proxy receive"), 0, 0, sizeof(t_pdlua_proxyreceive), 0, 0);
-    class_addanything(pdlua_proxyreceive_class, pdlua_proxyreceive_anything);
+    if (pdlua_proxyreceive_class)
+        class_addanything(pdlua_proxyreceive_class, pdlua_proxyreceive_anything);
 }
 
 /** Proxy clock 'bang' method. */
@@ -608,7 +610,8 @@ static int pdlua_class_new(lua_State *L)
         (t_method) pdlua_free, sizeof(t_pdlua), CLASS_NOINLET, A_GIMME, 0);
 
 /* a class with a "menu-open" method will have the "Open" item highlighted in the right-click menu */
-    class_addmethod(c, (t_method)pdlua_menu_open, gensym("menu-open"), A_NULL);/* (mrpeach 20111025) */
+    if (c)
+        class_addmethod(c, (t_method)pdlua_menu_open, gensym("menu-open"), A_NULL);/* (mrpeach 20111025) */
 /**/
 
     lua_pushlightuserdata(L, c);
@@ -1693,6 +1696,13 @@ void pdlua_setup(void)
     PDLUA_DEBUG("pdlua pdlua_proxyreceive_setup done", 0);
     pdlua_proxyclock_setup();
     PDLUA_DEBUG("pdlua pdlua_proxyclock_setup done", 0);
+    if (! pdlua_proxyinlet_class || ! pdlua_proxyreceive_class || ! pdlua_proxyclock_class)
+    {
+        pd_error(NULL, "lua: error creating proxy classes");
+        pd_error(NULL, "lua: loader will not be registered!");
+        pd_error(NULL, "lua: (is Pd using a different float size?)");
+        return;
+    }
 #if LUA_VERSION_NUM	< 502
     L = lua_open();
 #else // 5.2 style
