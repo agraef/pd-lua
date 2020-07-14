@@ -1652,7 +1652,11 @@ void pdlua_setup(void)
     char*               luaver = "lua 0.6~svn (GPL) 2008 Claude Heiland-Allen <claude@mathr.co.uk>";
     char                compiled[MAXPDSTRING];
     char                luaversionStr[MAXPDSTRING];
+#if LUA_VERSION_NUM	< 504
     const lua_Number    *luaversion = lua_version (NULL);
+#else
+    const lua_Number    luavers = lua_version (NULL), *luaversion = &luavers;
+#endif
     int                 lvm, lvl;
 
 #ifndef BUILD_DATE
