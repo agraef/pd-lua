@@ -79,7 +79,7 @@ PD_INCLUDE = $(PD_PATH)/include/pd
 # where to install the library, overridden below depending on platform
 prefix = /usr/local
 libdir = $(prefix)/lib
-pkglibdir = $(libdir)/pd-externals
+pkglibdir = $(libdir)/pd/extra
 objectsdir = $(pkglibdir)
 
 INSTALL = install
