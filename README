@@ -73,7 +73,7 @@ usual `make install` (which copies the external to its own directory named
 pdlua). This should generally do something sensible on each of the supported
 platforms. Note that the installation may require root privileges.
 
-Linux: By default, installation goes into /usr/local/lib/pd-externals, which
+Linux: By default, installation goes into /usr/local/lib/pd/extra, which
 should be one of the directories on Pd's search path.
 
 macOS/OS X: Installation goes into ~/Library/Pd by default. Move the pdlua
