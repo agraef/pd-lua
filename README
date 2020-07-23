@@ -17,24 +17,34 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 
 NOTES by aggraef: This works with all Pd flavors out there and makes Pd
-external programming incredibly easy (please check the included examples).
-Originally written by Claude Heiland-Allen, pdlua has gone through the hands
-of many people over the years, including mrpeach, umlaeute (responsible for
-the Debian package) and myself (Arch package, Lua 5.3 support). Since the
-contents of the original README has become rather outdated, I've updated the
-information below.
+external programming incredibly easy (please check the included examples and
+the tutorial in the corresponding subdirectories). Originally written by
+Claude Heiland-Allen, pdlua has gone through the hands of many people over the
+years, including mrpeach, umlaeute (responsible for the Debian package) and
+myself (Arch package, Lua 5.3 support, tutorial). Since the contents of the
+original README has become rather outdated, I've updated the information
+below.
 
+Lua 5.3 is highly recommended, Lua 5.4 should work as well; older versions are
+untested and unsupported - use at your own risk.
 
-Lua 5.3 is highly recommended, older versions are untested and unsupported -
-use at your own risk.
+If you haven't used pdlua before, please make sure to check the included
+tutorial first (pd-lua-intro in the tutorial subdirectory, available as
+Markdown source, html and pdf). This contains a fairly gentle introduction to
+pdlua, walks you through the creation of a basic example, and then goes on to
+cover all features of pdlua, including the special facilities for tables,
+clocks, receivers, and live-coding, in quite some detail. This will be helpful
+when embarking on your own projects, or trying to make sense of the included
+examples.
 
 
 Compilation Instructions:
 
 The source should compile out of the box on (at least) Linux, macOS and
 Windows, just make sure that you have Lua and Pd installed and run `make`.
-Ready-to-use binaries for the older Lua 5.2 version are available from Deken.
-The latest (Lua 5.3) binaries are on https://github.com/agraef/pd-lua.
+Ready-to-use binaries for the older Lua 5.2 version are available from Deken
+and as a Debian package. The latest (Lua 5.3) binaries are on
+https://github.com/agraef/pd-lua.
 
 If you want/need to compile from source, the following details the
 requirements for the three most popular platforms.
