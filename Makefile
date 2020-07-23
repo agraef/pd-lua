@@ -321,7 +321,7 @@ $(SHARED_LIB): $(SHARED_SOURCE:.c=.o)
 install: libdir_install
 
 # The meta and help files are explicitly installed to make sure they are
-# actually there.  Those files are not optional, then need to be there.
+# actually there.  Those files are not optional, they need to be there.
 libdir_install: $(SOURCES:.c=.$(EXTENSION)) $(SHARED_LIB) install-doc install-examples install-manual install-unittests
 	$(INSTALL_DIR) $(DESTDIR)$(objectsdir)/$(LIBRARY_NAME)
 	$(INSTALL_DATA) $(LIBRARY_META) \
