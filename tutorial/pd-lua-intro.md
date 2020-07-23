@@ -251,7 +251,7 @@ function foo:initialize(sel, atoms)
                                tostring(atoms[2]), type(atoms[2])))
    end
    pd.post(string.format("foo: initialized counter: %g, step size: %s",
-			             self.counter, self.step))
+                         self.counter, self.step))
    return true
 end
 ~~~
