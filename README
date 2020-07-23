@@ -16,26 +16,51 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 
-NOTES by aggraef: This works with all Pd flavors out there and makes Pd
-external programming incredibly easy (please check the included examples and
-the tutorial in the corresponding subdirectories). Originally written by
-Claude Heiland-Allen, pdlua has gone through the hands of many people over the
-years, including mrpeach, umlaeute (responsible for the Debian package) and
-myself (Arch package, Lua 5.3 support, tutorial). Since the contents of the
-original README has become rather outdated, I've updated the information
-below.
+NOTES by aggraef: Since the contents of the original README has become rather
+outdated, I've updated the information below.
 
-Lua 5.3 is highly recommended, Lua 5.4 should work as well; older versions are
-untested and unsupported - use at your own risk.
+pdlua works with all Pd flavors out there and makes Pd external programming
+incredibly easy (please check the included examples and the tutorial in the
+corresponding subdirectories). Originally written by Claude Heiland-Allen,
+pdlua has gone through the hands of a few people over the years, including
+mrpeach (maintainer since 2011), zmoelnig a.k.a. umlaeute (loader update,
+Debian package) and myself (Arch package, Lua 5.3 support, tutorial). Please
+also check my brief account on the history of pd-lua below.
+
+Lua 5.3 is highly recommended with the latest version, Lua 5.4 should work as
+well. Lua 5.2 probably still works, too, but this hasn't been tested
+recently. Even older Lua versions are completely untested and unsupported at
+this point - use at your own risk.
 
 If you haven't used pdlua before, please make sure to check the included
 tutorial first (pd-lua-intro in the tutorial subdirectory, available as
 Markdown source, html and pdf). This contains a fairly gentle introduction to
 pdlua, walks you through the creation of a basic example, and then goes on to
-cover all features of pdlua, including the special facilities for tables,
-clocks, receivers, and live-coding, in quite some detail. This will be helpful
-when embarking on your own projects, or trying to make sense of the included
-examples.
+cover all major features of pdlua, including the special facilities for
+tables, clocks, receivers, and live-coding, in quite some detail. This will be
+helpful when embarking on your own projects, or trying to make sense of the
+included examples.
+
+
+History:
+
+pdlua was originally written by Claude Heiland-Allen, with contributions by
+Frank Barknecht and Martin Peach, according to the original source.
+
+Claude's repository is still online at https://code.mathr.co.uk/pdlua; please
+also check Claude's website at https://mathr.co.uk/, and
+https://mathr.co.uk/blog/lua.html for Lua-related content on his blog
+(including pdlua's original announcement).
+
+Martin Peach took over maintenance of pdlua in 2011, you can find that part of
+the history in Pd's old svn repository at SourceForge, including IOhannes
+Zmölnig's loader update for Pd 0.47. See
+https://sourceforge.net/p/pure-data/svn/HEAD/tree/trunk/externals/loaders/pdlua/
+
+The present source is a fork of umlaeute's repository at
+https://anonscm.debian.org/git/pkg-multimedia/pd-lua.git, from which the
+official Debian packages are built. This in turn is apparently based on the
+0.7.3 version of pdlua in Pd's svn repository.
 
 
 Compilation Instructions:
