@@ -912,7 +912,13 @@ You get the idea. Getting set up for remote control via `pdsend` isn't much hard
 
 ![Remote control 1](15-remote-control1.png)
 
-You can then use `pdsend 4711 localhost udp` to transmit the `reload` message to Pd when needed. You probably don't want to manually type those commands in a terminal, but a decent code editor will let you bind a keyboard command which does this for you. Myself, I'm a die-hard Emacs fan, so I've included a little elisp module pdlua-remote.el in the accompanying examples which shows how to do this. Once you've added this to your .emacs, you can just type Ctrl+C Ctrl+K in Emacs to make Pd reload your Lua script after saving it. It doesn't get much easier than that. Moreover, for your convenience I've added a little gop abstraction named pdlua-remote.pd which takes care of the `netreceive` and messaging bits and will look much tidier in your patches.
+You can then use `pdsend 4711 localhost udp` to transmit the `reload` message to Pd when needed. You probably don't want to run those commands yourself, but a decent code editor will let you bind a keyboard command which does this for you. Myself, I'm a die-hard Emacs fan, so I've included a little elisp module pdlua-remote.el in the accompanying examples which shows how to do this. Once you've added this to your .emacs, you can just type Ctrl+C Ctrl+K in Emacs to make Pd reload your Lua script after saving it. It doesn't get much easier than that. Moreover, for your convenience I've added a little gop abstraction named pdlua-remote.pd which takes care of the `netreceive` and messaging bits and will look much tidier in your patches.
+
+---
+
+**NOTE:** At present, the various bits and pieces belonging to the improved live-coding support aren't installed along with Pd-Lua, so to use them in your own patches, you'll have to copy pdx.lua and pdlua-remote.pd to your project directory or some other place where Pd finds them. The pdlua-remote.el file can be installed in your Emacs site-lisp directory if needed.
+
+---
 
 So here's the full source code of our reworked `luatab` example (now with the `in_1_reload` handler removed and the `pdx.reload` call added to the `initialize` method):
 
