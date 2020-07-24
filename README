@@ -1,5 +1,7 @@
 pdlua -- a Lua embedding for Pd
-Copyright (C) 2007,2008,2009 Claude Heiland-Allen <claude@mathr.co.uk>
+Copyright (C) 2007,2008,2009,2013 Claude Heiland-Allen <claude@mathr.co.uk>
+Copyright (C) 2012 Martin Peach martin.peach@sympatico.ca
+
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -24,7 +26,7 @@ incredibly easy (please check the included examples and the tutorial in the
 corresponding subdirectories). Originally written by Claude Heiland-Allen,
 pdlua has gone through the hands of a few people over the years, including
 mrpeach (maintainer since 2011), zmoelnig a.k.a. umlaeute (loader update,
-Debian package) and myself (Arch package, Lua 5.3 support, tutorial). Please
+Debian package), and myself (Arch package, Lua 5.3 support, tutorial). Please
 also check my brief account on the history of pd-lua below.
 
 Lua 5.3 is highly recommended with the latest version, Lua 5.4 should work as
