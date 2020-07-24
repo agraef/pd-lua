@@ -7,11 +7,11 @@ This is a fork of [umlaeute's repository](https://anonscm.debian.org/git/pkg-mul
 
 - [**Downloads**](https://github.com/agraef/pd-lua/releases): This is where you find source tarballs and binaries for **Mac and Windows**.
 
-- [**Arch packages**](https://www.archlinux.org/packages/): pd-lua is available in the official [Arch community repositories](https://www.archlinux.org/packages/community/x86_64/pd-lua/), and also from the [AUR](https://aur.archlinux.org/packages/pd-lua-git/) (the latter builds pd-lua straight from the current git sources)
+- [**Arch packages**](https://www.archlinux.org/): pd-lua is available in the official [Arch community repositories](https://www.archlinux.org/packages/community/x86_64/pd-lua/), and also from the [AUR](https://aur.archlinux.org/packages/pd-lua-git/) (the latter builds pd-lua straight from the current git sources)
 
 - [**Sources**](https://github.com/agraef/pd-lua): Github repository with the latest source code
 
-- [**Tutorial**][]: **Start here** if you're a new pd-lua user
+- [**Tutorial**](https://github.com/agraef/pd-lua/blob/master/tutorial/pd-lua-intro.md): **Start here** if you're a new pd-lua user
 
 ## Why pd-lua?
 
@@ -25,11 +25,11 @@ Using Pd-Lua, you can program your own externals ranging from little helper obje
 
 pdlua was originally written by Claude Heiland-Allen, with contributions by Frank Barknecht and Martin Peach, according to the original source.
 
-Claude's repository is still online at https://code.mathr.co.uk/pdlua; please also check Claude's website at https://mathr.co.uk/, and https://mathr.co.uk/blog/lua.html for Lua-related content on his blog (including pdlua's original announcement).
+Claude's repository is still online at <https://code.mathr.co.uk/pdlua>; please also check his website at <https://mathr.co.uk/>, and <https://mathr.co.uk/blog/lua.html> for Lua-related content on his blog (including pdlua's original announcement).
 
-Martin Peach took over maintenance of pdlua in 2011, you can find that part of the history in Pd's old svn repository at SourceForge, including IOhannes Zmölnig's loader update for Pd 0.47. See https://sourceforge.net/p/pure-data/svn/HEAD/tree/trunk/externals/loaders/pdlua/
+Martin Peach took over maintenance of pdlua in 2011, you can find that part of the history in Pd's old [svn repository](https://sourceforge.net/p/pure-data/svn/HEAD/tree/trunk/externals/loaders/pdlua/) at SourceForge, including IOhannes Zmölnig's loader update for Pd 0.47.
 
-The present source is a fork of umlaeute's repository at https://anonscm.debian.org/git/pkg-multimedia/pd-lua.git, from which the official Debian packages are built. This in turn is apparently based on the 0.7.3 version of pdlua in Pd's svn repository.
+The present source is a fork of IOhannes' repository at <https://anonscm.debian.org/git/pkg-multimedia/pd-lua.git>, from which the official Debian packages are built. This in turn is apparently based on the 0.7.3 version of pdlua in Pd's svn repository.
 
 ## Installing from source
 
