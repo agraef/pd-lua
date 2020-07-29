@@ -20,20 +20,20 @@ Note that we can't possibly cover Pd or the Lua language themselves here, so you
 
 ## Installation
 
-First make sure that you have Lua installed on your system; it should be readily available from your package repositories on Linux, and for Mac and Windows you can find binaries on the Lua website. In the following we generally assume that you're using Lua 5.3 or later.
+[Purr Data](https://agraef.github.io/purr-data/) includes an up-to-date version of Pd-Lua for Lua 5.3 and has it enabled by default, so you should be ready to go immediately; no need to install anything else.
 
-[Purr Data](https://agraef.github.io/purr-data/) includes an up-to-date version of Pd-Lua and has it enabled by default, so you're ready to go immediately; no need to install anything, other than the Lua interpreter itself.
-
-With vanilla [Pd](http://msp.ucsd.edu/software.html), you can install Pd-Lua from Deken (not recommended, because at the time of this writing that's a rather old version which lacks support for Lua 5.3 and later). There's also a package in [Debian](https://salsa.debian.org/multimedia-team/pd/pd-lua) (maintained by IOhannes zmölnig), which is also based on an old pre-5.3 source of Pd-Lua. So if you want to use a reasonably up-to-date Lua version (something like Lua 5.3, which was released in 2015), your best bet is to get Pd-Lua from the author's [Github repository](https://github.com/agraef/pd-lua), which is the most recent version (you'll also find some Mac and Windows binaries there). In either case, after installing Pd-Lua you also have to add "pdlua" to Pd's startup libraries.
+With vanilla [Pd](http://msp.ucsd.edu/software.html), you can install the pdlua package from Deken (not recommended, because at the time of this writing that's a really old version based on Lua 5.1). The official [Debian](https://salsa.debian.org/multimedia-team/pd/pd-lua) package, maintained by IOhannes zmölnig, is based on Lua 5.2. If you want to use a reasonably up-to-date Lua version, your best bet is to get Pd-Lua from the author's [Github repository](https://github.com/agraef/pd-lua), which has been updated to work with Lua 5.3 and later. Compilation instructions are in the README, and you'll also find some Mac and Windows binaries there. In either case, after installing Pd-Lua you also have to add `pdlua` to Pd's startup libraries.
 
 If all is well, you should see a message like the following in the Pd console (note that for vanilla Pd you'll have to switch the log level to 3 to see that message):
 
 ~~~
-pdlua 0.10 (GPL) 2014-2020 Martin Peach et al., based on
+pdlua 0.10.1 (GPL) 2014-2020 Martin Peach et al., based on
 lua 0.6~svn (GPL) 2008 Claude Heiland-Allen <claude@mathr.co.uk>
-pdlua: compiled for pd-0.51 on Jul 14 2020 14:59:45
-Using lua version 5.4
+pdlua: compiled for pd-0.51 on Jul 29 2020 18:43:30
+Using lua version 5.3
 ~~~
+
+This will also tell you the Lua version that Pd-Lua is using, so that you can install a matching version of the stand-alone Lua interpreter if needed. If you do *not* see that message, then most likely Pd-Lua refused to load because the corresponding Lua library is missing for some reason. In that case you'll have to manually install the right Lua version to make Pd-Lua work. Lua should be readily available from your package repositories on Linux, and for Mac and Windows you can find binaries on the Lua website. In the following we generally assume that you're using Lua 5.3 or later.
 
 ## A basic example
 
