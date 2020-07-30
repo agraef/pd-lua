@@ -17,7 +17,7 @@ function foo:initialize(sel, atoms)
       self:error(string.format("foo: #2: %s is of the wrong type %s",
 			       tostring(atoms[2]), type(atoms[2])))
    end
-   pd.post(string.format("foo: initialized counter: %g, step size: %s",
+   pd.post(string.format("foo: initialized counter: %g, step size: %g",
 			 self.counter, self.step))
    return true
 end

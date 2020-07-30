@@ -253,7 +253,7 @@ function foo:initialize(sel, atoms)
       self:error(string.format("foo: #2: %s is of the wrong type %s",
                                tostring(atoms[2]), type(atoms[2])))
    end
-   pd.post(string.format("foo: initialized counter: %g, step size: %s",
+   pd.post(string.format("foo: initialized counter: %g, step size: %g",
                          self.counter, self.step))
    return true
 end
@@ -310,7 +310,7 @@ Here are the messages logged in the console if we now load our test patch and th
 foo: initialized counter: 0, step size: 1
 Welcome to foo! Copyright (c) by Foo software.
 foo: initialized counter: 5, step size: 1
-foo: initialized counter: 0, step size: 5.0
+foo: initialized counter: 0, step size: 5
 Thanks for using foo!
 ~~~
 
@@ -701,7 +701,7 @@ It is worth noting here that the same technique applies whenever you need to pas
 
 So let's have a look at receivers now. These work pretty much like clocks in that you create them registering a method, and destroy them when they are no longer needed:
 
-- `pd.Receive:new():register(self, sym, method)`: This creates a new receiver named `sym` (a string) for the Pd-Lua object `self` which, when a message for that receiver becomes available, runs the method specified as a string `method`. Let's say that `method` is `"receive"`, then `self:receive(sel atoms)` will be invoked with the selector symbol `sel` and arguments `atoms` of the transmitted message. You want to assign the result (a `pd.Receive` object) to a member variable of the object (called `self.recv` below), so that you can refer to it later (if only to destroy it, see below).
+- `pd.Receive:new():register(self, sym, method)`: This creates a new receiver named `sym` (a string) for the Pd-Lua object `self` which, when a message for that receiver becomes available, runs the method specified as a string `method`. Let's say that `method` is `"receive"`, then `self:receive(sel, atoms)` will be invoked with the selector symbol `sel` and arguments `atoms` of the transmitted message. You want to assign the result (a `pd.Receive` object) to a member variable of the object (called `self.recv` below), so that you can refer to it later (if only to destroy it, see below).
 
 - `self.recv:destruct()`: destroys the receiver
 
@@ -750,7 +750,7 @@ The obligatory test patch:
 
 I've been telling you all along that in order to make Pd-Lua pick up changes you made to your .pd_lua files, you have to relaunch Pd and reload your patches. Well, in this section we are going to discuss Pd-Lua's *live coding* features, which let you modify your sources and have Pd-Lua reload them on the fly, without ever exiting the Pd environment. This rapid incremental style of development is one of the hallmark features of dynamic programming environments like Pd and Lua. Musicians also like to employ it to modify their algorithmic composition programs live on stage, which is where the term "live coding" comes from. You'll probably be using live coding a lot while developing your Pd-Lua externals, but I've kept this topic for the final section of this guide, because it requires a good understanding of Pd-Lua's basic features. So without any further ado, let's dive right into it now.
 
-First, we need to describe the predefined Pd-Lua object classes `pdlua` and `pdluax`, so that you know what's readily available. But I'll also discuss how to add a `reload` message to your existing object definitions. This is quite easy to do by directly employing Pd-Lua's `dofile` method, which is also what both `pdlua` and `pdluax` use internally.
+First, we need to describe the predefined Pd-Lua object classes `pdlua` and `pdluax`, so that you know what's readily available. But we'll also discuss how to add a `reload` message to your existing object definitions. This is quite easy to do by directly employing Pd-Lua's `dofile` method, which is also what both `pdlua` and `pdluax` use internally.
 
 ### pdlua
 
