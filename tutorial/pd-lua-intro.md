@@ -7,7 +7,7 @@ Johannes Gutenberg University (JGU) Mainz, Germany
 July 2020
 
 This document is licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). Other formats: [Markdown](https://github.com/agraef/pd-lua/blob/master/tutorial/pd-lua-intro.md) source, [PDF](https://github.com/agraef/pd-lua/blob/master/tutorial/pd-lua-intro.pdf)  
-Permanent link: <https://agraef.github.io/pd-lua/pd-lua-intro.html>
+Permanent link: <https://agraef.github.io/pd-lua/tutorial/pd-lua-intro.html>
 
 ## Why Pd-Lua?
 
