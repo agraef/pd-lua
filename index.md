@@ -11,7 +11,7 @@ This is a fork of [umlaeute's repository](https://anonscm.debian.org/git/pkg-mul
 
 - [**Sources**](https://github.com/agraef/pd-lua): Github repository with the latest source code. See [Installing from source](#installing-from-source) below.
 
-- [**Tutorial**](https://github.com/agraef/pd-lua/blob/master/tutorial/pd-lua-intro.md): **Start here** if you're a new pd-lua user.
+- [**Tutorial**](https://agraef.github.io/pd-lua/pd-lua-intro.html): **Start here** if you're a new pd-lua user.
 
 ## Why pd-lua?
 
@@ -35,4 +35,4 @@ Building and installing from source is quite easy, once you have the requisite d
 [Faust]: https://faust.grame.fr/
 [Pd]: http://msp.ucsd.edu/software.html
 [Purr Data]: https://agraef.github.io/purr-data/
-[tutorial]: https://github.com/agraef/pd-lua/blob/master/tutorial/pd-lua-intro.md
+[tutorial]: https://agraef.github.io/pd-lua/pd-lua-intro.html
