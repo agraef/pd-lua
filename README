@@ -72,9 +72,9 @@ Compilation Instructions:
 
 The source should compile out of the box on (at least) Linux, macOS and
 Windows, just make sure that you have Lua and Pd installed and run `make`.
-Ready-to-use binaries for the older Lua 5.2 version are available from Deken
-and as a Debian package. The latest (Lua 5.3) binaries are on
-https://github.com/agraef/pd-lua.
+Ready-to-use binaries for the older Lua 5.1 and 5.2 versions are available
+from Deken and as a Debian package, respectively. The latest (Lua 5.3)
+binaries are on https://github.com/agraef/pd-lua.
 
 If you want/need to compile from source, the following details the
 requirements for the three most popular platforms.
