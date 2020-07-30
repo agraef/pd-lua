@@ -35,10 +35,9 @@ recently. Even older Lua versions are completely untested and unsupported at
 this point - use at your own risk.
 
 If you haven't used pdlua before, please make sure to check the included
-tutorial first (pd-lua-intro in the tutorial subdirectory, available as
-Markdown source, html and pdf). See:
+tutorial first. See:
 
-https://github.com/agraef/pd-lua/blob/master/tutorial/pd-lua-intro.md
+https://agraef.github.io/pd-lua/tutorial/pd-lua-intro.html
 
 This contains a fairly gentle introduction to pdlua, walks you through the
 creation of a basic example, and then goes on to cover all major features of
