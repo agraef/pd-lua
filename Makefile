@@ -67,8 +67,30 @@ CFLAGS = -Wall -W -g
 LDFLAGS =
 LIBS =
 
-LUA_CFLAGS = -I/usr/include/lua
-LUA_LIBS   = -llua
+# NOTE: If you don't have pkg-config and lua.pc installed, you can try
+# something like this if you have Lua installed in the standard location.
+#LUA_CFLAGS = -I/usr/include/lua
+#LUA_LIBS   = -llua
+
+# This should work on all Unix-like systems such as Linux and MacOS, and also
+# on Windows with msys2/mingw (fingers crossed). -ag
+
+LUA_CFLAGS = $(shell pkg-config --cflags lua)
+
+# set this to 'yes' to enable a static build (useful if the target system
+# doesn't have the dynamic Lua lib installed)
+#static = yes
+
+# static Lua lib name
+lualibdir = $(shell pkg-config --variable INSTALL_LIB lua)
+lualibname = $(shell pkg-config --libs-only-l lua|sed 's/-l\([^ ]*\).*/\1/')
+lualib = $(lualibdir)/lib$(lualibname).a
+
+ifeq ($(static),yes)
+LUA_LIBS = $(lualib)
+else
+LUA_LIBS = $(shell pkg-config --libs lua)
+endif
 
 # get library version from meta file
 LIBRARY_VERSION = $(shell sed -n 's|^\#X text [0-9][0-9]* [0-9][0-9]* VERSION \(.*\);|\1|p' $(LIBRARY_META))
@@ -96,12 +118,15 @@ ORIGDIR=pd-$(LIBRARY_NAME:~=)_$(LIBRARY_VERSION)
 UNAME := $(shell uname -s)
 ifeq ($(UNAME),Darwin)
   CPU := $(shell uname -p)
-  ifeq ($(CPU),arm) # iPhone/iPod Touch
+# This is currently disabled since I don't know how to make it work with
+# modern Xcode versions. Also note that simply checking for an arm cpu doesn't
+# work any more since the latest Macs use the same 'arm' cpu architecture. -ag
+  ifeq ($(CPU),armxxx) # iPhone/iPod Touch
     SOURCES += $(SOURCES_iphoneos)
     EXTENSION = pd_darwin
     SHARED_EXTENSION = dylib
     OS = iphoneos
-    PD_PATH = /Applications/Pd-extended.app/Contents/Resources
+    PD_PATH = $(lastword $(wildcard /Applications/Pd-0*.app/Contents/Resources))
     IPHONE_BASE=/Developer/Platforms/iPhoneOS.platform/Developer/usr/bin
     CC=$(IPHONE_BASE)/gcc
     CPP=$(IPHONE_BASE)/cpp
@@ -123,7 +148,8 @@ ifeq ($(UNAME),Darwin)
     PD_PATH = $(lastword $(wildcard /Applications/Pd-0*.app/Contents/Resources))
     PD_INCLUDE = $(PD_PATH)/src
     OPT_CFLAGS = -ftree-vectorize
-# uncomment this to build fat binaries
+# uncomment this to build fat binaries (needs work since arm64 binaries aren't
+# included yet, and ppc support should probably be removed at this point -ag)
     #FAT_BINARIES = 1
     ifdef FAT_BINARIES
 # build universal 32-bit on 10.4 and 32/64 on newer
@@ -139,13 +165,11 @@ ifeq ($(UNAME),Darwin)
       endif
     endif
     endif
-    ALL_CFLAGS += $(FAT_FLAGS) -fPIC -I/sw/include -I/opt/local/include
-    # NOTE: To link statically against Lua using MacPorts:
-    #LUA_LIBS = /opt/local/lib/liblua.a
+    ALL_CFLAGS += $(FAT_FLAGS) -fPIC
     # if the 'pd' binary exists, check the linking against it to aid with stripping
     BUNDLE_LOADER = $(shell test ! -e $(PD_PATH)/bin/pd || echo -bundle_loader $(PD_PATH)/bin/pd)
     ALL_LDFLAGS += $(FAT_FLAGS) -headerpad_max_install_names -bundle $(BUNDLE_LOADER) \
-	-undefined dynamic_lookup -L/sw/lib -L/opt/local/lib
+	-undefined dynamic_lookup
     SHARED_LDFLAGS += $(FAT_FLAGS) -dynamiclib -undefined dynamic_lookup \
 	-install_name @loader_path/$(SHARED_LIB) -compatibility_version 1 -current_version 1.0
     ALL_LIBS += -lc $(LIBS_macosx)
@@ -380,9 +404,9 @@ install-unittests:
 clean:
 	-rm -f -- $(SOURCES:.c=.o) $(SOURCES_LIB:.c=.o) $(SHARED_SOURCE:.c=.o)
 	-rm -f -- $(SOURCES:.c=.$(EXTENSION))
-	-rm -f -- $(LIBRARY_NAME).o
-	-rm -f -- $(LIBRARY_NAME).$(EXTENSION)
-	-rm -f -- $(SHARED_LIB)
+#	-rm -f -- $(LIBRARY_NAME).o
+#	-rm -f -- $(LIBRARY_NAME).$(EXTENSION)
+#	-rm -f -- $(SHARED_LIB)
 
 distclean: clean
 	-rm -f -- $(DISTBINDIR).tar.gz
