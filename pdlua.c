@@ -407,7 +407,7 @@ static void pdlua_pushatomtable
                 lua_pushlightuserdata(L, argv[i].a_w.w_gpointer);
             break;
             default:
-                error("lua: zomg weasels!");
+                pd_error(NULL, "lua: zomg weasels!");
                 lua_pushnil(L);
             break;
         }
@@ -437,7 +437,7 @@ static t_pdlua *pdlua_new
             PDLUA_DEBUG2("argv[%d]: %s", i, argv[i].a_w.w_symbol->s_name);
             break;
         default:
-            error("pdlua_new: bad argument type"); // should never happen
+            pd_error(NULL, "pdlua_new: bad argument type"); // should never happen
             return NULL;
         }
     }
@@ -449,7 +449,7 @@ static t_pdlua *pdlua_new
     PDLUA_DEBUG("pdlua_new: before lua_pcall(L, 2, 1, 0) stack top %d", lua_gettop(L));
     if (lua_pcall(L, 2, 1, 0))
     {
-        error("pdlua_new: error in constructor for `%s':\n%s", s->s_name, lua_tostring(L, -1));
+        pd_error(NULL, "pdlua_new: error in constructor for `%s':\n%s", s->s_name, lua_tostring(L, -1));
         lua_pop(L, 2); /* pop the error string and the global "pd" */
         return NULL;
     }
@@ -482,7 +482,7 @@ static void pdlua_free( t_pdlua *o /**< The object to destruct. */)
     lua_pushlightuserdata(L, o);
     if (lua_pcall(L, 1, 0, 0))
     {
-        error("lua: error in destructor:\n%s", lua_tostring(L, -1));
+        pd_error(NULL, "lua: error in destructor:\n%s", lua_tostring(L, -1));
         lua_pop(L, 1); /* pop the error string */
     }
     lua_pop(L, 1); /* pop the global "pd" */
@@ -543,7 +543,7 @@ static void pdlua_menu_open(t_pdlua *o)
     lua_pushlightuserdata(L, o);
     if (lua_pcall(L, 1, 1, 0))
     {
-        error("lua: error in whoami:\n%s", lua_tostring(L, -1));
+        pd_error(NULL, "lua: error in whoami:\n%s", lua_tostring(L, -1));
         lua_pop(L, 2); /* pop the error string and the global "pd" */
         return;
     }
@@ -564,7 +564,7 @@ static void pdlua_menu_open(t_pdlua *o)
             lua_pushlightuserdata(L, o);
             if (lua_pcall(L, 1, 1, 0))
             {
-                error("lua: error in get_class:\n%s", lua_tostring(L, -1));
+                pd_error(NULL, "lua: error in get_class:\n%s", lua_tostring(L, -1));
                 lua_pop(L, 4); /* pop the error string, global "pd", name, global "pd"*/
                 return;
             }
@@ -1100,9 +1100,9 @@ static int pdlua_outlet(lua_State *L)
             }
             else pd_error(o, "lua: error: outlet out of range");
         }
-        else error("lua: error: no object to outlet from");
+        else pd_error(NULL, "lua: error: no object to outlet from");
     }
-    else error("lua: error: bad arguments to outlet");
+    else pd_error(NULL, "lua: error: bad arguments to outlet");
     lua_pop(L, 4); /* pop all the arguments */
     PDLUA_DEBUG("pdlua_outlet: end. stack top %d", lua_gettop(L));
     return 0;
@@ -1134,18 +1134,18 @@ static int pdlua_send(lua_State *L)
         receivesym = gensym((char *) receivename); /* const cast */
         if (receivesym) 
         {
-            if (strlen(receivename) != receivenamel) error("lua: warning: symbol munged (contains \\0 in body)");
+            if (strlen(receivename) != receivenamel) pd_error(NULL, "lua: warning: symbol munged (contains \\0 in body)");
             if (lua_isstring(L, 2)) 
             {
                 selname = lua_tolstring(L, 2, &selnamel);
                 selsym = gensym((char *) selname); /* const cast */
                 if (selsym)
                 {
-                    if (strlen(selname) != selnamel) error("lua: warning: symbol munged (contains \\0 in body)");
+                    if (strlen(selname) != selnamel) pd_error(NULL, "lua: warning: symbol munged (contains \\0 in body)");
                     lua_pushvalue(L, 3);
                     atoms = pdlua_popatomtable(L, &count, NULL);
                     if ((count == 0 || atoms) && (receivesym->s_thing)) typedmess(receivesym->s_thing, selsym, count, atoms);
-                    else error("lua: error: no atoms??");
+                    else pd_error(NULL, "lua: error: no atoms??");
                     if (atoms) 
                     {
                         free(atoms);
@@ -1153,13 +1153,13 @@ static int pdlua_send(lua_State *L)
                         return 0;
                     }
                 }
-                else error("lua: error: null selector");
+                else pd_error(NULL, "lua: error: null selector");
             }
-            else error("lua: error: selector must be a string");
+            else pd_error(NULL, "lua: error: selector must be a string");
         }
-        else error("lua: error: null receive name");
+        else pd_error(NULL, "lua: error: null receive name");
     }
-    else error("lua: error: receive name must be string");
+    else pd_error(NULL, "lua: error: receive name must be string");
     PDLUA_DEBUG("pdlua_send: fail end. stack top is %d", lua_gettop(L));
     return 0;
 }
@@ -1341,9 +1341,9 @@ static int pdlua_error(lua_State *L)
             if (s) pd_error(o, "%s", s);
             else pd_error(o, "lua: error: null string in error function");
         }
-        else error("lua: error: null object in error function");
+        else pd_error(NULL, "lua: error: null object in error function");
     }
-    else error("lua: error: bad arguments to error function");
+    else pd_error(NULL, "lua: error: bad arguments to error function");
     PDLUA_DEBUG("pdlua_error: end. stack top is %d", lua_gettop(L));
     return 0;
 }
@@ -1361,7 +1361,7 @@ static void pdlua_setrequirepath
     lua_pushstring(L, path);
     if (lua_pcall(L, 1, 0, 0) != 0)
     {
-        error("lua: internal error in `pd._setrequirepath': %s", lua_tostring(L, -1));
+        pd_error(NULL, "lua: internal error in `pd._setrequirepath': %s", lua_tostring(L, -1));
         lua_pop(L, 1);
     }
     lua_pop(L, 1);
@@ -1379,7 +1379,7 @@ static void pdlua_clearrequirepath
     lua_gettable(L, -2);
     if (lua_pcall(L, 0, 0, 0) != 0)
     {
-        error("lua: internal error in `pd._clearrequirepath': %s", lua_tostring(L, -1));
+        pd_error(NULL, "lua: internal error in `pd._clearrequirepath': %s", lua_tostring(L, -1));
         lua_pop(L, 1);
     }
     lua_pop(L, 1);
@@ -1448,9 +1448,9 @@ static int pdlua_dofile(lua_State *L)
             }
             else pd_error(o, "lua: error loading `%s': canvas_open() failed", filename);
         }
-        else error("lua: error in object:dofile() - object is null");
+        else pd_error(NULL, "lua: error in object:dofile() - object is null");
     }
-    else error("lua: error in object:dofile() - object is wrong type");
+    else pd_error(NULL, "lua: error in object:dofile() - object is wrong type");
     lua_pushstring(L, buf); /* return the path as well so we can open it later with pdlua_menu_open() */
     PDLUA_DEBUG("pdlua_dofile end. stack top is %d", lua_gettop(L));
     
@@ -1564,7 +1564,7 @@ static int pdlua_loader_fromfd
     if (lua_load(L, pdlua_reader, &reader, name, NULL) || lua_pcall(L, 0, 0, 0))
 #endif // LUA_VERSION_NUM	< 502
     {
-      error("lua: error loading `%s':\n%s", name, lua_tostring(L, -1));
+      pd_error(NULL, "lua: error loading `%s':\n%s", name, lua_tostring(L, -1));
       lua_pop(L, 1);
       pdlua_clearrequirepath(L);
       class_set_extern_dir(&s_);
@@ -1725,9 +1725,9 @@ void pdlua_setup(void)
         if (0 != result)
         //if (lua_load(L, pdlua_reader, &reader, "pd.lua") || lua_pcall(L, 0, 0, 0))
         {
-            error("lua: error loading `pd.lua':\n%s", lua_tostring(L, -1));
-            error("lua: loader will not be registered!");
-            error("lua: (is `pd.lua' in Pd's path list?)");
+            pd_error(NULL, "lua: error loading `pd.lua':\n%s", lua_tostring(L, -1));
+            pd_error(NULL, "lua: loader will not be registered!");
+            pd_error(NULL, "lua: (is `pd.lua' in Pd's path list?)");
             lua_pop(L, 1);
         }
         else
@@ -1745,8 +1745,8 @@ void pdlua_setup(void)
     }
     else
     {
-        error("lua: error loading `pd.lua': canvas_open() failed");
-        error("lua: loader will not be registered!");
+        pd_error(NULL, "lua: error loading `pd.lua': canvas_open() failed");
+        pd_error(NULL, "lua: loader will not be registered!");
     }
     PDLUA_DEBUG("pdlua_setup: end. stack top %d", lua_gettop(L));
     /* nw.js support. */
