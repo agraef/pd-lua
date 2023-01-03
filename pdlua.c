@@ -91,6 +91,8 @@
 
 /* If defined, PDLUA_DEBUG lets pdlua post a lot of text */
 //#define PDLUA_DEBUG post
+// recent vanilla versions don't have post() any more, use this instead:
+//#define PDLUA_DEBUG(...) logpost(NULL, 3, __VA_ARGS__)
 #ifndef PDLUA_DEBUG
 //static void PDLUA_DEBUG(const char *fmt, ...) {;}
 # define PDLUA_DEBUG(x,y)
@@ -242,7 +244,11 @@ static int pdlua_loader_legacy (t_canvas *canvas, char *name);
 #ifdef _WIN32
 __declspec(dllexport)
 #endif 
+#ifdef PLUGDATA
+void pdlua_setup(const char *datadir);
+#else
 void pdlua_setup (void);
+#endif
 /* end prototypes*/
 
 /* globals */
@@ -1641,8 +1647,12 @@ static int pdlua_loader_pathwise
 /** Start the Lua runtime and register our loader hook. */
 #ifdef _WIN32
 __declspec(dllexport)
-#endif 
+#endif
+#ifdef PLUGDATA
+void pdlua_setup(const char *datadir)
+#else
 void pdlua_setup(void)
+#endif
 {
     char                pd_lua_path[MAXPDSTRING];
     t_pdlua_readerdata  reader;
@@ -1701,7 +1711,14 @@ void pdlua_setup(void)
     /* canvas_open can't find pd.lua unless we give the path to pd beforehand like pd -path /usr/lib/extra/pdlua */
     /* To avoid this we can use c_externdir from m_imp.h, struct _class: t_symbol *c_externdir; */
     /* c_externdir is the directory the extern was loaded from and is also the directory contining pd.lua */
+#ifdef PLUGDATA
+    // In plugdata we're linked statically and thus c_externdir is empty.
+    // Instead, we get our data directory from plugdata and expect to find the
+    // external dir in <datadir>/pdlua.
+    sprintf(pd_lua_path, "%s/%s/pd.lua", datadir, "pdlua");
+#else
     sprintf(pd_lua_path, "%s/pd.lua", pdlua_proxyinlet_class->c_externdir->s_name); /* the full path to pd.lua */
+#endif
     PDLUA_DEBUG("pd_lua_path %s", pd_lua_path);
     fd = open(pd_lua_path, O_RDONLY);
 /*    fd = canvas_open(canvas_getcurrent(), "pd", ".lua", buf, &ptr, MAXPDSTRING, 1);  looks all over and rarely succeeds */
@@ -1749,6 +1766,7 @@ void pdlua_setup(void)
         pd_error(NULL, "lua: loader will not be registered!");
     }
     PDLUA_DEBUG("pdlua_setup: end. stack top %d", lua_gettop(L));
+#ifndef PLUGDATA
     /* nw.js support. */
 #ifdef WIN32
     nw_gui_vmess = (void*)GetProcAddress(GetModuleHandle("pd.dll"), "gui_vmess");
@@ -1757,6 +1775,7 @@ void pdlua_setup(void)
 #endif
     if (nw_gui_vmess)
       post("pdlua: using JavaScript interface (Pd-l2ork nw.js version)");
+#endif
 
 }
 
