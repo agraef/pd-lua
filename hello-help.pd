@@ -1,10 +1,11 @@
-#N canvas 43 60 476 189 10;
+#N canvas 503 68 476 189 10;
+#X declare -lib pdlua;
 #X obj 34 62 hello;
 #X obj 94 62 hello;
 #X obj 154 62 hello;
 #X obj 214 62 hello;
 #X text 33 95 See also:;
-#X text 32 14 [lua] registers a loader that allows [hello] to be defined
-by a source file "hello.pd_lua".;
+#X text 32 14 [lua] registers a loader that allows [hello] to be defined by a source file "hello.pd_lua".;
 #X obj 49 125 pdlua;
 #X obj 93 125 pdluax hello;
+#X obj 318 115 declare -lib pdlua;
