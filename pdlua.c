@@ -587,7 +587,12 @@ static void pdlua_menu_open(t_pdlua *o)
         if (nw_gui_vmess)
           nw_gui_vmess("open_textfile", "s", pathname);
         else
+          // sys_vgui is deprectated in favor of pdgui_vmess in 0.53
+#if PD_MAJOR_VERSION==0 && PD_MINOR_VERSION<53
           sys_vgui("::pd_menucommands::menu_openfile {%s}\n", pathname);
+#else
+          pdgui_vmess("::pd_menucommands::menu_openfile", "s", pathname);
+#endif
     }
     PDLUA_DEBUG("pdlua_menu_open end. stack top is %d", lua_gettop(L));
 }
