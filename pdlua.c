@@ -587,12 +587,7 @@ static void pdlua_menu_open(t_pdlua *o)
         if (nw_gui_vmess)
           nw_gui_vmess("open_textfile", "s", pathname);
         else
-          // sys_vgui is deprectated in favor of pdgui_vmess in 0.53
-#if PD_MAJOR_VERSION==0 && PD_MINOR_VERSION<53
           sys_vgui("::pd_menucommands::menu_openfile {%s}\n", pathname);
-#else
-          pdgui_vmess("::pd_menucommands::menu_openfile", "s", pathname);
-#endif
     }
     PDLUA_DEBUG("pdlua_menu_open end. stack top is %d", lua_gettop(L));
 }
@@ -1685,17 +1680,12 @@ void pdlua_setup(void)
     lvl = (*luaversion) - (100*lvm);
     snprintf(luaversionStr, MAXPDSTRING-1, "Using lua version %d.%d", lvm, lvl);
 
-#if PD_MAJOR_VERSION==0 && PD_MINOR_VERSION<43
+// post version and other information
     post(pdluaver);
     post(luaver);
     post(compiled);
     post(luaversionStr);
-#else
-    logpost(NULL, 3, "%s", pdluaver);
-    logpost(NULL, 3, "%s", luaver);
-    logpost(NULL, 3, "%s", compiled);
-    logpost(NULL, 3, "%s", luaversionStr);
-#endif
+
     pdlua_proxyinlet_setup();
     PDLUA_DEBUG("pdlua pdlua_proxyinlet_setup done", 0);
     pdlua_proxyreceive_setup();
