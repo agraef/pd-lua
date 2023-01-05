@@ -1686,6 +1686,7 @@ void pdlua_setup(void)
     post("Distributed as part of ELSE");
 #endif
     post(luaversionStr);
+    
     pdlua_proxyinlet_setup();
     PDLUA_DEBUG("pdlua pdlua_proxyinlet_setup done", 0);
     pdlua_proxyreceive_setup();
