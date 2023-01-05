@@ -3,7 +3,7 @@
 #X obj 106 86 tgl 20 0 empty empty empty 17 7 0 10 #dfdfdf #000000 #000000 0 1;
 #X obj 106 140 tictoc 1000;
 #X obj 106 179 bng 20 250 50 0 empty empty empty 17 7 0 10 #dfdfdf #000000 #000000;
-#X obj 180 324 noteout 10;
+#X obj 180 314 noteout 10;
 #X msg 180 86 500;
 #X msg 214 86 250;
 #X msg 248 86 100;
@@ -11,7 +11,7 @@
 #X msg 139 86 1000;
 #X msg 106 213 32;
 #X msg 180 213 33;
-#X obj 180 292 makenote 64 50;
+#X obj 180 273 makenote 64 50;
 #X obj 228 28 declare -lib pdlua;
 #X obj 180 179 bng 20 250 50 0 empty empty empty 17 7 0 10 #dfdfdf #000000 #000000;
 #X connect 0 0 1 0;
