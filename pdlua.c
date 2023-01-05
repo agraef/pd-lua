@@ -91,8 +91,6 @@
 
 /* If defined, PDLUA_DEBUG lets pdlua post a lot of text */
 //#define PDLUA_DEBUG post
-// recent vanilla versions don't have post() any more, use this instead:
-//#define PDLUA_DEBUG(...) logpost(NULL, 3, __VA_ARGS__)
 #ifndef PDLUA_DEBUG
 //static void PDLUA_DEBUG(const char *fmt, ...) {;}
 # define PDLUA_DEBUG(x,y)
