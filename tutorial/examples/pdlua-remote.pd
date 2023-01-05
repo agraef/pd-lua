@@ -1,8 +1,7 @@
-#N canvas 1691 337 450 301 12;
+#N canvas 663 224 423 232 12;
 #X obj 78 25 netreceive 4711 1;
-#X obj 322 26 bng 15 250 50 0 empty empty empty 17 7 0 10 -262144 -1
--1;
-#X msg 322 50 reload;
+#X obj 320 23 bng 20 250 50 0 empty empty empty 17 7 0 10 #dfdfdf #000000 #000000;
+#X msg 320 48 reload;
 #X obj 27 25 inlet;
 #X obj 27 102 t a a;
 #X obj 27 131 outlet;
