@@ -16,12 +16,10 @@ cflags = ${luaflags}
 pdlua.class.sources := pdlua.c lua/onelua.c
 
 datafiles = pd.lua $(wildcard hello*.* pdlua*-help.pd)
-datadirs = examples
 
 include Makefile.pdlibbuilder
 
-install: installtut
+install: installplus
 
-installtut:
-	mkdir -p "${installpath}/tutorial"
-	cp -r ./tutorial/*.pdf ./tutorial/examples "${installpath}/tutorial"
+installplus:
+	cp -r ./pdlua/ "${installpath}"/pdlua;
