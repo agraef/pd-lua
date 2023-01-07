@@ -66,47 +66,81 @@ https://anonscm.debian.org/git/pkg-multimedia/pd-lua.git, from which the
 official Debian packages are built. This in turn is apparently based on the
 0.7.3 version of pdlua in Pd's svn repository.
 
-The current version (0.8 and later) is maintained by Albert Gräf <aggraef@gmail.com>, with contributions by Claude Heiland-Allen (Lua 5.4 update, bugfixes) and Alexandre Porres (documentation updates). This is also the version included in Porres' ELSE library (https://github.com/porres/pd-else) and Timothy Schoen's PlugData (https://github.com/plugdata-team/plugdata).
+The current version (0.8 and later) is maintained by Albert Gräf
+<aggraef@gmail.com>, with contributions by Claude Heiland-Allen (Lua 5.4
+update, bugfixes) and Alexandre Porres (documentation updates). This is also
+the version included in Porres' ELSE library
+(https://github.com/porres/pd-else) and Timothy Schoen's PlugData
+(https://github.com/plugdata-team/plugdata).
 
 
 Compilation Instructions:
 
-The source should compile out of the box on (at least) Linux, macOS and Windows, just make sure that you have Lua and Pd installed and run `make`. Ready-to-use binaries for the older Lua 5.1 and 5.2 versions are available from Deken and as a Debian package, respectively. The latest (Lua 5.3 and 5.4) binaries are on https://github.com/agraef/pd-lua.
+The source should compile out of the box on (at least) Linux, macOS and
+Windows, just make sure that you have Lua and Pd installed and run
+`make`. Ready-to-use binaries for the older Lua 5.1 and 5.2 versions are
+available from Deken and as a Debian package, respectively. The latest (Lua
+5.3 and 5.4) binaries are on https://github.com/agraef/pd-lua.
 
-The current pdlua version uses pd-lib-builder by Katja Vetter as its build system, please check https://github.com/pure-data/pd-lib-builder and the included Makefile.pdlibbuilder for details.
+The current pdlua version uses pd-lib-builder by Katja Vetter as its build
+system, please check https://github.com/pure-data/pd-lib-builder and the
+included Makefile.pdlibbuilder for details.
 
 Compilation from Git Sources:
 
-The repository source includes a lua submodule which can be used to compile Lua alongside pdlua, so no Lua installation is needed to compile the external. (You'll still need to have Pd installed.) After cloning the repository, you can check out the submodule by running `git submodule update --init`, or you can clone the repository with `git clone --recurse-submodules` to have the submodule checked out right away. This should get you a fairly recent revision of the upstream Lua source.
+The repository source includes a lua submodule which can be used to compile
+Lua alongside pdlua, so no Lua installation is needed to compile the
+external. (You'll still need to have Pd installed.) After cloning the
+repository, you can check out the submodule by running `git submodule update
+--init`, or you can clone the repository with `git clone --recurse-submodules`
+to have the submodule checked out right away. This should get you a fairly
+recent revision of the upstream Lua source.
 
-Once the lua submodule is checked out, you can just run `make` as usual, it will use the submodule to compile Lua alongside the pdlua module. The resulting binary will be statically linked with the Lua interpreter. Otherwise `make` will try `pkg-config` to locate an existing Lua installation on your system.
+Once the lua submodule is checked out, you can just run `make` as usual, it
+will use the submodule to compile Lua alongside the pdlua module. The
+resulting binary will be statically linked with the Lua interpreter. Otherwise
+`make` will try `pkg-config` to locate an existing Lua installation on your
+system.
 
 If you want/need to compile from source, the following details the
 requirements for the three most popular platforms.
 
 Linux:
 
-Pd should be available in your package repositories, if not then it's easy to install from source, cf. http://msp.ucsd.edu/software.html.
+Pd should be available in your package repositories, if not then it's easy to
+install from source, cf. http://msp.ucsd.edu/software.html.
 
 Mac:
 
-The build requires that you have the Pd header files somewhere under /Applications/Pd-*/Contents/Resources/src (which should be the case if you're running a recent Pd distribution by MSP); otherwise you may have to set the `PDINCLUDEDIR` make variable accordingly.
+The build requires that you have the Pd header files somewhere under
+/Applications/Pd-*/Contents/Resources/src (which should be the case if you're
+running a recent Pd distribution by MSP); otherwise you may have to set the
+`PDINCLUDEDIR` make variable accordingly.
 
 Windows:
 
-Compilation is a breeze using msys2/mingw (https://www.msys2.org/). The build assumes that you have a recent Pd installation as distributed by MSP. This is necessary so that the header files and pd.dll are found during compilation and linkage, respectively.
+Compilation is a breeze using msys2/mingw (https://www.msys2.org/). The build
+assumes that you have a recent Pd installation as distributed by MSP. This is
+necessary so that the header files and pd.dll are found during compilation and
+linkage, respectively.
 
 
 Installation:
 
-After a successful compile, you can go about installing the external with the usual `make install` which copies the external to its own directory named pdlua. This should generally do something sensible on each of the supported platforms. Note that the installation may require root privileges.
+After a successful compile, you can go about installing the external with the
+usual `make install` which copies the external to its own directory named
+pdlua. This should generally do something sensible on each of the supported
+platforms. Note that the installation may require root privileges.
 
 Linux: By default, installation goes into /usr/local/lib/pd-externals, which
 should be one of the directories on Pd's search path.
 
-Mac: Installation goes into ~/Library/Pd by default. Move the pdlua folder to /Library/Pd for a system-wide installation.
+Mac: Installation goes into ~/Library/Pd by default. Move the pdlua folder to
+/Library/Pd for a system-wide installation.
 
-Windows/mingw: Installation goes into the Pd subdirectory of your APPDATA folder. Move the pdlua folder to the extra folder of Pd in your ProgramFiles directory for a system-wide installation.
+Windows/mingw: Installation goes into the Pd subdirectory of your APPDATA
+folder.  Move the pdlua folder to the extra folder of Pd in your ProgramFiles
+directory for a system-wide installation.
 
 It's generally advisable to do a staged install using `DESTDIR` first so that
 you can review the installation directory layout beforehand and adjust it if
@@ -114,7 +148,9 @@ needed. To these ends, run `make install`, e.g., as follows:
 
     make install DESTDIR=./build
 
-Another possibility is to run `make install objectsdir=./build` which leaves the `pdlua` folder directly in the `build` directory from where you can move it to any location on Pd's library search path that you see fit.
+Another possibility is to run `make install objectsdir=./build` which leaves
+the `pdlua` folder directly in the `build` directory from where you can move
+it to any location on Pd's library search path that you see fit.
 
 Finally, having finished installation, to enable pd-lua in Pd just add `pdlua`
 to your startup libraries (after adding its parent directory to Pd's search
