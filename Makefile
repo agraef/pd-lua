@@ -15,7 +15,7 @@ cflags = ${luaflags}
 
 pdlua.class.sources := pdlua.c lua/onelua.c
 
-datafiles = pd.lua $(wildcard hello*.* pdlua*-help.pd)
+datafiles = pd.lua $(wildcard pdlua*-help.pd)
 
 include Makefile.pdlibbuilder
 
