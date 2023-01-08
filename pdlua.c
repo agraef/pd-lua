@@ -903,7 +903,7 @@ static void pdlua_dispatch
     t_atom          *argv /**< The atoms in the message. */
 )
 {
-    PDLUA_DEBUG("pdlua_dispatch: stack top %d", lua_gettop(L));
+    PDLUA_DEBUG("pdlua_dispatch: stack top %d", lua_gettop(__L));
     lua_getglobal(__L, "pd");
     lua_getfield (__L, -1, "_dispatcher");
     lua_pushlightuserdata(__L, o);
@@ -1684,7 +1684,7 @@ void pdlua_setup(void)
 // post version and other information
     post(pdluaver);
     post(luaver);
-#ifdef ELSE | PLUGDATA
+#if defined(ELSE) || defined(PLUGDATA)
     post("Distributed as part of ELSE");
 #else
     post(compiled);
