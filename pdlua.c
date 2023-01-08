@@ -422,6 +422,20 @@ static void pdlua_pushatomtable
     PDLUA_DEBUG("pdlua_pushatomtable: end. stack top %d", lua_gettop(__L));
 }
 
+static const char *basename(const char *name)
+{
+  /* strip dir from name : */
+  const char *basenamep = strrchr(name, '/');
+#ifdef _WIN32
+  if (!basenamep)
+    basenamep = strrchr(name, '\\');
+#endif
+  if (!basenamep)
+    basenamep = name;
+  else basenamep++;   /* strip last '/' */
+  return basenamep;
+}
+
 /** Pd object constructor. */
 static t_pdlua *pdlua_new
 (
@@ -450,7 +464,9 @@ static t_pdlua *pdlua_new
     PDLUA_DEBUG("pdlua_new: start with stack top %d", lua_gettop(__L));
     lua_getglobal(__L, "pd");
     lua_getfield(__L, -1, "_constructor");
-    lua_pushstring(__L, s->s_name);
+    /* ag: We need to use the basename of the object name here, in case a path
+       is specified (cf. pdlua_loader_pathwise below). */
+    lua_pushstring(__L, basename(s->s_name));
     pdlua_pushatomtable(argc, argv);
     PDLUA_DEBUG("pdlua_new: before lua_pcall(L, 2, 1, 0) stack top %d", lua_gettop(__L));
     if (lua_pcall(__L, 2, 1, 0))
@@ -1598,7 +1614,7 @@ static int pdlua_loader_legacy
     fd = canvas_open(canvas, name, ".pd_lua", dirbuf, &ptr, MAXPDSTRING, 1);
     if (fd>=0)
     {
-      result=pdlua_loader_fromfd(fd, name, dirbuf);
+      result=pdlua_loader_fromfd(fd, basename(name), dirbuf);
       sys_close(fd);
     }
     return result;
@@ -1621,12 +1637,16 @@ static int pdlua_loader_pathwise
       /* we already tried all paths, so skip this */
       return 0;
     }
+    /* ag: Try loading <path>/<classname>.pd_lua (experimental).
+       sys_trytoopenone will correctly find the file in a subdirectory if a
+       path is given, and it will then return that subdir in dirbuf. Thus we
+       need to determine the basename of the script file so that it gets
+       loaded correctly. */
     fd = sys_trytoopenone(path, objectname, ".pd_lua",
       dirbuf, &ptr, MAXPDSTRING, 1);
-    /* TODO: try loading <classname>/<classname>.pd_lua */
     if (fd>=0)
     {
-      result=pdlua_loader_fromfd(fd, objectname, dirbuf);
+      result=pdlua_loader_fromfd(fd, basename(objectname), dirbuf);
       sys_close(fd);
     }
     return result;
