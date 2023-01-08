@@ -1684,9 +1684,10 @@ void pdlua_setup(void)
 // post version and other information
     post(pdluaver);
     post(luaver);
-    post(compiled);
-#ifdef ELSE
+#ifdef ELSE | PLUGDATA
     post("Distributed as part of ELSE");
+#else
+    post(compiled);
 #endif
     post(luaversionStr);
 
