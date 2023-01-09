@@ -101,6 +101,12 @@
 # define PDLUA_DEBUG3 PDLUA_DEBUG
 #endif
 
+// In plugdata we're linked statically and thus c_externdir is empty.
+// So we pass a data directory to the setup function instead and store it here
+#if PLUGDATA
+    char plugdata_datadir[MAXPDSTRING];
+#endif
+
 /** Global Lua interpreter state, needed in the constructor. */
 static lua_State *__L;
 
@@ -591,7 +597,11 @@ static void pdlua_menu_open(t_pdlua *o)
                 return;
             }
             class = (t_class *)lua_touserdata(__L, -1);
+#if PLUGDATA
+            path = plugdata_datadir;
+#else
             path = class->c_externdir->s_name;
+#endif
             sprintf(pathname, "%s/%s", path, name);
             lua_pop(__L, 4); /* pop class, global "pd", name, global "pd"*/
         }
@@ -1763,7 +1773,8 @@ void pdlua_setup(void)
     // In plugdata we're linked statically and thus c_externdir is empty.
     // Instead, we get our data directory from plugdata and expect to find the
     // external dir in <datadir>/pdlua.
-    sprintf(pd_lua_path, "%s/%s/pd.lua", datadir, "pdlua");
+    sprintf(plugdata_datadir, "%s/pdlua", datadir);
+    sprintf(pd_lua_path, "%s/pdlua/pd.lua", datadir);
 #else
     sprintf(pd_lua_path, "%s/pd.lua", pdlua_proxyinlet_class->c_externdir->s_name); /* the full path to pd.lua */
 #endif
