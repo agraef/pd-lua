@@ -1728,7 +1728,16 @@ void pdlua_setup(void)
 # define BUILD_DATE __DATE__" "__TIME__
 #endif
 
-    snprintf(pdluaver, MAXPDSTRING-1, "pdlua %s (GPL) 2008 Claude Heiland-Allen, 2014 Martin Peach et al.", xstr(PDLUA_VERSION));
+#ifdef PDLUA_VERSION
+    char *pdlua_version = xstr(PDLUA_VERSION);
+#else
+    char *pdlua_version = "";
+#endif
+    if (strlen(pdlua_version) == 0) {
+      // NOTE: This should be set from the Makefile, otherwise we fall back to:
+      pdlua_version = "0.11.0";
+    }
+    snprintf(pdluaver, MAXPDSTRING-1, "pdlua %s (GPL) 2008 Claude Heiland-Allen, 2014 Martin Peach et al.", pdlua_version);
     snprintf(compiled, MAXPDSTRING-1, "pdlua: compiled for pd-%d.%d on %s",
              PD_MAJOR_VERSION, PD_MINOR_VERSION, BUILD_DATE);
 
@@ -1743,7 +1752,7 @@ void pdlua_setup(void)
 #else
              "pdlua %s (lua %d.%d)",
 #endif
-             xstr(PDLUA_VERSION), lvm, lvl);
+             pdlua_version, lvm, lvl);
 #endif
 // post version and other information
     post(pdluaver);
