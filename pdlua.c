@@ -1697,6 +1697,9 @@ static int pdlua_loader_pathwise
 #endif
 #endif
 
+#define xstr(s) str(s)
+#define str(s) #s
+
 /** Start the Lua runtime and register our loader hook. */
 #ifdef _WIN32
 __declspec(dllexport)
@@ -1711,8 +1714,7 @@ void pdlua_setup(void)
     t_pdlua_readerdata  reader;
     int                 fd;
     int                 result;
-    char*               pdluaver = "pdlua 0.11.0 (GPL) 2014-2023 Martin Peach et al., based on";
-    char*               luaver = "lua 0.6~svn (GPL) 2008 Claude Heiland-Allen <claude@mathr.co.uk>";
+    char                pdluaver[MAXPDSTRING];
     char                compiled[MAXPDSTRING];
     char                luaversionStr[MAXPDSTRING];
 #if LUA_VERSION_NUM	< 504
@@ -1726,6 +1728,7 @@ void pdlua_setup(void)
 # define BUILD_DATE __DATE__" "__TIME__
 #endif
 
+    snprintf(pdluaver, MAXPDSTRING-1, "pdlua %s (GPL) 2008 Claude Heiland-Allen, 2014 Martin Peach et al.", xstr(PDLUA_VERSION));
     snprintf(compiled, MAXPDSTRING-1, "pdlua: compiled for pd-%d.%d on %s",
              PD_MAJOR_VERSION, PD_MINOR_VERSION, BUILD_DATE);
 
@@ -1735,7 +1738,6 @@ void pdlua_setup(void)
 
 // post version and other information
     post(pdluaver);
-    post(luaver);
 #ifdef ELSE
     post("Distributed as part of ELSE");
 #else
