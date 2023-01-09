@@ -598,10 +598,11 @@ static void pdlua_menu_open(t_pdlua *o)
             }
             class = (t_class *)lua_touserdata(__L, -1);
 #if PLUGDATA
-            path = plugdata_datadir;
-#else
-            path = class->c_externdir->s_name;
+            if (!*class->c_externdir->s_name)
+                path = plugdata_datadir;
+            else
 #endif
+            path = class->c_externdir->s_name;
             sprintf(pathname, "%s/%s", path, name);
             lua_pop(__L, 4); /* pop class, global "pd", name, global "pd"*/
         }
