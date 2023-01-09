@@ -249,7 +249,7 @@ static int pdlua_loader_legacy (t_canvas *canvas, char *name);
 __declspec(dllexport)
 #endif 
 #ifdef PLUGDATA
-void pdlua_setup(const char *datadir);
+void pdlua_setup(const char *datadir, char *versbuf, int versbuf_length);
 #else
 void pdlua_setup (void);
 #endif
@@ -1705,7 +1705,7 @@ static int pdlua_loader_pathwise
 __declspec(dllexport)
 #endif
 #ifdef PLUGDATA
-void pdlua_setup(const char *datadir)
+void pdlua_setup(const char *datadir, char *versbuf, int versbuf_length)
 #else
 void pdlua_setup(void)
 #endif
@@ -1736,6 +1736,15 @@ void pdlua_setup(void)
     lvl = (*luaversion) - (100*lvm);
     snprintf(luaversionStr, MAXPDSTRING-1, "Using lua version %d.%d", lvm, lvl);
 
+#if PLUGDATA
+    snprintf(versbuf, versbuf_length-1,
+#ifdef ELSE
+             "pdlua %s ELSE (lua %d.%d)",
+#else
+             "pdlua %s (lua %d.%d)",
+#endif
+             xstr(PDLUA_VERSION), lvm, lvl);
+#endif
 // post version and other information
     post(pdluaver);
 #ifdef ELSE
