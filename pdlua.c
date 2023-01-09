@@ -1578,6 +1578,27 @@ static int pdlua_loader_fromfd
     t_pdlua_readerdata  reader;
 
     PDLUA_DEBUG("pdlua_loader: stack top %d", lua_gettop(__L));
+    // First check whether the class has already been created under a
+    // different path.
+    lua_getglobal(__L, "pd");
+    lua_getfield(__L, -1, "_check");
+    lua_pushstring(__L, name);
+    // We expect false here, indicating that the class hasn't been registered
+    // yet and thus we can safely go ahead and load the file. Everything else
+    // indicates an error. To be on the safe side, we also assume this if the
+    // call fails or returns anything else but a boolean value.
+    int res = lua_pcall(__L, 1, 1, 0) ||
+      !lua_isboolean(__L, -1) || lua_toboolean(__L, -1);
+    lua_pop(__L, 2);/* pop the result and the global "pd" */
+    // If res indicates an error, there's really nothing that we can do except
+    // bail out with failure. Everything else will leave the loader in an
+    // unstable state and wreak havoc further down the line. Thus we can't
+    // create the object even if the basename class was registered earlier.
+    if (res) {
+      pd_error(NULL, "lua: error loading `%s': class already exists", name);
+      return 0;
+    }
+    // If we come here we're good; go ahead and load the Lua source.
     class_set_extern_dir(gensym(dirbuf));
     pdlua_setrequirepath(__L, dirbuf);
     reader.fd = fd;

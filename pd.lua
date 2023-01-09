@@ -43,6 +43,11 @@ pd._clearrequirepath = function()
   package.cpath = pd._packagecpath
 end
 
+-- check whether a class already exists
+pd._check = function (name)
+  return nil ~= pd._classes[name]
+end
+
 -- constructor dispatcher
 pd._constructor = function (name, atoms)
   if nil ~= pd._classes[name] then
