@@ -1700,7 +1700,7 @@ void pdlua_setup(void)
     t_pdlua_readerdata  reader;
     int                 fd;
     int                 result;
-    char*               pdluaver = "pdlua 0.10.1 (GPL) 2014-2020 Martin Peach et al., based on";
+    char*               pdluaver = "pdlua 0.11.0 (GPL) 2014-2023 Martin Peach et al., based on";
     char*               luaver = "lua 0.6~svn (GPL) 2008 Claude Heiland-Allen <claude@mathr.co.uk>";
     char                compiled[MAXPDSTRING];
     char                luaversionStr[MAXPDSTRING];
