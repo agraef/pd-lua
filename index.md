@@ -1,7 +1,7 @@
 
 **pd-lua** is Claude Heiland-Allen's [Pd][] loader extension for the [Lua][] scripting language. In a nutshell, it lets you program Pd objects in Lua.
 
-This is a fork of [umlaeute's repository](https://anonscm.debian.org/git/pkg-multimedia/pd-lua.git) on Debian's Salsa server. It adds Lua 5.3+ compatibility, support for [Purr Data][] (a modern flavor of Pd), some compilation fixes to make sure that the source builds on current systems (Arch Linux, macOS, Windows), and, last but not least, a [tutorial][] to help you get started using pd-lua. Released source tarballs and binaries for Mac and Windows can be found [here](https://github.com/agraef/pd-lua/releases).
+This is a fork of [umlaeute's repository](https://anonscm.debian.org/git/pkg-multimedia/pd-lua.git) on Debian's Salsa server. It adds Lua 5.3+ compatibility, support for [Purr Data][] (a modern flavor of Pd) and [plugdata][] (another modern flavor of Pd which can also be run as a plug-in inside a DAW), some compilation fixes to make sure that the source builds on current systems (Arch Linux, macOS, Windows), and, last but not least, a [tutorial][] to help you get started using pd-lua. Released source tarballs and binaries for Mac and Windows can be found [here](https://github.com/agraef/pd-lua/releases).
 
 **Quick links:**
 
@@ -35,4 +35,5 @@ Building and installing from source is quite easy, once you have the requisite d
 [Faust]: https://faust.grame.fr/
 [Pd]: http://msp.ucsd.edu/software.html
 [Purr Data]: https://agraef.github.io/purr-data/
+[plugdata]: https://github.com/plugdata-team/plugdata
 [tutorial]: https://agraef.github.io/pd-lua/tutorial/pd-lua-intro.html
