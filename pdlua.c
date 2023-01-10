@@ -1698,7 +1698,7 @@ static int pdlua_loader_pathwise
 #endif
 
 #define xstr(s) str(s)
-#define str(...) #__VA_ARGS__
+#define str(s) #s
 
 /** Start the Lua runtime and register our loader hook. */
 #ifdef _WIN32
