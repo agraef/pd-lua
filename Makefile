@@ -1,6 +1,6 @@
 lib.name = pdlua
 
-pdlua_version := $(shell git describe --tags 2>/dev/null | sed 's/\([^-]*\)-g/r\1/;s/-/./g')
+pdlua_version := $(shell git describe --tags 2>/dev/null | sed 's/\([^-]*-g\)/r\1/;s/-/./g')
 
 luasrc = $(wildcard lua/onelua.c)
 
