@@ -17,7 +17,7 @@ Enter Pd-Lua, the Pd programmer's secret weapon, which lets you develop your ext
 
 Using Pd-Lua, you can program your own externals ranging from little helper objects to full-blown sequencers and algorithmic composition tools. Pd-Lua only allows you to program control objects at this time (for doing dsp, you might consider using [Faust](https://faust.grame.fr/) instead), but it gives you access to Pd arrays and tables, as well as a number of other useful facilities such as clocks and receivers, which we'll explain in some detail. Pd-Lua also ships with a large collection of instructive examples which you'll find helpful when exploring its possibilities.
 
-Note that we can't possibly cover Pd or the Lua language themselves here, so you'll have to refer to other online resources to learn about those. In particular, check out the Lua website, which has extensive [documentation](https://www.lua.org/docs.html) available, and maybe have a look at Derek Banas' [video tutorial](https://www.youtube.com/watch?v=iMacxZQMPXs) for a quick overview of Lua. For Pd, we recommend the [Pd FLOSS Manual](http://en.flossmanuals.net/pure-data/) to get started.
+Note that we can't possibly cover Pd or the Lua language themselves here, so you'll have to refer to other online resources to learn about those. In particular, check out the Lua website, which has extensive [documentation](https://www.lua.org/docs.html) available, and maybe have a look at Derek Banas' [video tutorial](https://www.youtube.com/watch?v=iMacxZQMPXs) for a quick overview of Lua. For Pd, we recommend the Pd FLOSS Manual at https://flossmanuals.net/ to get started.
 
 ## Installation
 
