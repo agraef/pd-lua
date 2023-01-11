@@ -4,9 +4,9 @@
 Albert Gräf \<<aggraef@gmail.com>\>  
 Computer Music Dept., Institute of Art History and Musicology  
 Johannes Gutenberg University (JGU) Mainz, Germany  
-July 2020
+January 2023
 
-This document is licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). Other formats: [Markdown](https://github.com/agraef/pd-lua/blob/master/tutorial/pd-lua-intro.md) source, [PDF](https://github.com/agraef/pd-lua/blob/master/tutorial/pd-lua-intro.pdf)  
+This document is licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). Other formats: [Markdown](https://github.com/agraef/pd-lua/blob/master/tutorial/pd-lua-intro.md) source, [PDF](https://github.com/agraef/pd-lua/blob/master/pdlua/tutorial/pd-lua-intro.pdf)  
 Permanent link: <https://agraef.github.io/pd-lua/tutorial/pd-lua-intro.html>
 
 ## Why Pd-Lua?
@@ -21,22 +21,21 @@ Note that we can't possibly cover Pd or the Lua language themselves here, so you
 
 ## Installation
 
-[Purr Data](https://agraef.github.io/purr-data/) includes an up-to-date version of Pd-Lua for Lua 5.3 and has it enabled by default, so you should be ready to go immediately; no need to install anything else.
+Pd-Lua works inside any reasonably modern Pd flavor. This encompasses vanilla [Pd](http://msp.ucsd.edu/software.html), of course, but also [Purr Data](https://agraef.github.io/purr-data/) which includes an up-to-date version of Pd-Lua for Lua 5.4 and has it enabled by default, so you should be ready to go immediately; no need to install anything else. The same is true for [plugdata](https://plugdata.org/) (version 0.6.3 or later), a Pd flavor which can also run as a plug-in inside a DAW.
 
-With vanilla [Pd](http://msp.ucsd.edu/software.html), you can install the pdlua package from Deken (not recommended, because at the time of this writing that's a really old version based on Lua 5.1). The official [Debian](https://salsa.debian.org/multimedia-team/pd/pd-lua) package, maintained by IOhannes Zmölnig, is based on Lua 5.2. If you want to use a reasonably up-to-date Lua version, your best bet is to get Pd-Lua from the author's [Github repository](https://github.com/agraef/pd-lua), which has been updated to work with Lua 5.3 and later. Compilation instructions are in the README, and you'll also find some Mac and Windows binaries there. In either case, after installing Pd-Lua you also have to add `pdlua` to Pd's startup libraries.
+With vanilla Pd, you can install the pdlua package from Deken (not recommended, because at the time of this writing that's a really old version based on Lua 5.1). The official [Debian](https://salsa.debian.org/multimedia-team/pd/pd-lua) package, maintained by IOhannes Zmölnig, is based on Lua 5.2. If you want to use a reasonably up-to-date Lua version, your best bet is to get Pd-Lua from the author's [Github repository](https://github.com/agraef/pd-lua), which has been updated to work with Lua 5.3 and later. Compilation instructions are in the README, and you'll also find some Mac and Windows binaries there. In either case, after installing Pd-Lua you also have to add `pdlua` to Pd's startup libraries.
 
-If all is well, you should see a message like the following in the Pd console (note that for vanilla Pd you'll have to switch the log level to 3 to see that message):
+If all is well, you should see a message like the following in the Pd console (note that for vanilla Pd you'll have to switch the log level to 2 or more to see that message):
 
 ~~~
-pdlua 0.10.1 (GPL) 2014-2020 Martin Peach et al., based on
-lua 0.6~svn (GPL) 2008 Claude Heiland-Allen <claude@mathr.co.uk>
-pdlua: compiled for pd-0.51 on Jul 29 2020 18:43:30
-Using lua version 5.3
+pdlua 0.11.1 (GPL) 2008 Claude Heiland-Allen, 2014 Martin Peach et al.
+pdlua: compiled for pd-0.53 on Jan 10 2023 11:30:14
+Using lua version 5.4
 ~~~
 
 This will also tell you the Lua version that Pd-Lua is using, so that you can install a matching version of the stand-alone Lua interpreter if needed. Lua should be readily available from your package repositories on Linux, and for Mac and Windows you can find binaries on the Lua website. In the following we generally assume that you're using Lua 5.3 or later.
 
-If all is not well and you do *not* see that message, then most likely Pd-Lua refused to load because the Lua library is missing. This shouldn't happen if you installed Pd-Lua from a binary package, but if it does then you'll have to manually install the right version of the Lua library to make Pd-Lua work (5.1 for the Deken package, 5.2 for the Debian package, and 5.3 for Purr Data). Make sure that you install the package with the Lua *library* in it; on Debian, Ubuntu and their derivatives this will be something like liblua5.3-0.
+If all is not well and you do *not* see that message, then most likely Pd-Lua refused to load because the Lua library is missing. This shouldn't happen if you installed Pd-Lua from a binary package, but if it does then you'll have to manually install the right version of the Lua library to make Pd-Lua work (5.1 for the Deken package, 5.2 for the Debian package, and 5.4 for Purr Data). Make sure that you install the package with the Lua *library* in it; on Debian, Ubuntu and their derivatives this will be something like liblua5.3-0.
 
 ## A basic example
 
@@ -68,7 +67,11 @@ We mention in passing here that Pd-Lua also provides a parameter-less `postiniti
 
 ---
 
-**NOTE:** Pd-Lua runs *all* Lua objects in the same instance of the Lua interpreter. Therefore, as a general guideline, we want to keep the global name space tidy and clean. That's why we made `foo` a local variable, which means that its scope is confined to this single script. Note that this isn't needed for the member variables and methods, as these are securely stowed away inside the object and not accessible from the outside anyway, if the class variable is `local`. But the same caveat applies to all variables and functions in the script file that might be needed to implement the object, so normally you want to mark these as `local`, too (or turn them into member variables and methods, if that seems more appropriate). We mention in passing that global variables and functions may also have their uses if you need to share a certain amount of global state between different Lua objects. But even then it's usually safer to have the objects communicate with each other behind the scenes using receivers, which we'll explain later.
+**NOTE:** Pd-Lua runs *all* Lua objects in the same instance of the Lua interpreter. Therefore, as a general guideline, we want to keep the global name space tidy and clean. That's why we made `foo` a local variable, which means that its scope is confined to this single script. Note that this isn't needed for the member variables and methods, as these are securely stowed away inside the object and not accessible from the outside anyway, if the class variable is `local`. But the same caveat applies to all variables and functions in the script file that might be needed to implement the object, so normally you want to mark these as `local`, too (or turn them into member variables and methods, if that seems more appropriate).
+
+We mention in passing that global variables and functions may also have their uses if you need to share a certain amount of global state between different Lua objects. But even then it's usually safer to have the objects communicate with each other behind the scenes using receivers, which we'll explain later.
+
+Finally, a word of caution if you use Pd-Lua inside plugdata or a similar libpd-based host which may run in a multi-threaded environment. Pd-Lua hasn't been updated for thread-safety yet, so you may have to make sure that you only run a single plug-in instance involving Pd-Lua. Otherwise you may encounter erratic behavior due to race conditions and other multi-threading issues. This will hopefully be fixed in the near future.
 
 ---
 
