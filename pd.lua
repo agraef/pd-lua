@@ -233,13 +233,13 @@ end
 pd.Class = pd.Prototype:new()
 
 function pd.Class:register(name)
--- register new class
+  -- if already registered, return existing
   if pd._loadname and nil ~= pd._classes[pd._loadname] then
     return pd._classes[pd._loadname]
   elseif nil ~= pd._classes[name] then
     return pd._classes[name]
   end
-  self._class = pd._register(name)
+  self._class = pd._register(name)  -- register new class
   if (pd._loadname) then
     pd._classes[pd._loadname] = self
   end
