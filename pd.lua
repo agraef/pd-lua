@@ -238,19 +238,19 @@ end
 pd.Class = pd.Prototype:new()
 
 function pd.Class:register(name)
-  if nil ~= pd._classes[name] then    -- already registered
-    return pd._classes[name]          -- return existing
-  else
-    self._class = pd._register(name)  -- register new class
-    pd._classes[name] = self          -- record registration
-    self._name = name
-    if name == "pdlua" then
-      self._scriptname = "pd.lua"
-    else
-      self._scriptname = name .. ".pd_lua"
-    end -- mrpeach 20111027
-    return self                       -- return new
+-- register new class
+  self._class = pd._register(name)
+  if (pd._loadname) then
+    pd._classes[pd._loadname] = self
   end
+  pd._classes[name] = self          -- record registration
+  self._name = name
+  if name == "pdlua" then
+    self._scriptname = "pd.lua"
+  else
+    self._scriptname = name .. ".pd_lua"
+  end -- mrpeach 20111027
+  return self                       -- return new
 end
 
 function pd.Class:construct(sel, atoms)
