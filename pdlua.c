@@ -1598,6 +1598,35 @@ static int pdlua_loader_fromfd
     return 1;
 }
 
+static int pdlua_loader_wrappath
+(
+    int         fd, /**< file-descriptor of .pd_lua file */
+    const char *name, /**< The name of the script (without .pd_lua extension). */
+    const char *dirbuf /**< The name of the directory the .pd_lua files lives in */
+)
+{
+  int result = 0;
+  if (fd>=0)
+  {
+    const char* basenamep = basename(name);
+    const int is_loadname = basenamep > name;
+    if (is_loadname)
+    {
+      lua_getglobal(__L, "pd");
+      lua_pushstring(__L, name);
+      lua_setfield(__L, -2, "_loadname");
+    }
+    result=pdlua_loader_fromfd(fd, basenamep, dirbuf);
+    if (is_loadname) {
+      lua_pushnil(__L);
+      lua_setfield(__L, -2, "_loadname");
+      lua_pop(__L, 1);
+    }
+    sys_close(fd);
+  }
+  return result;
+}
+
 static int pdlua_loader_legacy
 (
     t_canvas    *canvas, /**< Pd canvas to use to find the script. */
@@ -1607,28 +1636,9 @@ static int pdlua_loader_legacy
     char                dirbuf[MAXPDSTRING];
     char                *ptr;
     int                 fd;
-    int result = 0;
 
     fd = canvas_open(canvas, name, ".pd_lua", dirbuf, &ptr, MAXPDSTRING, 1);
-    if (fd>=0)
-    {
-      const char * basenamep = basename(name);
-      const int is_loadname = basenamep > name;
-      if (is_loadname)
-      {
-        lua_getglobal(__L, "pd");
-        lua_pushstring(__L, name);
-        lua_setfield(__L, -2, "_loadname");
-      }
-      result=pdlua_loader_fromfd(fd, basenamep, dirbuf);
-      if (is_loadname) {
-        lua_pushnil(__L);
-        lua_setfield(__L, -2, "_loadname");
-        lua_pop(__L, 1);
-      }
-      sys_close(fd);
-    }
-    return result;
+    return pdlua_loader_wrappath(fd, name, dirbuf);
 }
 
 static int pdlua_loader_pathwise
@@ -1641,7 +1651,6 @@ static int pdlua_loader_pathwise
     char                dirbuf[MAXPDSTRING];
     char                *ptr;
     int                 fd;
-    int result = 0;
 
     if(!path)
     {
@@ -1653,25 +1662,7 @@ static int pdlua_loader_pathwise
        path is given, and it will then return that subdir in dirbuf. */
     fd = sys_trytoopenone(path, objectname, ".pd_lua",
       dirbuf, &ptr, MAXPDSTRING, 1);
-    if (fd>=0)
-    {
-      const char* basenamep = basename(objectname);
-      const int is_loadname = basenamep > objectname;
-      if (is_loadname)
-      {
-        lua_getglobal(__L, "pd");
-        lua_pushstring(__L, objectname);
-        lua_setfield(__L, -2, "_loadname");
-      }
-      result=pdlua_loader_fromfd(fd, basenamep, dirbuf);
-      if (is_loadname) {
-        lua_pushnil(__L);
-        lua_setfield(__L, -2, "_loadname");
-        lua_pop(__L, 1);
-      }
-      sys_close(fd);
-    }
-    return result;
+    return pdlua_loader_wrappath(fd, objectname, dirbuf);
 }
 
 
