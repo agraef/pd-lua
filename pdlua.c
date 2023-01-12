@@ -622,8 +622,8 @@ static int pdlua_class_new(lua_State *L)
     PDLUA_DEBUG3("pdlua_class_new: L is %p, name is %s stack top is %d", L, name, lua_gettop(L));
     c = class_new(gensym((char *) name), (t_newmethod) pdlua_new,
         (t_method) pdlua_free, sizeof(t_pdlua), CLASS_NOINLET, A_GIMME, 0);
-/* a class with a "menu-open" method will have the "Open" item highlighted in the right-click menu */
 
+/* a class with a "menu-open" method will have the "Open" item highlighted in the right-click menu */
     if (c)
         class_addmethod(c, (t_method)pdlua_menu_open, gensym("menu-open"), A_NULL);/* (mrpeach 20111025) */
 /**/
