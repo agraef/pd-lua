@@ -24,7 +24,7 @@
 #X text 260 227 Details on writting luax files ----->, f 20;
 #X text 39 95 The [pdluax] object is similar to [pdlua] but you can use "*.pd_luax" instead and load them as arguments. It is less efficient but more flexible when developing or live-coding. You also need to load [pdlua] as a library first as with the [declare] object above., f 74;
 #X obj 113 191 pdluax pdlua/hello;
-#N canvas 613 120 540 414 quickstart 1;
+#N canvas 613 120 540 414 quickstart 0;
 #X obj 36 94 cnv 15 450 100 empty empty pdluax\ HOWTO 20 12 0 14 #dfdfdf #000000 0;
 #X obj 36 195 cnv 15 450 140 empty empty Advantages: 20 12 0 14 #cccccc #000000 0;
 #X obj 36 336 cnv 15 450 200 empty empty Disadvantages: 20 12 0 14 #dfdfdf #000000 0;
