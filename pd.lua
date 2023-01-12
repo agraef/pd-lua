@@ -43,11 +43,6 @@ pd._clearrequirepath = function()
   package.cpath = pd._packagecpath
 end
 
--- check whether a class already exists
-pd._check = function (name)
-  return nil ~= pd._classes[name]
-end
-
 -- constructor dispatcher
 pd._constructor = function (name, atoms)
   if nil ~= pd._classes[name] then
@@ -239,6 +234,11 @@ pd.Class = pd.Prototype:new()
 
 function pd.Class:register(name)
 -- register new class
+  if pd._loadname and nil ~= pd._classes[pd._loadname] then
+    return pd._classes[pd._loadname]
+  elseif nil ~= pd._classes[name] then
+    return pd._classes[name]
+  end
   self._class = pd._register(name)
   if (pd._loadname) then
     pd._classes[pd._loadname] = self
