@@ -1613,7 +1613,7 @@ static int pdlua_loader_legacy
     if (fd>=0)
     {
       const char * basenamep = basename(name);
-      int is_loadname = basenamep > name;
+      const int is_loadname = basenamep > name;
       if (is_loadname)
       {
         lua_getglobal(__L, "pd");
@@ -1656,7 +1656,7 @@ static int pdlua_loader_pathwise
     if (fd>=0)
     {
       const char* basenamep = basename(objectname);
-      int is_loadname = basenamep > objectname;
+      const int is_loadname = basenamep > objectname;
       if (is_loadname)
       {
         lua_getglobal(__L, "pd");
