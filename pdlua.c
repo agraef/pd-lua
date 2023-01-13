@@ -1407,6 +1407,77 @@ static void pdlua_clearrequirepath
     PDLUA_DEBUG("pdlua_clearrequirepath: end. stack top %d", lua_gettop(L));
 }
 
+/** Run a Lua script using class path */
+static int pdlua_doclassfile(lua_State *L)
+/**< Lua interpreter state.
+  * \par Inputs:
+  * \li \c 1 Pd class pointer.
+  * \li \c 2 Filename string.
+  * \par Outputs:
+  * \li \c * Determined by the script.
+  * */
+{
+    char                buf[MAXPDSTRING];
+    char                *ptr;
+    t_pdlua_readerdata  reader;
+    int                 fd;
+    int                 n;
+    const char          *filename;
+    t_class             *c;
+
+    PDLUA_DEBUG("pdlua_doclassfile: stack top %d", lua_gettop(L));
+    n = lua_gettop(L);
+    if (lua_islightuserdata(L, 1))
+    {
+        c = lua_touserdata(L, 1);
+        if (c)
+        {
+            filename = luaL_optstring(L, 2, NULL);
+            fd = sys_trytoopenone(c->c_externdir->s_name, filename, "",
+              buf, &ptr, MAXPDSTRING, 0);
+            if (fd >= 0)
+            {
+                PDLUA_DEBUG("pdlua_doclassfile path is %s", buf);
+                pdlua_setrequirepath(L, buf);
+                reader.fd = fd;
+#if LUA_VERSION_NUM	< 502
+                if (lua_load(L, pdlua_reader, &reader, filename))
+#else // 5.2 style
+                if (lua_load(L, pdlua_reader, &reader, filename, NULL))
+#endif // LUA_VERSION_NUM	< 502
+                {
+                    close(fd);
+                    pdlua_clearrequirepath(L);
+                    lua_error(L);
+                }
+                else
+                {
+                    if (lua_pcall(L, 0, LUA_MULTRET, 0))
+                    {
+                        pd_error(NULL, "lua: error running `%s':\n%s", filename, lua_tostring(L, -1));
+                        lua_pop(L, 1);
+                        close(fd);
+                        pdlua_clearrequirepath(L);
+                    }
+                    else
+                    {
+                        /* succeeded */
+                        close(fd);
+                        pdlua_clearrequirepath(L);
+                    }
+                }
+            }
+            else pd_error(NULL, "lua: error loading `%s': sys_trytoopenone() failed", filename);
+        }
+        else pd_error(NULL, "lua: error in class:doclassfile() - class is null");
+    }
+    else pd_error(NULL, "lua: error in class:doclassfile() - object is wrong type");
+    lua_pushstring(L, buf); /* return the path as well so we can open it later with pdlua_menu_open() */
+    PDLUA_DEBUG("pdlua_doclassfile end. stack top is %d", lua_gettop(L));
+ 
+    return lua_gettop(L) - n;
+}
+
 /** Run a Lua script using Pd's path. */
 static int pdlua_dofile(lua_State *L)
 /**< Lua interpreter state.
@@ -1534,6 +1605,9 @@ static void pdlua_init(lua_State *L)
     lua_pushstring(L, "_dofile");
     lua_pushcfunction(L, pdlua_dofile);
     lua_settable(L, -3);
+    lua_pushstring(L, "_doclassfile");
+    lua_pushcfunction(L, pdlua_doclassfile);
+    lua_settable(L, -3);
     lua_pushstring(L, "send");
     lua_pushcfunction(L, pdlua_send);
     lua_settable(L, -3);
@@ -1609,18 +1683,23 @@ static int pdlua_loader_wrappath
   if (fd>=0)
   {
     const char* basenamep = basename(name);
+    int load_save_idx;
     const int is_loadname = basenamep > name;
     if (is_loadname)
     {
       lua_getglobal(__L, "pd");
+      /* save old loadname, restore later */
+      lua_getfield(__L, -1, "_loadname");
+      load_save_idx = luaL_ref(__L, LUA_REGISTRYINDEX);
       lua_pushstring(__L, name);
       lua_setfield(__L, -2, "_loadname");
     }
     result=pdlua_loader_fromfd(fd, basenamep, dirbuf);
     if (is_loadname) {
-      lua_pushnil(__L);
+      lua_rawgeti(__L, LUA_REGISTRYINDEX, load_save_idx);
       lua_setfield(__L, -2, "_loadname");
       lua_pop(__L, 1);
+      luaL_unref(__L, LUA_REGISTRYINDEX, load_save_idx);
     }
     sys_close(fd);
   }

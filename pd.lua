@@ -234,16 +234,24 @@ pd.Class = pd.Prototype:new()
 
 function pd.Class:register(name)
   -- if already registered, return existing
-  if pd._loadname and nil ~= pd._classes[pd._loadname] then
-    return pd._classes[pd._loadname]
+  local regname
+  if pd._loadname then
+    if nil ~= pd._classes[pd._loadname] then
+      return pd._classes[pd._loadname]
+    end
+    -- don't alter existing classes of basename,
+    -- if another file has ownership of basename
+    if not pd._classes[name] then
+      pd._classes[name] = self
+    end
+    regname = pd._loadname
   elseif nil ~= pd._classes[name] then
     return pd._classes[name]
+  else
+    regname = name
   end
+  pd._classes[regname] = self       -- record registration
   self._class = pd._register(name)  -- register new class
-  if (pd._loadname) then
-    pd._classes[pd._loadname] = self
-  end
-  pd._classes[name] = self          -- record registration
   self._name = name
   if name == "pdlua" then
     self._scriptname = "pd.lua"
@@ -260,6 +268,7 @@ function pd.Class:construct(sel, atoms)
   if self:initialize(sel, atoms) then
     pd._createinlets(self._object, self.inlets)
     pd._createoutlets(self._object, self.outlets)
+    self._loadname = sel
     self:postinitialize()
     return self
   else
@@ -316,8 +325,26 @@ function pd.Class:postinitialize() end
 
 function pd.Class:finalize() end
 
+function pd.Class:doclassfile(file)
+  -- in case of register being called, make sure
+  -- classes in other paths aren't getting affected
+  -- save old loadname in case of weird nesting loading
+  local loadsave = pd._loadname
+  pd._loadname = self._loadname
+  local res = pd._doclassfile(self._class, file)
+  pd._loadname = loadsave
+  return res
+end
+
 function pd.Class:dofile(file)
-  return pd._dofile(self._object, file)
+  -- in case of register being called, make sure
+  -- classes in other paths aren't getting affected
+  -- save old loadname in case of weird nesting loading
+  local loadsave = pd._loadname
+  pd._loadname = self._loadname
+  local res = pd._dofile(self._object, file)
+  pd._loadname = loadsave
+  return res
 end
 
 function pd.Class:error(msg)
