@@ -498,10 +498,10 @@ static t_pdlua *pdlua_new
             strcat(buf, ".pd_lua");
             reader.fd = fd;
             n = lua_gettop(__L);
-#if LUA_ION_NUM	< 502
+#if LUA_VERSION_NUM	< 502
             if (lua_load(__L, pdlua_reader, &reader, buf))
 #else // 5.2 style
-            if (lua_load(L, pdlua_reader, &reader, filename, NULL))
+            if (lua_load(__L, pdlua_reader, &reader, buf, NULL))
 #endif // LUA_VERSION_NUM	< 502
             {
                 close(fd);
