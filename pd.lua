@@ -331,9 +331,9 @@ function pd.Class:doclassfile(file)
   -- save old loadname in case of weird nesting loading
   local loadsave = pd._loadname
   pd._loadname = self._loadname
-  local res = pd._doclassfile(self._class, file)
+  local f, path = pd._doclassfile(self._class, file)
   pd._loadname = loadsave
-  return res
+  return f, path
 end
 
 function pd.Class:dofile(file)
@@ -342,9 +342,9 @@ function pd.Class:dofile(file)
   -- save old loadname in case of weird nesting loading
   local loadsave = pd._loadname
   pd._loadname = self._loadname
-  local res = pd._dofile(self._object, file)
+  local f, path = pd._dofile(self._object, file)
   pd._loadname = loadsave
-  return res
+  return f, path
 end
 
 function pd.Class:error(msg)
