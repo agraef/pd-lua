@@ -1683,24 +1683,32 @@ static int pdlua_loader_wrappath
   if (fd>=0)
   {
     const char* basenamep = basename(name);
-    int load_save_idx;
+    int load_name_save = 0, load_path_save;
     const int is_loadname = basenamep > name;
+    lua_getglobal(__L, "pd");
     if (is_loadname)
     {
-      lua_getglobal(__L, "pd");
-      /* save old loadname, restore later */
+      /* save old loadname, restore later in case of
+       * nested loading */
       lua_getfield(__L, -1, "_loadname");
-      load_save_idx = luaL_ref(__L, LUA_REGISTRYINDEX);
+      load_name_save = luaL_ref(__L, LUA_REGISTRYINDEX);
       lua_pushstring(__L, name);
       lua_setfield(__L, -2, "_loadname");
     }
+    lua_getfield(__L, -1, "_loadpath");
+    load_path_save = luaL_ref(__L, LUA_REGISTRYINDEX);
+    lua_pushstring(__L, dirbuf);
+    lua_setfield(__L, -2, "_loadpath");
     result=pdlua_loader_fromfd(fd, basenamep, dirbuf);
+    lua_rawgeti(__L, LUA_REGISTRYINDEX, load_path_save);
+    lua_setfield(__L, -2, "_loadpath");
+    luaL_unref(__L, LUA_REGISTRYINDEX, load_path_save);
     if (is_loadname) {
-      lua_rawgeti(__L, LUA_REGISTRYINDEX, load_save_idx);
+      lua_rawgeti(__L, LUA_REGISTRYINDEX, load_name_save);
       lua_setfield(__L, -2, "_loadname");
-      lua_pop(__L, 1);
-      luaL_unref(__L, LUA_REGISTRYINDEX, load_save_idx);
+      luaL_unref(__L, LUA_REGISTRYINDEX, load_name_save);
     }
+    lua_pop(__L, 1);
     sys_close(fd);
   }
   return result;
