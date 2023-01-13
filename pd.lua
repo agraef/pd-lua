@@ -324,6 +324,9 @@ function pd.Class:dispatch(inlet, sel, atoms)
 end
 
 function pd.Class:outlet(outlet, sel, atoms)
+  if type(atoms) ~= "table" then
+     atoms = {atoms}
+  end
   pd._outlet(self._object, outlet, sel, atoms)
 end
 
