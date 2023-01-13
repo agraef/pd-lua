@@ -19,10 +19,12 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 --]]
 
 -- storage for Pd C<->Lua interaction
-pd._classes = { }
+pd._classes = { } -- take absolute paths and turn them into classes
+pd._pathnames = { } -- look up absolute path by creation name
 pd._objects = { }
 pd._clocks = { }
 pd._receives = { }
+pd._loadpath = ""
 
 -- add a path to Lua's "require" search paths
 pd._setrequirepath = function(path)
@@ -45,8 +47,9 @@ end
 
 -- constructor dispatcher
 pd._constructor = function (name, atoms)
-  if nil ~= pd._classes[name] then
-    local o = pd._classes[name]:new():construct(name, atoms)
+  local fullpath = pd._pathnames[name]
+  if nil ~= pd._classes[fullpath] then
+    local o = pd._classes[fullpath]:new():construct(name, atoms)
     if o then
       pd._objects[o._object] = o
       return o._object
@@ -235,24 +238,25 @@ pd.Class = pd.Prototype:new()
 function pd.Class:register(name)
   -- if already registered, return existing
   local regname
+  local fullpath = pd._loadpath .. name
+  if nil ~= pd._classes[fullpath] then
+    return pd._classes[fullpath]
+  end
   if pd._loadname then
-    if nil ~= pd._classes[pd._loadname] then
-      return pd._classes[pd._loadname]
-    end
     -- don't alter existing classes of basename,
     -- if another file has ownership of basename
-    if not pd._classes[name] then
-      pd._classes[name] = self
+    if not pd._pathnames[name] then
+      pd._pathnames[name] = fullpath
     end
     regname = pd._loadname
-  elseif nil ~= pd._classes[name] then
-    return pd._classes[name]
   else
     regname = name
   end
-  pd._classes[regname] = self       -- record registration
+  pd._pathnames[regname] = fullpath
+  pd._classes[fullpath] = self       -- record registration
   self._class = pd._register(name)  -- register new class
   self._name = name
+  self._loadpath = pd._loadpath
   if name == "pdlua" then
     self._scriptname = "pd.lua"
   else
@@ -268,7 +272,6 @@ function pd.Class:construct(sel, atoms)
   if self:initialize(sel, atoms) then
     pd._createinlets(self._object, self.inlets)
     pd._createoutlets(self._object, self.outlets)
-    self._loadname = sel
     self:postinitialize()
     return self
   else
@@ -329,10 +332,13 @@ function pd.Class:doclassfile(file)
   -- in case of register being called, make sure
   -- classes in other paths aren't getting affected
   -- save old loadname in case of weird nesting loading
-  local loadsave = pd._loadname
-  pd._loadname = self._loadname
+  local namesave = pd._loadname
+  local pathsave = pd._loadpath
+  pd._loadname = nil
+  pd._loadpath = self._loadpath
   local f, path = pd._doclassfile(self._class, file)
-  pd._loadname = loadsave
+  pd._loadname = namesave
+  pd._loadpath = pathsave
   return f, path
 end
 
@@ -340,10 +346,13 @@ function pd.Class:dofile(file)
   -- in case of register being called, make sure
   -- classes in other paths aren't getting affected
   -- save old loadname in case of weird nesting loading
-  local loadsave = pd._loadname
-  pd._loadname = self._loadname
+  local namesave = pd._loadname
+  local pathsave = pd._loadpath
+  pd._loadname = nil
+  pd._loadpath = self._loadpath
   local f, path = pd._dofile(self._object, file)
-  pd._loadname = loadsave
+  pd._loadname = namesave
+  pd._loadpath = pathsave
   return f, path
 end
 
