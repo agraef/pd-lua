@@ -45,6 +45,11 @@ pd._clearrequirepath = function()
   package.cpath = pd._packagecpath
 end
 
+-- check if we need to register a basename class first
+pd._checkbase = function (name)
+  return pd._pathnames[name] == true
+end
+
 -- constructor dispatcher
 pd._constructor = function (name, atoms)
   local fullpath = pd._pathnames[name]
@@ -246,7 +251,7 @@ function pd.Class:register(name)
     -- don't alter existing classes of basename,
     -- if another file has ownership of basename
     if not pd._pathnames[name] then
-      pd._pathnames[name] = fullpath
+      pd._pathnames[name] = true
     end
     regname = pd._loadname
   else
