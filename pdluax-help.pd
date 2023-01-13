@@ -20,11 +20,10 @@
 #X text 244 284 NONE;
 #X text 163 351 1) symbol - source file name (without extension);
 #X text 39 150 You can right click the object and ask to open the source file if your system has an application set to handle this extension., f 74;
-#X text 233 190 <-- loaging "hello.pd_luax" file.;
 #X text 260 227 Details on writting luax files ----->, f 20;
 #X text 39 95 The [pdluax] object is similar to [pdlua] but you can use "*.pd_luax" instead and load them as arguments. It is less efficient but more flexible when developing or live-coding. You also need to load [pdlua] as a library first as with the [declare] object above., f 74;
 #X obj 113 191 pdluax pdlua/hello;
-#N canvas 613 120 540 414 quickstart 1;
+#N canvas 613 120 540 414 quickstart 0;
 #X obj 36 94 cnv 15 450 100 empty empty pdluax\ HOWTO 20 12 0 14 #dfdfdf #000000 0;
 #X obj 36 195 cnv 15 450 140 empty empty Advantages: 20 12 0 14 #cccccc #000000 0;
 #X obj 36 336 cnv 15 450 200 empty empty Disadvantages: 20 12 0 14 #dfdfdf #000000 0;
@@ -64,3 +63,4 @@
 #X restore 36 93 graph;
 #X text 45 21 Find basic instructions/examples below. For a detailed tutorial \, check the 'pdlua/tutorial' folder for a PDF documente. You can also find this tutorial online at: https://agraef.github.io/pd-lua/tutorial/pd-lua-intro.html, f 66;
 #X restore 386 241 pd quickstart;
+#X text 233 190 <-- loading "hello.pd_luax" file.;
