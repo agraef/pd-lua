@@ -333,6 +333,20 @@ function pd.Class:postinitialize() end
 
 function pd.Class:finalize() end
 
+function pd.Class:doclassfile(file)
+  -- in case of register being called, make sure
+  -- classes in other paths aren't getting affected
+  -- save old loadname in case of weird nesting loading
+  local namesave = pd._loadname
+  local pathsave = pd._loadpath
+  pd._loadname = nil
+  pd._loadpath = self._loadpath
+  local f, path = pd._doclassfile(self._class, file)
+  pd._loadname = namesave
+  pd._loadpath = pathsave
+  return f, path
+end
+
 function pd.Class:dofile(file)
   -- in case of register being called, make sure
   -- classes in other paths aren't getting affected
@@ -341,12 +355,7 @@ function pd.Class:dofile(file)
   local pathsave = pd._loadpath
   pd._loadname = nil
   pd._loadpath = self._loadpath
-  local f, path
-  if self._name == "pdlua" or self._name == "pdluax" then
-     f, path = pd._dofile(self._object, file)
-  else
-     f, path = pd._doclassfile(self._class, file)
-  end
+  local f, path = pd._dofile(self._object, file)
   pd._loadname = namesave
   pd._loadpath = pathsave
   return f, path
