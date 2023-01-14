@@ -35,7 +35,7 @@ Using lua version 5.4
 
 This will also tell you the Lua version that Pd-Lua is using, so that you can install a matching version of the stand-alone Lua interpreter if needed. Lua should be readily available from your package repositories on Linux, and for Mac and Windows you can find binaries on the Lua website. In the following we generally assume that you're using Lua 5.3 or later.
 
-If all is not well and you do *not* see that message, then most likely Pd-Lua refused to load because the Lua library is missing. This shouldn't happen if you installed Pd-Lua from a binary package, but if it does then you'll have to manually install the right version of the Lua library to make Pd-Lua work (5.1 for the Deken package, 5.2 for the Debian package, and 5.4 for Purr Data). Make sure that you install the package with the Lua *library* in it; on Debian, Ubuntu and their derivatives this will be something like liblua5.3-0.
+If all is not well and you do *not* see that message, then most likely Pd-Lua refused to load because the Lua library is missing. This shouldn't happen if you installed Pd-Lua from a binary package, but if it does then you'll have to manually install the right version of the Lua library to make Pd-Lua work (5.1 for the Deken package, 5.2 for the Debian package, and usually 5.4 otherwise). Make sure that you install the package with the Lua *library* in it; on Debian, Ubuntu and their derivatives this will be something like liblua5.4-0.
 
 ## A basic example
 
@@ -828,21 +828,23 @@ While `pdluax` is considered Pd-Lua's main workhorse for live coding, it also ha
 
 Fortunately, if you're not content with Pd-Lua's built-in facilities for live coding, it's easy to roll your own using the internal `dofile` method, which is discussed in the next subsection.
 
-### dofile
+### dofile and dofilex
 
-So let's discuss how to use `dofile` in a direct fashion. The method we sketch out below is really simple and doesn't have any of the drawbacks of the `pdluax` object, but you still have to add a small amount of boilerplate code to your existing object definition. Here is how `dofile` is invoked:
+So let's discuss how to use `dofile` in a direct fashion. Actually, we're going to use its companion `dofilex` here, which works the same as `dofile`, but loads Lua code relative to the "externdir" of the class (the directory of the .pd_lua file) rather than the directory of the Pd canvas with the pdlua object, which is what `dofile` does. Normally, you don't have to worry about these intricacies, but they *will* matter if Lua class names are specified using relative pathnames, such as `../foo` or `bar/baz`. Since we're reloading class definitions here, it's better to use `dofilex` so that our code doesn't break if we later change the directory structure.
 
-- `self:dofile(scriptname)`: This loads the given Lua script, like Lua's `loadfile`, but also performs a search on Pd's path to locate the file, and finally executes the file if it was loaded successfully. Note that `self` must be a valid Pd-Lua object, which is used solely to determine the patch which contains the object, so that the script will be found if it is located in the patch directory.
+The method we sketch out below is really simple and doesn't have any of the drawbacks of the `pdluax` object, but you still have to add a small amount of boilerplate code to your existing object definition. Here is how `dofilex` is invoked:
 
-The return values of `dofile` are those of the Lua script, along with the path under which the script was found. If the script itself returns no value, then only the path will be returned. (We don't use any of this information in what follows, but it may be useful in more elaborate schemes. For instance, `pdluax` uses the returned function to initialize the object, and the path in setting up the object's actual script name.)
+- `self:dofilex(scriptname)`: This loads the given Lua script, like Lua's `loadfile`, but also performs a search on Pd's path to locate the file, and finally executes the file if it was loaded successfully. Note that `self` must be a valid Pd-Lua object, which is used solely to determine the externdir of the object's class, so that the script will be found if it is located there.
 
-Of course, `dofile` needs the name of the script file to be loaded. We could hardcode this as a string literal, but it's easier to just ask the object itself for this information. Each Pd-Lua object has a number of private member variables, among them `_name` (which is the name under which the object class was registered) and `_scriptname` (which is the name of the corresponding script file, usually this is just `_name` with the `.pd_lua` extension tacked onto it). The latter is what we need. Pd-Lua also offers a `whoami()` method for this purpose, but that method just returns `_scriptname` if it is set, or `_name` otherwise. Regular Pd-Lua objects always have `_scriptname` set, so it will do for our purposes.
+The return values of `dofilex` are those of the Lua script, along with the path under which the script was found. If the script itself returns no value, then only the path will be returned. (We don't use any of this information in what follows, but it may be useful in more elaborate schemes. For instance, `pdluax` uses the returned function to initialize the object, and the path in setting up the object's actual script name.)
 
-Finally, we need to decide how to invoke `dofile` in our object. The easiest way to do this is to just add a message handler (i.e., an inlet method) to the object. For instance, say that the object is named `foo` which is defined in the foo.pd_lua script. Then all you have to do is add something like the following definition to the script:
+Of course, `dofilex` needs the name of the script file to be loaded. We could hardcode this as a string literal, but it's easier to just ask the object itself for this information. Each Pd-Lua object has a number of private member variables, among them `_name` (which is the name under which the object class was registered) and `_scriptname` (which is the name of the corresponding script file, usually this is just `_name` with the `.pd_lua` extension tacked onto it). The latter is what we need. Pd-Lua also offers a `whoami()` method for this purpose, but that method just returns `_scriptname` if it is set, or `_name` otherwise. Regular Pd-Lua objects always have `_scriptname` set, so it will do for our purposes.
+
+Finally, we need to decide how to invoke `dofilex` in our object. The easiest way to do this is to just add a message handler (i.e., an inlet method) to the object. For instance, say that the object is named `foo` which is defined in the foo.pd_lua script. Then all you have to do is add something like the following definition to the script:
 
 ~~~lua
 function foo:in_1_reload()
-   self:dofile(self._scriptname)
+   self:dofilex(self._scriptname)
 end
 ~~~
 
@@ -864,7 +866,7 @@ Let's give this a try, using luatab.pd_lua from the "Using arrays and tables" se
 
 ~~~lua
 function luatab:in_1_reload()
-   self:dofile(self._scriptname)
+   self:dofilex(self._scriptname)
 end
 ~~~
 
@@ -896,7 +898,7 @@ Setting up an object for this kind of remote control is easy, though. First, you
 local pdx = require 'pdx'
 ~~~
 
-Then just call `pdx.reload(self)` somewhere in the `initialize` method. This will set up the whole receiver/dofile machinery in a fully automatic manner. Finally, add a message like this to your patch, which goes to the special `pdluax` receiver (note that this is completely unrelated to the `pdluax` object discussed previously, it just incidentally uses the same name):
+Then just call `pdx.reload(self)` somewhere in the `initialize` method. This will set up the whole receiver/dofilex machinery in a fully automatic manner. Finally, add a message like this to your patch, which goes to the special `pdluax` receiver (note that this is completely unrelated to the `pdluax` object discussed previously, it just incidentally uses the same name):
 
 ~~~
 ; pdluax reload
@@ -922,7 +924,7 @@ You can then use `pdsend 4711 localhost udp` to transmit the `reload` message to
 
 ---
 
-**NOTE:** At present, the various bits and pieces belonging to the improved live-coding support aren't installed along with Pd-Lua, so to use them in your own patches, you'll have to copy pdx.lua and pdlua-remote.pd to your project directory or some other place where Pd finds them. The pdlua-remote.el file can be installed in your Emacs site-lisp directory if needed.
+**NOTE:** To use these facilities in your own patches, you'll have to copy pdx.lua and pdlua-remote.pd to your project directory or some other place where Pd finds them. The pdlua-remote.el file can be installed in your Emacs site-lisp directory if needed.
 
 ---
 
@@ -990,7 +992,7 @@ So there you have it: three (or rather four) different ways to live-code with Pd
 
 ## Conclusion
 
-Congratulations! If you made it this far, you should have learned more than enough to start using Pd-Lua successfully for your own projects. You should also be able to read and understand the many examples in the Pd-Lua distribution, which illustrate all the various features in much more detail than we could muster in this introduction. You can find these in the examples folder, both in the Pd-Lua sources and the extra/pdlua folder of your Pd installation.
+Congratulations! If you made it this far, you should have learned more than enough to start using Pd-Lua successfully for your own projects. You should also be able to read and understand the many examples in the Pd-Lua distribution, which illustrate all the various features in much more detail than we could muster in this introduction. You can find these in the examples folder, both in the Pd-Lua sources and the pdlua folder of your Pd installation.
 
 The examples accompanying this tutorial (including the pdx.lua, pdlua-remote.el and pdlua-remote.pd files mentioned at the end of the previous section) are also available for your perusal in the examples subdirectory of the folder where you found this document.
 
