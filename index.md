@@ -1,7 +1,7 @@
 
 **pd-lua** is Claude Heiland-Allen's [Pd][] loader extension for the [Lua][] scripting language. In a nutshell, it lets you program Pd objects in Lua.
 
-This is a fork of [umlaeute's repository](https://anonscm.debian.org/git/pkg-multimedia/pd-lua.git) on Debian's Salsa server. It adds Lua 5.3+ compatibility, support for [Purr Data][] (a modern flavor of Pd) and [plugdata][] (another modern flavor of Pd which can also be run as a plug-in inside a DAW), some compilation fixes to make sure that the source builds on current systems (Arch Linux, macOS, Windows), and, last but not least, a [tutorial][] to help you get started using pd-lua. Moreover, it includes the latest help and example patches which have been updated and reorganized by Alexandre Porres (whose [ELSE][] collection now also includes a recent revision of the pd-lua version found in this repository).
+The present version has been forked from [umlaeute's repository](https://anonscm.debian.org/git/pkg-multimedia/pd-lua.git) on Debian's Salsa server. It provides Lua 5.3+ compatibility, support for [Purr Data][] (a modern flavor of Pd) and [plugdata][] (another modern flavor of Pd which can also be run as a plug-in inside a DAW), some compilation fixes to make sure that the source builds on current systems (Linux, macOS, Windows), various bug fixes, and, last but not least, a [tutorial][] to help you get started using pd-lua. Moreover, it includes the latest help and example patches which have been updated and reorganized by Alexandre Porres (whose [ELSE][] collection now also includes a recent revision of the pd-lua version found in this repository).
 
 **Quick links:**
 
@@ -25,7 +25,7 @@ pd-lua was originally written by Claude Heiland-Allen, with contributions by Fra
 
 Martin Peach took over maintenance of pd-lua in 2011, you can find that part of the history in Pd's old [svn repository](https://sourceforge.net/p/pure-data/svn/HEAD/tree/trunk/externals/loaders/pdlua/) at SourceForge, including IOhannes Zmölnig's loader update for Pd 0.47. The present source is a fork of IOhannes' repository at <https://anonscm.debian.org/git/pkg-multimedia/pd-lua.git>, from which the official Debian packages are built. This in turn is apparently based on the 0.7.3 version of pd-lua in Pd's svn repository.
 
-Apart from the loader update, it seems that pd-lua has been in maintenance mode since 2014, when Martin added Lua 5.2 support, so functionality-wise all these variants shouldn't differ. However, neither Claude's upstream nor the version maintained by Martin and IOhannes have ever been updated for the latest Lua versions, so you will have to use the present source if you want to use Lua 5.3 and later.
+Apart from the loader update, it seems that pd-lua has been in maintenance mode since 2014, when Martin added Lua 5.2 support, so functionality-wise all these variants shouldn't differ. However, neither Claude's upstream nor the version maintained by Martin and IOhannes have ever been updated for the latest Lua versions. The present version is actively maintained, works with Lua 5.3 and later, and you're invited to submit bug reports to help with keeping pd-lua current and useful to Pd and Lua programmers.
 
 ## Installation
 
