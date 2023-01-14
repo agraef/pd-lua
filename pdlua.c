@@ -1492,7 +1492,7 @@ static void pdlua_clearrequirepath
 }
 
 /** Run a Lua script using class path */
-static int pdlua_doclassfile(lua_State *L)
+static int pdlua_dofilex(lua_State *L)
 /**< Lua interpreter state.
   * \par Inputs:
   * \li \c 1 Pd class pointer.
@@ -1509,7 +1509,7 @@ static int pdlua_doclassfile(lua_State *L)
     const char          *filename;
     t_class             *c;
 
-    PDLUA_DEBUG("pdlua_doclassfile: stack top %d", lua_gettop(L));
+    PDLUA_DEBUG("pdlua_dofilex: stack top %d", lua_gettop(L));
     n = lua_gettop(L);
     if (lua_islightuserdata(L, 1))
     {
@@ -1521,7 +1521,7 @@ static int pdlua_doclassfile(lua_State *L)
               buf, &ptr, MAXPDSTRING, 1);
             if (fd >= 0)
             {
-                PDLUA_DEBUG("pdlua_doclassfile path is %s", buf);
+                PDLUA_DEBUG("pdlua_dofilex path is %s", buf);
                 pdlua_setrequirepath(L, buf);
                 reader.fd = fd;
 #if LUA_VERSION_NUM	< 502
@@ -1553,11 +1553,11 @@ static int pdlua_doclassfile(lua_State *L)
             }
             else pd_error(NULL, "lua: error loading `%s': sys_trytoopenone() failed", filename);
         }
-        else pd_error(NULL, "lua: error in class:doclassfile() - class is null");
+        else pd_error(NULL, "lua: error in class:dofilex() - class is null");
     }
-    else pd_error(NULL, "lua: error in class:doclassfile() - object is wrong type");
+    else pd_error(NULL, "lua: error in class:dofilex() - object is wrong type");
     lua_pushstring(L, buf); /* return the path as well so we can open it later with pdlua_menu_open() */
-    PDLUA_DEBUG("pdlua_doclassfile end. stack top is %d", lua_gettop(L));
+    PDLUA_DEBUG("pdlua_dofilex end. stack top is %d", lua_gettop(L));
  
     return lua_gettop(L) - n;
 }
@@ -1689,8 +1689,8 @@ static void pdlua_init(lua_State *L)
     lua_pushstring(L, "_dofile");
     lua_pushcfunction(L, pdlua_dofile);
     lua_settable(L, -3);
-    lua_pushstring(L, "_doclassfile");
-    lua_pushcfunction(L, pdlua_doclassfile);
+    lua_pushstring(L, "_dofilex");
+    lua_pushcfunction(L, pdlua_dofilex);
     lua_settable(L, -3);
     lua_pushstring(L, "send");
     lua_pushcfunction(L, pdlua_send);

@@ -333,7 +333,7 @@ function pd.Class:postinitialize() end
 
 function pd.Class:finalize() end
 
-function pd.Class:doclassfile(file)
+function pd.Class:dofilex(file)
   -- in case of register being called, make sure
   -- classes in other paths aren't getting affected
   -- save old loadname in case of weird nesting loading
@@ -341,7 +341,7 @@ function pd.Class:doclassfile(file)
   local pathsave = pd._loadpath
   pd._loadname = nil
   pd._loadpath = self._loadpath
-  local f, path = pd._doclassfile(self._class, file)
+  local f, path = pd._dofilex(self._class, file)
   pd._loadname = namesave
   pd._loadpath = pathsave
   return f, path
