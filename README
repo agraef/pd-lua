@@ -30,10 +30,10 @@ Debian package), and myself (Arch package, Lua 5.3+ support, Purr Data and
 plugdata support, tutorial). Please also check my brief account on the history
 of pd-lua below.
 
-Lua 5.4 is highly recommended with the latest version, Lua 5.3 should work as
-well. Lua 5.2 probably still works, too, but this hasn't been tested
-recently. Even older Lua versions are completely untested and unsupported at
-this point - use at your own risk.
+Lua 5.4 is highly recommended with the latest version, Lua 5.3 works as
+well. Reportedly, Lua 5.2 and even 5.1 still work (at least to some extent),
+but I haven't tested these myself for quite a while, so you may run into
+problems with these old versions - use at your own risk.
 
 If you haven't used pdlua before, please make sure to check the included
 tutorial first. See:
@@ -69,27 +69,34 @@ official Debian packages are built. This in turn is apparently based on the
 
 The current version (0.8 and later) is actively maintained by Albert Gräf
 <aggraef@gmail.com>, with contributions by Claude Heiland-Allen (Lua 5.4
-update, bugfixes) and Alexandre Porres (documentation updates).
+update, bugfixes), Alexandre Porres (documentation updates), and others.
 This is also the version included in Porres' ELSE library
 (https://github.com/porres/pd-else) and Timothy Schoen's plugdata
 (https://github.com/plugdata-team/plugdata).
 
 Please file bugs and requests at https://github.com/agraef/pd-lua. I maintain
-a lot of packages and thus it may take a while, but I look at all the bug
-reports and pull requests, and try to respond to them eventually. :)
+a lot of packages and thus it may take a while at times, but I look at all the
+bug reports and pull requests, and try to respond to them eventually. :)
 
 
-Binary Packages:
+Ready-Made Packages:
 
-Ready-to-use binaries for the older Lua 5.1 and 5.2 versions are available
-from Deken and as a Debian package, respectively. The latest (Lua 5.4)
-binaries are on https://github.com/agraef/pd-lua.
+The latest vanilla binaries for Mac and Windows can always be found on
+https://github.com/agraef/pd-lua. The same version is also in the Arch
+community repository (maintained by dvzrv, thanks David!). On other Linux
+systems you'll have to compile pdlua yourself from source, which isn't hard to
+do (see below). Also, both Purr Data and plugdata ship with pdlua, so no 3rd
+party package is needed.
 
 To enable the pdlua loader in Pd after installation, just add `pdlua` to your
 startup libraries (after adding its parent directory to Pd's search path if
 necessary) and you should be set.
 
-See below if you want/need to compile from source.
+Mac users please note that the packages I distribute aren't notarized, so on
+recent macOS versions you'll have to jump through the usual hoops to make them
+usable. Running `xattr -rd com.apple.quarantine` on pdlua.pd_darwin should
+usually do the trick, but check the internet for up-to-date information on
+this.
 
 
 Compilation Instructions:
@@ -140,8 +147,14 @@ Once the lua submodule is checked out, you can just run `make` as usual, it
 will use the submodule to compile Lua alongside the pdlua module. The
 resulting binary will be statically linked with the Lua interpreter.
 
-Otherwise `make` will try `pkg-config` to locate an existing Lua installation
-on your system and link against that.
+Also note that on the Mac you can build a universal (a.k.a. arm64+x86_64)
+binary this way, using `arch="arm64 x86_64"` when running `make`. This will
+work best if Lua is compiled alongside pdlua, since installed Lua libraries
+may not be universal binaries (in Homebrew at least they aren't).
+
+Otherwise, if the lua submodule isn't checked out, `make` will try
+`pkg-config` to locate an existing Lua installation on your system and link
+against that.
 
 
 Installation:
