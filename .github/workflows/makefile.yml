@@ -1,0 +1,89 @@
+name: Makefile CI
+
+on:
+  push:
+    branches: [ $default-branch ]
+  pull_request:
+    branches: [ $default-branch ]
+
+jobs:
+  ubuntu-build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: recursive
+        fetch-depth: 0
+
+    - name: install dependencies
+      run: sudo apt install puredata-dev
+
+    - name: make
+      run: make
+
+    - name: make install
+      run: make install objectsdir=./build
+
+    - name: upload
+      uses: actions/upload-artifact@v3
+      with:
+        name: pdlua-ubuntu
+        path: build
+
+  macos-build:
+
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: recursive
+        fetch-depth: 0
+
+    - name: install dependencies
+      run: |
+        wget https://github.com/pure-data/pure-data/archive/refs/tags/0.53-1.zip
+        unzip 0.53-1.zip
+
+    - name: make
+      run: make PDDIR=./pure-data-0.53-1 arch="arm64 x86_64"
+
+    - name: make install
+      run: make install objectsdir=./build
+
+    - name: upload
+      uses: actions/upload-artifact@v3
+      with:
+        name: pdlua-macos
+        path: build
+
+  windows-build:
+
+    runs-on: windows-2022
+    env:
+      CC: gcc
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: recursive
+        fetch-depth: 0
+
+    - name: install dependencies
+      run: |
+        C:\msys64\usr\bin\wget.exe http://msp.ucsd.edu/Software/pd-0.53-1.msw.zip
+        unzip pd-0.53-1.msw.zip
+
+    - name: make
+      run: make PDDIR=./pd-0.53-1
+
+    - name: make install
+      run: make install objectsdir=./build
+
+    - name: upload
+      uses: actions/upload-artifact@v3
+      with:
+        name: pdlua-windows
+        path: build
