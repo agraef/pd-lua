@@ -18,8 +18,10 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 
-NOTES by aggraef: Since the contents of the original README has become rather
-outdated, I've updated the information below.
+Current maintainer: Albert Gräf <aggraef@gmail.com>
+This source is available on GitHub: https://github.com/agraef/pd-lua
+
+Since the contents of the original README has become rather outdated, I've updated the information below.
 
 pdlua works with all Pd flavors out there and makes Pd external programming
 incredibly easy (please check the included examples and the tutorial in the
