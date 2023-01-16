@@ -3,6 +3,7 @@ name: Makefile CI
 on:
   push:
     branches: [ master ]
+    tags: [ '*' ]
   pull_request:
     branches: [ master ]
 
@@ -32,14 +33,6 @@ jobs:
         name: pdlua-ubuntu
         path: build
 
-    - name: release
-      uses: softprops/action-gh-release@v1
-      if: startsWith(github.ref, 'refs/tags/')
-      with:
-        prerelease: true
-        draft: true
-        files: pdlua-ubuntu
-
   macos-build:
 
     runs-on: macos-latest
@@ -66,14 +59,6 @@ jobs:
       with:
         name: pdlua-macos
         path: build
-
-    - name: release
-      uses: softprops/action-gh-release@v1
-      if: startsWith(github.ref, 'refs/tags/')
-      with:
-        prerelease: true
-        draft: true
-        files: pdlua-macos
 
   windows-build:
 
@@ -104,10 +89,21 @@ jobs:
         name: pdlua-windows
         path: build
 
+# Big thanks to @tomara-x and @timothyschoen for showing me how to do this! -ag
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    needs: [ubuntu-build, macos-build, windows-build]
+    steps:
+    - uses: actions/download-artifact@v3
+    - name: ziptie
+      run: |
+        mkdir dist
+        for x in pdlua-*; do (cd $x && zip -r ../dist/$x.zip pdlua/); done
     - name: release
       uses: softprops/action-gh-release@v1
-      if: startsWith(github.ref, 'refs/tags/')
       with:
         prerelease: true
         draft: true
-        files: pdlua-windows
+        files: dist/*.zip
