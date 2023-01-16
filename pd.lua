@@ -243,9 +243,11 @@ pd.Class = pd.Prototype:new()
 function pd.Class:register(name)
   -- if already registered, return existing
   local regname
-  local fullpath = pd._loadpath .. name
-  if nil ~= pd._classes[fullpath] then
-    return pd._classes[fullpath]
+  local fullpath = pd._loadpath .. '/'
+  local fullname = fullpath .. name
+
+  if nil ~= pd._classes[fullname] then
+    return pd._classes[fullname]
   end
   if pd._loadname then
     -- don't alter existing classes of basename,
@@ -257,11 +259,11 @@ function pd.Class:register(name)
   else
     regname = name
   end
-  pd._pathnames[regname] = fullpath
-  pd._classes[fullpath] = self       -- record registration
+  pd._pathnames[regname] = fullname
+  pd._classes[fullname] = self       -- record registration
   self._class = pd._register(name)  -- register new class
   self._name = name
-  self._loadpath = pd._loadpath
+  self._loadpath = fullpath
   if name == "pdlua" then
     self._scriptname = "pd.lua"
   else
@@ -274,7 +276,7 @@ function pd.Class:construct(sel, atoms)
   self._object = pd._create(self._class)
   self.inlets = 0
   self.outlets = 0
-  self._canvaspath = pd._canvaspath(self._object)
+  self._canvaspath = pd._canvaspath(self._object) .. "/"
   if self:initialize(sel, atoms) then
     pd._createinlets(self._object, self.inlets)
     pd._createoutlets(self._object, self.outlets)
