@@ -809,6 +809,28 @@ static int pdlua_object_createoutlets(lua_State *L)
     return 0;
 }
 
+/* get canvas path of an object */
+static int pdlua_object_canvaspath(lua_State *L)
+/**< Lua interpreter state.
+  * \par Inputs:
+  * \li \c 1 Pd object pointer.
+  * \par Outputs:
+  * \li \c 1 Canvas path string.
+  * */
+{
+    PDLUA_DEBUG("pdlua_object_canvaspath: stack top is %d", lua_gettop(L));
+    if (lua_islightuserdata(L, 1))
+    {
+        t_pdlua *o = lua_touserdata(L, 1);
+        if (o)
+        {
+           lua_pushstring(L, canvas_getdir(o->canvas)->s_name);
+        }
+    }
+    PDLUA_DEBUG("pdlua_object_canvaspath: end stack top is %d", lua_gettop(L));
+    return 1;
+}
+
 /** Lua object receive creation. */
 static int pdlua_receive_new(lua_State *L)
 /**< Lua interpreter state.
@@ -1658,6 +1680,9 @@ static void pdlua_init(lua_State *L)
     lua_settable(L, -3);
     lua_pushstring(L, "_createoutlets");
     lua_pushcfunction(L, pdlua_object_createoutlets);
+    lua_settable(L, -3);
+    lua_pushstring(L, "_canvaspath");
+    lua_pushcfunction(L, pdlua_object_canvaspath);
     lua_settable(L, -3);
     lua_pushstring(L, "_destroy");
     lua_pushcfunction(L, pdlua_object_free);

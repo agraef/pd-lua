@@ -277,6 +277,7 @@ function pd.Class:construct(sel, atoms)
   if self:initialize(sel, atoms) then
     pd._createinlets(self._object, self.inlets)
     pd._createoutlets(self._object, self.outlets)
+    self._canvaspath = pd._canvaspath(self._object)
     self:postinitialize()
     return self
   else
