@@ -274,10 +274,10 @@ function pd.Class:construct(sel, atoms)
   self._object = pd._create(self._class)
   self.inlets = 0
   self.outlets = 0
+  self._canvaspath = pd._canvaspath(self._object)
   if self:initialize(sel, atoms) then
     pd._createinlets(self._object, self.inlets)
     pd._createoutlets(self._object, self.outlets)
-    self._canvaspath = pd._canvaspath(self._object)
     self:postinitialize()
     return self
   else
