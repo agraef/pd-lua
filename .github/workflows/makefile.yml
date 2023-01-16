@@ -32,6 +32,14 @@ jobs:
         name: pdlua-ubuntu
         path: build
 
+    - name: release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        prerelease: true
+        draft: true
+        files: pdlua-ubuntu
+
   macos-build:
 
     runs-on: macos-latest
@@ -58,6 +66,14 @@ jobs:
       with:
         name: pdlua-macos
         path: build
+
+    - name: release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        prerelease: true
+        draft: true
+        files: pdlua-macos
 
   windows-build:
 
@@ -87,3 +103,11 @@ jobs:
       with:
         name: pdlua-windows
         path: build
+
+    - name: release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        prerelease: true
+        draft: true
+        files: pdlua-windows
