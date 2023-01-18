@@ -21,7 +21,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 Current maintainer: Albert Gräf <aggraef@gmail.com>
 This source is available on GitHub: https://github.com/agraef/pd-lua
 
-Since the contents of the original README has become rather outdated, I've updated the information below.
+Since the contents of the original README has become rather outdated, I've
+updated the information below.
 
 pdlua works with all Pd flavors out there and makes Pd external programming
 incredibly easy (please check the included examples and the tutorial in the
@@ -83,7 +84,7 @@ bug reports and pull requests, and try to respond to them eventually. :)
 
 Ready-Made Packages:
 
-The latest vanilla binaries for Mac and Windows can always be found on
+The latest vanilla binaries for Ubuntu, Mac and Windows can always be found on
 https://github.com/agraef/pd-lua. The same version is also in the Arch
 community repository (maintained by dvzrv, thanks David!). On other Linux
 systems you'll have to compile pdlua yourself from source, which isn't hard to
@@ -98,7 +99,7 @@ Mac users please note that the packages I distribute aren't notarized, so on
 recent macOS versions you'll have to jump through the usual hoops to make them
 usable. Running `xattr -rd com.apple.quarantine` on pdlua.pd_darwin should
 usually do the trick, but check the internet for up-to-date information on
-this.
+Gatekeeper for details.
 
 
 Compilation Instructions:

@@ -28,8 +28,8 @@ With vanilla Pd, you can install the pdlua package from Deken (not recommended, 
 If all is well, you should see a message like the following in the Pd console (note that for vanilla Pd you'll have to switch the log level to 2 or more to see that message):
 
 ~~~
-pdlua 0.11.1 (GPL) 2008 Claude Heiland-Allen, 2014 Martin Peach et al.
-pdlua: compiled for pd-0.53 on Jan 10 2023 11:30:14
+pdlua 0.11.3 (GPL) 2008 Claude Heiland-Allen, 2014 Martin Peach et al.
+pdlua: compiled for pd-0.53 on Jan 16 2023 23:36:09
 Using lua version 5.4
 ~~~
 
@@ -70,8 +70,6 @@ We mention in passing here that Pd-Lua also provides a parameter-less `postiniti
 **NOTE:** Pd-Lua runs *all* Lua objects in the same instance of the Lua interpreter. Therefore, as a general guideline, we want to keep the global name space tidy and clean. That's why we made `foo` a local variable, which means that its scope is confined to this single script. Note that this isn't needed for the member variables and methods, as these are securely stowed away inside the object and not accessible from the outside anyway, if the class variable is `local`. But the same caveat applies to all variables and functions in the script file that might be needed to implement the object, so normally you want to mark these as `local`, too (or turn them into member variables and methods, if that seems more appropriate).
 
 We mention in passing that global variables and functions may also have their uses if you need to share a certain amount of global state between different Lua objects. But even then it's usually safer to have the objects communicate with each other behind the scenes using receivers, which we'll explain later.
-
-Finally, a word of caution if you use Pd-Lua inside plugdata or a similar libpd-based host which may run in a multi-threaded environment. Pd-Lua hasn't been updated for thread-safety yet, so you may have to make sure that you only run a single plug-in instance involving Pd-Lua. Otherwise you may encounter erratic behavior due to race conditions and other multi-threading issues. This will hopefully be fixed in the near future.
 
 ---
 
