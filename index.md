@@ -25,11 +25,11 @@ pd-lua was originally written by Claude Heiland-Allen, with contributions by Fra
 
 Martin Peach took over maintenance of pd-lua in 2011, you can find that part of the history in Pd's old [svn repository](https://sourceforge.net/p/pure-data/svn/HEAD/tree/trunk/externals/loaders/pdlua/) at SourceForge, including IOhannes Zmölnig's loader update for Pd 0.47. The present source is a fork of IOhannes' repository at <https://anonscm.debian.org/git/pkg-multimedia/pd-lua.git>, from which the official Debian packages are built. This in turn is apparently based on the 0.7.3 version of pd-lua in Pd's svn repository.
 
-Apart from the loader update, it seems that pd-lua has been in maintenance mode since 2014, when Martin added Lua 5.2 support, so functionality-wise all these variants shouldn't differ. However, neither Claude's upstream nor the version maintained by Martin and IOhannes have ever been updated for the latest Lua versions. The present version is actively maintained, works with Lua 5.3 and later, and you're invited to submit bug reports to help with keeping pd-lua current and useful to Pd and Lua programmers.
+Apart from the loader update, it seems that pd-lua has been in maintenance mode since 2014, when Martin added Lua 5.2 support, so functionality-wise all these variants shouldn't differ. However, neither Claude's upstream nor the version maintained by Martin and IOhannes have ever been updated for the latest Lua versions. The present version is actively maintained, works with Lua 5.3 and later, and you're invited to submit bug reports and pull requests to help with keeping pd-lua current and useful to Pd and Lua programmers.
 
 ## Installation
 
-Released source tarballs and binaries for Mac and Windows can be found on the [Releases page](https://github.com/agraef/pd-lua/releases).
+Released source tarballs and binaries for Ubuntu, Mac and Windows can be found on the [Releases page](https://github.com/agraef/pd-lua/releases).
 
 Building and installing from source is quite easy, once you have the requisite development environment (gcc/make on Linux, Xcode on Mac, mingw on Windows) and dependencies (Lua, Pd) installed. Instructions can be found in the [README](https://github.com/agraef/pd-lua/blob/master/README).
 
