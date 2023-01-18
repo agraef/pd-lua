@@ -5,7 +5,7 @@ The present version has been forked from [umlaeute's repository](https://anonscm
 
 **Quick links:**
 
-- [**Downloads**](https://github.com/agraef/pd-lua/releases): This is where you find source tarballs and binaries for **Mac and Windows**. These are ready to be used with vanilla [Pd][]; [Purr Data][] already includes pd-lua and has it enabled by default.
+- [**Downloads**](https://github.com/agraef/pd-lua/releases): This is where you find source tarballs and binaries for **Ubuntu**, **Mac and Windows**. These are ready to be used with vanilla [Pd][]; [Purr Data][] already includes pd-lua and has it enabled by default.
 
 - [**Arch packages**](https://www.archlinux.org/): pd-lua is available in the official [Arch community repositories](https://www.archlinux.org/packages/community/x86_64/pd-lua/), and also from the [AUR](https://aur.archlinux.org/packages/pd-lua-git/); the latter builds pd-lua straight from the current git sources.
 
