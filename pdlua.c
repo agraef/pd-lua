@@ -2031,7 +2031,7 @@ void pdlua_setup(void)
     nw_gui_vmess = dlsym(RTLD_DEFAULT, "gui_vmess");
 #endif
     if (nw_gui_vmess)
-      post("pdlua: using JavaScript interface (Pd-l2ork nw.js version)");
+      post("pdlua: using JavaScript interface (nw.js)");
 #endif
 
 }
