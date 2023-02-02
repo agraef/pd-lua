@@ -6,5 +6,5 @@
 #X text 10 70 DESCRIPTION lua loader for pd;
 #X text 10 90 AUTHOR Claude Heiland-Allen \, Frank Barknecht \, Martin
 Peach \, IOhannes m zmölnig \, Albert Gräf;
-#X text 10 123 VERSION 0.11.4;
+#X text 10 123 VERSION 0.11.5;
 #X restore 10 20 pd META;
