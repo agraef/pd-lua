@@ -4,7 +4,7 @@
 Albert Gräf \<<aggraef@gmail.com>\>  
 Computer Music Dept., Institute of Art History and Musicology  
 Johannes Gutenberg University (JGU) Mainz, Germany  
-January 2023
+February 2023
 
 This document is licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). Other formats: [Markdown](https://github.com/agraef/pd-lua/blob/master/tutorial/pd-lua-intro.md) source, [PDF](https://github.com/agraef/pd-lua/blob/master/pdlua/tutorial/pd-lua-intro.pdf)  
 Permanent link: <https://agraef.github.io/pd-lua/tutorial/pd-lua-intro.html>
@@ -918,11 +918,11 @@ You get the idea. Getting set up for remote control via `pdsend` isn't much hard
 
 ![Remote control 1](15-remote-control1.png)
 
-You can then use `pdsend 4711 localhost udp` to transmit the `reload` message to Pd when needed. You probably don't want to run those commands yourself, but a decent code editor will let you bind a keyboard command which does this for you. Myself, I'm a die-hard Emacs fan, so I've included a little elisp module pdlua-remote.el in the accompanying examples which shows how to do this. Once you've added this to your .emacs, you can just type Ctrl+C Ctrl+K in Emacs to make Pd reload your Lua script after saving it. It doesn't get much easier than that. Moreover, for your convenience I've added a little gop abstraction named pdlua-remote.pd which takes care of the `netreceive` and messaging bits and will look much tidier in your patches.
+You can then use `pdsend 4711 localhost udp` to transmit the `reload` message to Pd when needed. You probably don't want to run those commands yourself, but a decent code editor will let you bind a keyboard command which does this for you. Myself, I'm a die-hard Emacs fan, so I've included a little elisp module pd-remote.el in the accompanying examples which shows how to do this. Once you've added this to your .emacs, you can just type Ctrl+C Ctrl+K in Emacs to make Pd reload your Lua script after saving it. It doesn't get much easier than that. Moreover, for your convenience I've added a little abstraction named pd-remote.pd which takes care of the `netreceive` and messaging bits and will look much tidier in your patches.
 
 ---
 
-**NOTE:** To use these facilities in your own patches, you'll have to copy pdx.lua and pdlua-remote.pd to your project directory or some other place where Pd finds them. The pdlua-remote.el file can be installed in your Emacs site-lisp directory if needed.
+**NOTE:** To use these facilities in your own patches, you'll have to copy pdx.lua and pd-remote.pd to your project directory or some other place where Pd finds them. The pd-remote.el file can be installed in your Emacs site-lisp directory if needed. Please also check the [pd-remote](https://github.com/agraef/pd-remote) repository on GitHub for the latest pd-remote version and further details. This also includes a pointer to a Visual Studio Code extension written by Baris Altun which can be used as a replacement for pd-remote.el if you're not familiar with Emacs, or just prefer to use VS Code as an editor.
 
 ---
 
