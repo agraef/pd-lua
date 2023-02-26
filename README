@@ -72,9 +72,9 @@ official Debian packages are built. This in turn is apparently based on the
 
 The current version (0.8 and later) is actively maintained by Albert Gräf
 <aggraef@gmail.com>, with contributions by Claude Heiland-Allen (Lua 5.4
-update, bugfixes), Alexandre Porres (documentation updates), and others.
-This is also the version included in Porres' ELSE library
-(https://github.com/porres/pd-else) and Timothy Schoen's plugdata
+update, bugfixes), Alexandre Porres (documentation updates), sebshader (relative path loading), and Timothy Schoen (plugdata compatibility).
+This is also the version included in Purr Data
+(https://github.com/agraef/purr-data) and Timothy Schoen's plugdata
 (https://github.com/plugdata-team/plugdata).
 
 Please file bugs and requests at https://github.com/agraef/pd-lua. I maintain
