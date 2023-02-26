@@ -1,7 +1,7 @@
 
 **pd-lua** is Claude Heiland-Allen's [Pd][] loader extension for the [Lua][] scripting language. In a nutshell, it lets you program Pd objects in Lua.
 
-The present version has been forked from [umlaeute's repository](https://anonscm.debian.org/git/pkg-multimedia/pd-lua.git) on Debian's Salsa server. It provides Lua 5.3+ compatibility, support for [Purr Data][] (a modern flavor of Pd) and [plugdata][] (another modern flavor of Pd which can also be run as a plug-in inside a DAW), some compilation fixes to make sure that the source builds on current systems (Linux, macOS, Windows), various bug fixes, and, last but not least, a [tutorial][] to help you get started using pd-lua. Moreover, it includes the latest help and example patches which have been updated and reorganized by Alexandre Porres (whose [ELSE][] collection now also includes a recent revision of the pd-lua version found in this repository).
+The present version has been forked from [umlaeute's repository](https://anonscm.debian.org/git/pkg-multimedia/pd-lua.git) on Debian's Salsa server. It provides Lua 5.3+ compatibility, support for [Purr Data][] (a modern flavor of Pd) and [plugdata][] (another modern flavor of Pd which can also be run as a plug-in inside a DAW), some compilation fixes to make sure that the source builds on current systems (Linux, macOS, Windows), various bug fixes, and, last but not least, a [tutorial][] to help you get started using pd-lua. Moreover, it includes the latest help and example patches which have been updated and reorganized by Alexandre Porres.
 
 **Quick links:**
 
