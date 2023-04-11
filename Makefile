@@ -48,5 +48,8 @@ include Makefile.pdlibbuilder
 
 install: installplus
 
+installplus: $(if $(executables), install-executables)
+installplus: $(if $(datafiles), install-datafiles)
+installplus: $(if $(datadirs), install-datadirs)
 installplus:
 	cp -r ./pdlua/ "${installpath}"/pdlua
