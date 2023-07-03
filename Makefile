@@ -44,7 +44,8 @@ pdlua.class.ldlibs := $(lualibs)
 
 datafiles = pd.lua $(wildcard pdlua*-help.pd)
 
-include Makefile.pdlibbuilder
+PDLIBBUILDER_DIR=.
+include $(PDLIBBUILDER_DIR)/Makefile.pdlibbuilder
 
 install: installplus
 
