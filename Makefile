@@ -52,4 +52,5 @@ include $(PDLIBBUILDER_DIR)/Makefile.pdlibbuilder
 install: installplus
 
 installplus:
+	$(INSTALL_DIR) -v "$(installpath)"
 	cp -r ./pdlua/ "${installpath}"/pdlua
