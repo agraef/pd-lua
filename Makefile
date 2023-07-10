@@ -17,11 +17,13 @@ pdlua_version := $(shell git describe --tags 2>/dev/null)
 
 luasrc = $(wildcard lua/onelua.c)
 
+PKG_CONFIG ?= pkg-config
+
 ifeq ($(luasrc),)
 # compile with installed liblua
 $(info ++++ NOTE: using installed lua)
-luaflags = $(shell pkg-config --cflags lua)
-lualibs = $(shell pkg-config --libs lua)
+luaflags = $(shell $(PKG_CONFIG) --cflags lua)
+lualibs = $(shell $(PKG_CONFIG) --libs lua)
 else
 # compile with Lua submodule
 $(info ++++ NOTE: using lua submodule)
@@ -44,7 +46,8 @@ pdlua.class.ldlibs := $(lualibs)
 
 datafiles = pd.lua $(wildcard pdlua*-help.pd)
 
-include Makefile.pdlibbuilder
+PDLIBBUILDER_DIR=.
+include $(PDLIBBUILDER_DIR)/Makefile.pdlibbuilder
 
 install: installplus
 
