@@ -1,3 +1,89 @@
+pd-lua (0.11.6+ds1-1) unstable; urgency=medium
+
+  * New upstream version 0.11.6+ds1
+    + Drop obsolete patches
+    + Switch buildsystem to pd-lib-builder
+    + Add patch for cross-building
+    + B-D on liblua5.4-dev
+  * Build for both single and double-precision Pd
+  * Repack upstream sources
+    + Exclude repository config from source tarball
+    + Exclude generated documentation
+    + Add '+ds' repacksuffix
+  * Update upstream information
+    + Update upstream contact
+    + Watch new upstream repository
+  * Update copyright information
+    + Update d/copyright
+    + Exclude binary files from 'licensecheck'
+    + Re-generate d/copyright_hints
+  * Apply 'wrap-and-sort -ast'
+  * Bump standards version to 4.6.2
+
+ -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Wed, 05 Jul 2023 15:02:17 +0200
+
+pd-lua (0.7.3-6) unstable; urgency=medium
+
+  * Modernize 'licensecheck' target
+    + Ensure that 'licensecheck' is run with the C.UTF-8 locale
+    + Exclude debian/ from 'licensecheck'
+    + Re-generate d/copyright_hints
+
+ -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Wed, 07 Dec 2022 10:47:01 +0100
+
+pd-lua (0.7.3-5) unstable; urgency=medium
+
+  * Apply "warp-and-sort -ast"
+  * Bump standards version to 4.6.1
+
+ -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Sun, 04 Sep 2022 13:55:19 +0200
+
+pd-lua (0.7.3-4) unstable; urgency=medium
+
+  [ Debian Janitor ]
+  * Set upstream metadata fields: Archive, Bug-Database, Bug-Submit,
+    Repository, Repository-Browse.
+
+  [ IOhannes m zmölnig (Debian/GNU) ]
+  * Add salsa-ci configuration
+  * Bump dh-compat to 13
+  * Bump standards version to 4.5.0
+
+ -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Wed, 19 Aug 2020 21:48:05 +0200
+
+pd-lua (0.7.3-3) unstable; urgency=medium
+
+  [ Ondřej Nový ]
+  * Use debhelper-compat instead of debian/compat
+
+  [ IOhannes m zmölnig ]
+  * Fix FTCBFS
+    + Supply pkg-config from dpkg's buildtools.mk
+    + Don't strip during make install.
+    Thanks to Helmut Grohne <helmut@subdivi.de> (Closes: #930944)
+  * Declare that building this package doesn't require "root" powers
+  * Remove obsolete d/source/local-options
+  * Bump dh compat to 12
+  * Bump standards version to 4.4.0
+
+ -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Wed, 11 Sep 2019 15:40:38 +0200
+
+pd-lua (0.7.3-2) unstable; urgency=medium
+
+  * Switched buildsystem from dh to cdbs
+    * Bumped dh compat to 11
+    * Enabled hardening
+  * Fixed spelling of 'Lua'
+  * Updated Vcs-* stanzas to salsa.d.o
+  * Updated maintainer address
+  * Switched URLs to https://
+  * Removed obsolete d/git-tuneclone.sh
+    * Dropped d/README.source from docs
+  * Updated d/copyright_hints
+  * Bumped standards version to 4.1.3
+
+ -- IOhannes m zmölnig (Debian/GNU) <umlaeute@debian.org>  Thu, 01 Feb 2018 23:19:43 +0100
+
 pd-lua (0.7.3-1) unstable; urgency=medium
 
   * Imported Upstream version 0.7.3

@@ -1,0 +1,19 @@
+Description: Use Debian-provided Makefile.pdlibbuilder
+Author: IOhannes m zmölnig
+Origin: Debian
+Bug: https://github.com/agraef/pd-lua/issues/32
+Last-Update: 2023-07-03
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- pd-lua.orig/Makefile
++++ pd-lua/Makefile
+@@ -44,7 +44,8 @@
+ 
+ datafiles = pd.lua $(wildcard pdlua*-help.pd)
+ 
+-include Makefile.pdlibbuilder
++PDLIBBUILDER_DIR=.
++include $(PDLIBBUILDER_DIR)/Makefile.pdlibbuilder
+ 
+ install: installplus
+ 

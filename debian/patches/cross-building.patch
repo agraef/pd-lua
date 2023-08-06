@@ -1,0 +1,26 @@
+Description: Allow cross-building of the package
+ by making pkg-config overridable
+Author: IOhannes m zmölnig
+Origin: Debian
+Forwarded: https://github.com/agraef/pd-lua/pull/33
+Last-Update: 2023-07-03
+---
+This patch header follows DEP-3: http://dep.debian.net/deps/dep3/
+--- pd-lua.orig/Makefile
++++ pd-lua/Makefile
+@@ -16,12 +16,13 @@
+ pdlua_version := $(shell git describe --tags 2>/dev/null)
+ 
+ luasrc = $(wildcard lua/onelua.c)
++PKG_CONFIG ?= pkg-config
+ 
+ ifeq ($(luasrc),)
+ # compile with installed liblua
+ $(info ++++ NOTE: using installed lua)
+-luaflags = $(shell pkg-config --cflags lua)
+-lualibs = $(shell pkg-config --libs lua)
++luaflags = $(shell $(PKG_CONFIG) --cflags lua)
++lualibs = $(shell $(PKG_CONFIG) --libs lua)
+ else
+ # compile with Lua submodule
+ $(info ++++ NOTE: using lua submodule)

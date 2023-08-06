@@ -1,4 +1,0 @@
-*.pd_*		usr/lib/pd/extra/pdlua/
-*.lua		usr/lib/pd/extra/pdlua/
-*.pd		usr/lib/pd/extra/pdlua/
-examples/	usr/lib/pd/extra/pdlua/

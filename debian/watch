@@ -1,4 +1,7 @@
-# to be processed with uscan(1)
-version=3
-http://sf.net/pure-data/pdlua-(.*)\.tar\.gz
-
+# Run the "uscan" command to check for upstream updates and more.
+version=4
+opts=\
+uversionmangle=s/-/./;s/test/~test/,\
+repacksuffix=+ds,\
+dversionmangle=auto \
+  https://github.com/agraef/pd-lua/tags .*/v?@ANY_VERSION@@ARCHIVE_EXT@

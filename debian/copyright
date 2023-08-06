@@ -1,7 +1,11 @@
-Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: pdlua
-Upstream-Contact: Martin Peach <martin.peach@sympatico.ca>
-Source: https://svn.code.sf.net/p/pure-data/svn/trunk/externals/loaders/pdlua
+Upstream-Contact: Albert Gräf <aggraef@gmail.com>
+Source: https://github.com/agraef/pd-lua/
+Files-Excluded:
+  .git*
+  tutorial/pd-lua-intro.html
+  pdlua/tutorial/pd-lua-intro.pdf
 
 Files: *
 Copyright:
@@ -9,10 +13,11 @@ Copyright:
  2007, Frank Barknecht
  2011-2014, Martin Peach <martin.peach@sympatico.ca>
  2014-2016, IOhannes m zmölnig
+ 2017-2023, Albert Gräf <aggraef@gmail.com>
 License: GPL-2+
 
 Files: debian/*
-Copyright: 2014, IOhannes m zmölnig <umlaeute@debian.org>
+Copyright: 2014-2023, IOhannes m zmölnig <umlaeute@debian.org>
 License: GPL-2+
 
 License: GPL-2+
@@ -30,4 +35,4 @@ Comment:
  License version 2 can be found in "/usr/share/common-licenses/GPL-2".
  .
  You should have received a copy of the GNU General Public License
- along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.

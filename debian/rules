@@ -1,29 +1,36 @@
 #!/usr/bin/make -f
-# -*- mode: makefile; coding: utf-8 -*-
-# Copyright © 2011-2014 IOhannes m zmölnig <zmoelnig@iem.at>
-# Description: Main Debian packaging script for pd-lua
-#
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2, or (at your option)
-# any later version.
-#
-# This program is distributed in the hope that it will be useful, but
-# WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# Copyright © 2010 Hans-Christoph Steiner <hans@eds.org>
+# Copyright © 2018 IOhannes m zmölnig <umlaeute@debian.org>
 
-include /usr/share/cdbs/1/rules/debhelper.mk
-include /usr/share/cdbs/1/class/makefile.mk
-include /usr/share/cdbs/1/class/pd.mk
-include /usr/share/cdbs/1/rules/utils.mk
+#enable hardening
+export DEB_BUILD_MAINT_OPTIONS=hardening=+all
 
-BUILD_DATE=$(shell date -u -d "$$(dpkg-parsechangelog -SDate)" +"for Debian on %Y/%m/%d at %H:%M:%S UTC")
+pkglibdir = /usr/lib/pd/extra
 
-CPPFLAGS+=-DBUILD_DATE='\"$(BUILD_DATE)\"'
-CFLAGS+=$(shell pkg-config --cflags lua5.2 pd)
-LIBS+=$(shell   pkg-config --libs lua5.2 pd)
-DEB_MAKE_EXTRA_ARGS = CPPFLAGS="$(CPPFLAGS)" LUA_CFLAGS="$(CFLAGS)" LUA_LIBS="$(LIBS)" LDFLAGS="$(LDFLAGS)" $(DEB_MAKE_PARALLEL)
+DATE_FMT = compiled for Debian on %Y/%m/%d at %H:%M:%S UTC
+ifdef SOURCE_DATE_EPOCH
+    BUILD_DATE ?= $(shell date -u -d "@$(SOURCE_DATE_EPOCH)" "+$(DATE_FMT)" 2>/dev/null || date -u -r "$(SOURCE_DATE_EPOCH)" "+$(DATE_FMT)" 2>/dev/null || date -u "+$(DATE_FMT)")
+else
+    BUILD_DATE ?= $(shell date "+$(DATE_FMT)")
+endif
+
+DEB_CPPFLAGS_MAINT_APPEND = -DBUILD_DATE="$(BUILD_DATE)"
+
+%:
+	dh $@ --buildsystem=pd_lib_builder
+
+override_dh_auto_build:
+	dh_auto_build -- pdlua_version="$(DEB_VERSION)"
+
+
+DEB_COPYRIGHT_CHECK_IGNORE_REGEX = \
+	debian/.*|tutorial/.*\.(png|gif)
+# licensecheck v1
+.PHONY: licensecheck
+licensecheck:
+	LANG=C.UTF-8 licensecheck \
+		-i "^($(DEB_COPYRIGHT_CHECK_IGNORE_REGEX))$$" \
+		--check '.*' --recursive --deb-machine --lines 0 * \
+		> debian/copyright_newhints
+	cmp debian/copyright_hints debian/copyright_newhints \
+		&& rm debian/copyright_newhints
