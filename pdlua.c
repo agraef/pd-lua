@@ -50,6 +50,7 @@
 #include "m_pd.h"
 #include "s_stuff.h" // for sys_register_loader()
 #include "m_imp.h" // for struct _class
+#include "g_canvas.h"
 /* BAD: support for Pd < 0.41 */
 
 #include "pdlua_gfx.h"
@@ -663,6 +664,30 @@ static void pdlua_getrect(t_gobj *z, t_glist *glist, int *xp1, int *yp1, int *xp
 }
 
 void pdlua_vis(t_gobj *z, t_glist *glist, int vis){
+    if(!((t_pdlua *)z)->has_gui)
+    {
+        t_text *x = (t_text *)z;
+        if (vis)
+        {
+            if (gobj_shouldvis(&x->te_g, glist))
+            {
+                t_rtext *y = glist_findrtext(glist, x);
+                text_drawborder(x, glist, rtext_gettag(y),
+                    rtext_width(y), rtext_height(y), 1);
+                rtext_draw(y);
+            }
+        }
+        else
+        {
+            t_rtext *y = glist_findrtext(glist, x);
+            if (gobj_shouldvis(&x->te_g, glist))
+            {
+                text_eraseborder(x, glist, rtext_gettag(y));
+                rtext_erase(y);
+            }
+        }
+        return;
+    }
     if(vis)
     {
         pdlua_gfx_repaint((t_object*)z);
@@ -876,6 +901,8 @@ static int pdlua_object_creategui(lua_State *L)
     {
         gfx_initialize(o);
     }
+    
+    return 0;
 }
 
 /** Lua object inlet creation. */

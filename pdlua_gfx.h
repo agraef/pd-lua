@@ -1,5 +1,3 @@
-#include <g_canvas.h>
-
 typedef struct _pdlua_gfx
 {
 #if !PLUGDATA
@@ -647,7 +645,6 @@ static int line_to(lua_State* L) {
     int x = luaL_checknumber(L, 1);
     int y = luaL_checknumber(L, 2);
 
-            
     gfx->path_segments[gfx->num_path_segments][0] = x;
     gfx->path_segments[gfx->num_path_segments][1] = y;
     gfx->num_path_segments++;
