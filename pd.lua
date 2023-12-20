@@ -77,6 +77,33 @@ pd._dispatcher = function (object, inlet, sel, atoms)
   end
 end
 
+-- repaint method dispatcher
+pd._repaint = function (object)
+  local obj = pd._objects[object]
+  if nil ~= obj then
+    obj:repaint();
+  end
+end
+
+-- mouse event dispatcher
+pd._mouseevent = function (object, x, y, event_type)
+  if nil ~= pd._objects[object] then
+    local obj = pd._objects[object]
+    if event_type == 0 and type(obj.mouse_down) == "function" then
+      obj:mouse_down(x, y)
+    end
+    if event_type == 1 and type(obj.mouse_up) == "function" then
+      obj:mouse_up(x, y)
+    end
+    if event_type == 2 and type(obj.mouse_move) == "function" then
+      obj:mouse_move(x, y)
+    end
+    if event_type == 3 and type(obj.mouse_drag) == "function" then
+      obj:mouse_drag(x, y)
+    end
+  end
+end
+
 -- clock method dispatcher
 pd._clockdispatch = function (c)
   if nil ~= pd._clocks[c] then
@@ -335,6 +362,14 @@ function pd.Class:outlet(outlet, sel, atoms)
 end
 
 function pd.Class:initialize(sel, atoms) end
+
+function pd.Class:repaint() 
+  if type(self.paint) == "function" then 
+    gfx._start_paint();
+    self:paint();
+    gfx._end_paint();
+  end
+end
 
 function pd.Class:postinitialize() end
 
