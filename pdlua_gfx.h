@@ -6,6 +6,7 @@ typedef struct _pdlua_gfx
     char active_tags[128][128];
     int num_tags;
     int current_red, current_green, current_blue;
+    int mouse_x, mouse_y, mouse_up;
 #endif
     
     int has_gui;
@@ -343,6 +344,38 @@ static int restore(lua_State* L) {
 }
 #else
 
+static int max(int a, int b) {
+    return (a > b) ? a : b;
+}
+
+static int min(int a, int b) {
+    return (a < b) ? a : b;
+}
+
+static void get_bounds_args(lua_State* L, t_object* obj, t_pdlua_gfx* gfx, int* x1, int* y1, int* x2, int* y2) {
+    t_canvas* cnv = get_pdlua_canvas(obj);
+    
+    int x = luaL_checknumber(L, 1);
+    int y = luaL_checknumber(L, 2);
+    int w = luaL_checknumber(L, 3);
+    int h = luaL_checknumber(L, 4);
+    
+    // Calculate the clipped rectangle
+    x = min(max(x, 0), gfx->width - w);
+    y = min(max(y, 0), gfx->height - h);
+    w = min(x + w, gfx->width) - x;
+    h = min(y + h, gfx->height) - y;
+    
+    x += text_xpix(obj, cnv);
+    y += text_ypix(obj, cnv);
+    
+    *x1 = x;
+    *y1 = y;
+    *x2 = x + w;
+    *y2 = y + h;
+}
+
+
 static const char* register_drawing(t_object* object)
 {
     t_pdlua_gfx* gfx = get_pdlua_gfx_state(object);
@@ -351,6 +384,7 @@ static const char* register_drawing(t_object* object)
     
     return gfx->active_tags[gfx->num_tags++];
 }
+
 
 static int gfx_initialize(lua_State* L)
 {
@@ -393,10 +427,8 @@ static int fill_ellipse(lua_State* L) {
     t_pdlua_gfx* gfx = get_pdlua_gfx_state(obj);
     t_canvas* cnv = get_pdlua_canvas(obj);
     
-    int x1 = text_xpix(obj, cnv) + luaL_checknumber(L, 1);
-    int y1 = text_ypix(obj, cnv) + luaL_checknumber(L, 2);
-    int x2 = x1 + luaL_checknumber(L, 3);
-    int y2 = y1 + luaL_checknumber(L, 4);
+    int x1, y1, x2, y2;
+    get_bounds_args(L, obj, gfx, &x1, &y1, &x2, &y2);
     
     const char* tags[] = { register_drawing(obj) };
     
@@ -412,10 +444,8 @@ static int stroke_ellipse(lua_State* L) {
     t_pdlua_gfx* gfx = get_pdlua_gfx_state(obj);
     t_canvas* cnv = get_pdlua_canvas(obj);
 
-    int x1 = text_xpix(obj, cnv) + luaL_checknumber(L, 1);
-    int y1 = text_ypix(obj, cnv) + luaL_checknumber(L, 2);
-    int x2 = x1 + luaL_checknumber(L, 3);
-    int y2 = y1 + luaL_checknumber(L, 4);
+    int x1, y1, x2, y2;
+    get_bounds_args(L, obj, gfx, &x1, &y1, &x2, &y2);
     
     const char* tags[] = { register_drawing(obj) };
     
@@ -450,10 +480,8 @@ static int fill_rect(lua_State* L) {
     t_pdlua_gfx* gfx = get_pdlua_gfx_state(obj);
     t_canvas* cnv = get_pdlua_canvas(obj);
     
-    int x1 = text_xpix(obj, cnv) + luaL_checknumber(L, 1);
-    int y1 = text_ypix(obj, cnv) + luaL_checknumber(L, 2);
-    int x2 = x1 + luaL_checknumber(L, 3);
-    int y2 = y1 + luaL_checknumber(L, 4);
+    int x1, y1, x2, y2;
+    get_bounds_args(L, obj, gfx, &x1, &y1, &x2, &y2);
     
     const char* tags[] = { register_drawing(obj) };
     
@@ -469,10 +497,8 @@ static int stroke_rect(lua_State* L) {
     t_pdlua_gfx* gfx = get_pdlua_gfx_state(obj);
     t_canvas* cnv = get_pdlua_canvas(obj);
     
-    int x1 = text_xpix(obj, cnv) + luaL_checknumber(L, 1);
-    int y1 = text_ypix(obj, cnv) + luaL_checknumber(L, 2);
-    int x2 = x1 + luaL_checknumber(L, 3);
-    int y2 = y1 + luaL_checknumber(L, 4);
+    int x1, y1, x2, y2;
+    get_bounds_args(L, obj, gfx, &x1, &y1, &x2, &y2);
 
     const char* tags[] = { register_drawing(obj) };
     
@@ -488,10 +514,9 @@ static int fill_rounded_rect(lua_State* L) {
     t_pdlua_gfx* gfx = get_pdlua_gfx_state(obj);
     t_canvas* cnv = get_pdlua_canvas(obj);
     
-    int x1 = text_xpix(obj, cnv) + luaL_checknumber(L, 1);
-    int y1 = text_ypix(obj, cnv) + luaL_checknumber(L, 2);
-    int x2 = x1 + luaL_checknumber(L, 3);
-    int y2 = y1 + luaL_checknumber(L, 4);
+    int x1, y1, x2, y2;
+    get_bounds_args(L, obj, gfx, &x1, &y1, &x2, &y2);
+
     int radius = luaL_checknumber(L, 5);  // Radius for rounded corners
     
     const char* tags[] = { register_drawing(obj) };
@@ -515,10 +540,9 @@ static int stroke_rounded_rect(lua_State* L) {
     t_pdlua_gfx* gfx = get_pdlua_gfx_state(obj);
     t_canvas* cnv = get_pdlua_canvas(obj);
     
-    int x1 = text_xpix(obj, cnv) + luaL_checknumber(L, 1);
-    int y1 = text_ypix(obj, cnv) + luaL_checknumber(L, 2);
-    int x2 = x1 + luaL_checknumber(L, 3);
-    int y2 = y1 + luaL_checknumber(L, 4);
+    int x1, y1, x2, y2;
+    get_bounds_args(L, obj, gfx, &x1, &y1, &x2, &y2);
+
     int radius = luaL_checknumber(L, 5);  // Radius for rounded corners
     
     const char* tags[] = { register_drawing(obj) };

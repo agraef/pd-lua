@@ -594,6 +594,45 @@ static void pdlua_free( t_pdlua *o /**< The object to destruct. */)
     return;
 }
 
+
+static void pdlua_key(void *z, t_symbol *keysym, t_floatarg fkey){
+    
+}
+
+static void pdlua_motion(void *z, t_floatarg dx, t_floatarg dy,
+    t_floatarg up)
+{
+    t_pdlua *x = (t_pdlua *)z;
+    x->gfx.mouse_x = x->gfx.mouse_x + dx;
+    x->gfx.mouse_y = x->gfx.mouse_y + dy;
+
+    if (up)
+    {
+        if(!x->gfx.mouse_up)
+        {
+            pdlua_gfx_mouse_up((t_object*)x, x->gfx.mouse_x, x->gfx.mouse_y);
+        }
+        pdlua_gfx_mouse_move((t_object*)x, x->gfx.mouse_x, x->gfx.mouse_y);
+    }
+    else {
+        if(x->gfx.mouse_up)
+        {
+            pdlua_gfx_mouse_down((t_object*)x, x->gfx.mouse_x, x->gfx.mouse_y);
+        }
+        pdlua_gfx_mouse_drag((t_object*)x, x->gfx.mouse_x, x->gfx.mouse_y);
+    }
+    
+    x->gfx.mouse_up = up;
+}
+
+static int pdlua_click(t_pdlua *x, t_glist *gl, int xpos, int ypos, int shift, int alt, int dbl, int doit){
+    alt = dbl = 0; // remove warning
+    if(doit){
+        glist_grab(x->canvas, &x->pd.te_g, (t_glistmotionfn)pdlua_motion, (t_glistkeyfn)pdlua_key, xpos, ypos);
+    }
+    return(1);
+}
+
 static void pdlua_getrect(t_gobj *z, t_glist *glist, int *xp1, int *yp1, int *xp2, int *yp2)
 {
     t_pdlua *x = (t_pdlua *)z;
@@ -735,7 +774,7 @@ static int pdlua_class_new(lua_State *L)
     pdlua_widgetbehavior.w_displacefn = text_widgetbehavior.w_displacefn;
     pdlua_widgetbehavior.w_selectfn   = text_widgetbehavior.w_selectfn;;
     pdlua_widgetbehavior.w_deletefn   = text_widgetbehavior.w_deletefn;
-    pdlua_widgetbehavior.w_clickfn    = text_widgetbehavior.w_clickfn;
+    pdlua_widgetbehavior.w_clickfn    = pdlua_click;
     pdlua_widgetbehavior.w_visfn      = text_widgetbehavior.w_visfn;
     pdlua_widgetbehavior.w_activatefn = NULL;
     class_setwidget(c, &pdlua_widgetbehavior);
