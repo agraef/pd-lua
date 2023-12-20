@@ -52,6 +52,8 @@
 #include "m_imp.h" // for struct _class
 /* BAD: support for Pd < 0.41 */
 
+#include "pdlua_gfx.h"
+
 #if PD_MAJOR_VERSION == 0
 # if PD_MINOR_VERSION >= 41
 #  define PDLUA_PD41
@@ -126,6 +128,7 @@ typedef struct pdlua
     int                     outlets; /**< Number of outlets. */
     t_outlet                **out; /**< The outlets themselves. */
     t_canvas                *canvas; /**< The canvas that the object was created on. */
+    t_pdlua_gfx             gfx;      /**< Holds state for graphics. */
 } t_pdlua;
 
 /** Proxy inlet object data. */
@@ -249,7 +252,7 @@ static int pdlua_loader_legacy (t_canvas *canvas, char *name);
 __declspec(dllexport)
 #endif 
 #ifdef PLUGDATA
-void pdlua_setup(const char *datadir, char *versbuf, int versbuf_length);
+void pdlua_setup(const char *datadir, char *versbuf, int versbuf_length, void* callback_target, void(*register_gui_callback)(void*, t_object*));
 #else
 void pdlua_setup (void);
 #endif
@@ -467,6 +470,7 @@ static t_pdlua *pdlua_new
             return NULL;
         }
     }
+        
     PDLUA_DEBUG("pdlua_new: start with stack top %d", lua_gettop(__L));
     lua_getglobal(__L, "pd");
     lua_getfield(__L, -1, "_checkbase");
@@ -541,6 +545,7 @@ static t_pdlua *pdlua_new
         }
         else pd_error(NULL, "lua: error loading `%s': canvas_open() failed", buf);
     }
+    
     PDLUA_DEBUG("pdlua_new: after load script. stack top %d", lua_gettop(__L));
     lua_getfield(__L, -1, "_constructor");
     lua_pushstring(__L, s->s_name);
@@ -588,6 +593,23 @@ static void pdlua_free( t_pdlua *o /**< The object to destruct. */)
     PDLUA_DEBUG("pdlua_free: end. stack top %d", lua_gettop(__L));
     return;
 }
+
+static void pdlua_getrect(t_gobj *z, t_glist *glist, int *xp1, int *yp1, int *xp2, int *yp2)
+{
+    t_pdlua *x = (t_pdlua *)z;
+    float x1 = text_xpix((t_text *)x, glist), y1 = text_ypix((t_text *)x, glist);
+    
+    if(x->gfx.has_gui) {
+        *xp1 = x1;
+        *yp1 = y1;
+        *xp2 = x1 + x->gfx.width;
+        *yp2 = y1 + x->gfx.height;
+    }
+    else {
+        text_widgetbehavior.w_getrectfn(x, glist, xp1, yp1, xp2, yp2);
+    }
+}
+
 
 #if 0
 static void pdlua_stack_dump (lua_State *L)
@@ -690,6 +712,8 @@ static void pdlua_menu_open(t_pdlua *o)
     PDLUA_DEBUG("pdlua_menu_open end. stack top is %d", lua_gettop(__L));
 }
 
+t_widgetbehavior pdlua_widgetbehavior;
+
 /** Lua class registration. This is equivalent to the "setup" method for an ordinary Pd class */
 static int pdlua_class_new(lua_State *L)
 /**< Lua interpreter state.
@@ -707,6 +731,15 @@ static int pdlua_class_new(lua_State *L)
     c = class_new(gensym((char *) name), (t_newmethod) pdlua_new,
         (t_method) pdlua_free, sizeof(t_pdlua), CLASS_NOINLET, A_GIMME, 0);
 
+    pdlua_widgetbehavior.w_getrectfn  = pdlua_getrect;
+    pdlua_widgetbehavior.w_displacefn = text_widgetbehavior.w_displacefn;
+    pdlua_widgetbehavior.w_selectfn   = text_widgetbehavior.w_selectfn;;
+    pdlua_widgetbehavior.w_deletefn   = text_widgetbehavior.w_deletefn;
+    pdlua_widgetbehavior.w_clickfn    = text_widgetbehavior.w_clickfn;
+    pdlua_widgetbehavior.w_visfn      = text_widgetbehavior.w_visfn;
+    pdlua_widgetbehavior.w_activatefn = NULL;
+    class_setwidget(c, &pdlua_widgetbehavior);
+    
 /* a class with a "menu-open" method will have the "Open" item highlighted in the right-click menu */
     if (c)
         class_addmethod(c, (t_method)pdlua_menu_open, gensym("menu-open"), A_NULL);/* (mrpeach 20111025) */
@@ -730,17 +763,31 @@ static int pdlua_object_new(lua_State *L)
     if (lua_islightuserdata(L, 1))
     {
         t_class *c = lua_touserdata(L, 1);
-        if (c)
+        if(c)
         {
             PDLUA_DEBUG("pdlua_object_new: path is %s", c->c_externdir->s_name);
             t_pdlua *o = (t_pdlua *) pd_new(c);
             if (o)
             {
+                // Write object ptr to registry to make it reliably accessible
+                lua_pushvalue(__L, LUA_REGISTRYINDEX);
+                lua_pushlightuserdata(__L, o);
+                lua_seti(__L, -2, PDLUA_OBJECT_REGISTRTY_ID);
+                lua_pop(__L, 1);
+                
                 o->inlets = 0;
                 o->in = NULL;
                 o->outlets = 0;
                 o->out = NULL;
                 o->canvas = canvas_getcurrent();
+                
+                o->gfx.width = 80;
+                o->gfx.height = 80;
+                o->gfx.has_gui = 0;
+#if !PLUGDATA
+                o->gfx.num_tags = 0;
+#endif
+                
                 lua_pushlightuserdata(L, o);
                 PDLUA_DEBUG("pdlua_object_new: success end. stack top is %d", lua_gettop(L));
                 return 1;
@@ -1030,12 +1077,22 @@ static void pdlua_dispatch
     lua_pushnumber(__L, inlet + 1); /* C has 0.., Lua has 1.. */
     lua_pushstring(__L, s->s_name);
     pdlua_pushatomtable(argc, argv);
+    
+    // Write object ptr to registry to make it reliably accessible
+    lua_pushvalue(__L, LUA_REGISTRYINDEX);
+    lua_pushlightuserdata(__L, o);     // Use a unique key for your userdata
+    lua_seti(__L, -2, PDLUA_OBJECT_REGISTRTY_ID); // Store the userdata in the registry
+    lua_pop(__L, 1);     // Pop the registry table from the stack
+    
     if (lua_pcall(__L, 4, 0, 0))
     {
         pd_error(o, "lua: error in dispatcher:\n%s", lua_tostring(__L, -1));
         lua_pop(__L, 1); /* pop the error string */
     }
     lua_pop(__L, 1); /* pop the global "pd" */
+    
+    
+    
     PDLUA_DEBUG("pdlua_dispatch: end. stack top %d", lua_gettop(__L));
     return;  
 }
@@ -1454,8 +1511,6 @@ static int pdlua_error(lua_State *L)
   * */
 {
     t_pdlua     *o;
-
-
     const char  *s;
 
     PDLUA_DEBUG("pdlua_error: stack top is %d", lua_gettop(L));
@@ -1862,6 +1917,22 @@ static int pdlua_loader_pathwise
 }
 
 
+
+lua_State* get_lua_state()
+{
+    return __L;
+}
+
+t_canvas* get_pdlua_canvas(t_object* x)
+{
+    return ((t_pdlua*)x)->canvas;
+}
+
+t_pdlua_gfx* get_pdlua_gfx_state(t_object* x)
+{
+    return &((t_pdlua*)x)->gfx;
+}
+
 #ifdef WIN32
 #include <windows.h>
 #else
@@ -1882,7 +1953,7 @@ static int pdlua_loader_pathwise
 __declspec(dllexport)
 #endif
 #ifdef PLUGDATA
-void pdlua_setup(const char *datadir, char *versbuf, int versbuf_length)
+void pdlua_setup(const char *datadir, char *versbuf, int versbuf_length, void* callback_target, void(*register_gui_callback)(void*, t_object*))
 #else
 void pdlua_setup(void)
 #endif
@@ -2022,6 +2093,13 @@ void pdlua_setup(void)
         pd_error(NULL, "lua: error loading `pd.lua': canvas_open() failed");
         pd_error(NULL, "lua: loader will not be registered!");
     }
+
+    initialize_graphics(__L);
+    
+#if PLUGDATA
+    set_gui_callback(callback_target, register_gui_callback);
+#endif
+
     PDLUA_DEBUG("pdlua_setup: end. stack top %d", lua_gettop(__L));
 #ifndef PLUGDATA
     /* nw.js support. */
