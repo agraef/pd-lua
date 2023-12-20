@@ -128,6 +128,7 @@ typedef struct pdlua
     int                     outlets; /**< Number of outlets. */
     t_outlet                **out; /**< The outlets themselves. */
     t_canvas                *canvas; /**< The canvas that the object was created on. */
+    int                     has_gui;  /**< True if graphics are enabled. */
     t_pdlua_gfx             gfx;      /**< Holds state for graphics. */
 } t_pdlua;
 
@@ -599,20 +600,23 @@ static void pdlua_key(void *z, t_symbol *keysym, t_floatarg fkey){
     
 }
 
+
 static void pdlua_motion(void *z, t_floatarg dx, t_floatarg dy,
     t_floatarg up)
 {
+#if !PLUGDATA
     t_pdlua *x = (t_pdlua *)z;
     x->gfx.mouse_x = x->gfx.mouse_x + dx;
     x->gfx.mouse_y = x->gfx.mouse_y + dy;
 
     if (up)
     {
+        pdlua_gfx_mouse_move((t_object*)x, x->gfx.mouse_x, x->gfx.mouse_y);
+        
         if(!x->gfx.mouse_up)
         {
             pdlua_gfx_mouse_up((t_object*)x, x->gfx.mouse_x, x->gfx.mouse_y);
         }
-        pdlua_gfx_mouse_move((t_object*)x, x->gfx.mouse_x, x->gfx.mouse_y);
     }
     else {
         if(x->gfx.mouse_up)
@@ -623,6 +627,7 @@ static void pdlua_motion(void *z, t_floatarg dx, t_floatarg dy,
     }
     
     x->gfx.mouse_up = up;
+#endif
 }
 
 static int pdlua_click(t_pdlua *x, t_glist *gl, int xpos, int ypos, int shift, int alt, int dbl, int doit){
@@ -633,12 +638,20 @@ static int pdlua_click(t_pdlua *x, t_glist *gl, int xpos, int ypos, int shift, i
     return(1);
 }
 
+static void pdlua_displace(t_pdlua *z, t_glist *glist, int dx, int dy){
+    t_pdlua *x = (t_pdlua *)z;
+    x->pd.te_xpix += dx, x->pd.te_ypix += dy;
+    dx *= glist_getzoom(glist), dy *= glist_getzoom(glist);
+    pdlua_gfx_repaint(z);
+    canvas_fixlinesfor(glist, (t_text*)x);
+}
+
+
 static void pdlua_getrect(t_gobj *z, t_glist *glist, int *xp1, int *yp1, int *xp2, int *yp2)
 {
     t_pdlua *x = (t_pdlua *)z;
-    float x1 = text_xpix((t_text *)x, glist), y1 = text_ypix((t_text *)x, glist);
-    
-    if(x->gfx.has_gui) {
+    if(x->has_gui) {
+        float x1 = text_xpix((t_text *)x, glist), y1 = text_ypix((t_text *)x, glist);
         *xp1 = x1;
         *yp1 = y1;
         *xp2 = x1 + x->gfx.width;
@@ -646,6 +659,16 @@ static void pdlua_getrect(t_gobj *z, t_glist *glist, int *xp1, int *yp1, int *xp
     }
     else {
         text_widgetbehavior.w_getrectfn(x, glist, xp1, yp1, xp2, yp2);
+    }
+}
+
+void pdlua_vis(t_gobj *z, t_glist *glist, int vis){
+    if(vis)
+    {
+        pdlua_gfx_repaint((t_object*)z);
+    }
+    else {
+        pdlua_gfx_clear((t_object*)z);
     }
 }
 
@@ -751,6 +774,7 @@ static void pdlua_menu_open(t_pdlua *o)
     PDLUA_DEBUG("pdlua_menu_open end. stack top is %d", lua_gettop(__L));
 }
 
+
 t_widgetbehavior pdlua_widgetbehavior;
 
 /** Lua class registration. This is equivalent to the "setup" method for an ordinary Pd class */
@@ -771,11 +795,11 @@ static int pdlua_class_new(lua_State *L)
         (t_method) pdlua_free, sizeof(t_pdlua), CLASS_NOINLET, A_GIMME, 0);
 
     pdlua_widgetbehavior.w_getrectfn  = pdlua_getrect;
-    pdlua_widgetbehavior.w_displacefn = text_widgetbehavior.w_displacefn;
+    pdlua_widgetbehavior.w_displacefn = pdlua_displace;
     pdlua_widgetbehavior.w_selectfn   = text_widgetbehavior.w_selectfn;;
     pdlua_widgetbehavior.w_deletefn   = text_widgetbehavior.w_deletefn;
     pdlua_widgetbehavior.w_clickfn    = pdlua_click;
-    pdlua_widgetbehavior.w_visfn      = text_widgetbehavior.w_visfn;
+    pdlua_widgetbehavior.w_visfn      = pdlua_vis;
     pdlua_widgetbehavior.w_activatefn = NULL;
     class_setwidget(c, &pdlua_widgetbehavior);
     
@@ -822,9 +846,16 @@ static int pdlua_object_new(lua_State *L)
                 
                 o->gfx.width = 80;
                 o->gfx.height = 80;
-                o->gfx.has_gui = 0;
+               
 #if !PLUGDATA
                 o->gfx.num_tags = 0;
+                o->gfx.num_path_segments = 0;
+                o->gfx.scale_x = 1.0f;
+                o->gfx.scale_y = 1.0f;
+                o->gfx.translate_x = 0;
+                o->gfx.translate_y = 0;
+                o->gfx.mouse_x = 0;
+                o->gfx.mouse_y = 0;
 #endif
                 
                 lua_pushlightuserdata(L, o);
@@ -835,6 +866,16 @@ static int pdlua_object_new(lua_State *L)
     }
     PDLUA_DEBUG("pdlua_object_new: fail end. stack top is %d", lua_gettop(L));
     return 0;
+}
+
+static int pdlua_object_creategui(lua_State *L)
+{
+    t_pdlua *o = lua_touserdata(L, 1);
+    o->has_gui = luaL_checknumber(L, 2);
+    if(o->has_gui)
+    {
+        gfx_initialize(o);
+    }
 }
 
 /** Lua object inlet creation. */
@@ -1774,6 +1815,9 @@ static void pdlua_init(lua_State *L)
     lua_settable(L, -3);
     lua_pushstring(L, "_createoutlets");
     lua_pushcfunction(L, pdlua_object_createoutlets);
+    lua_settable(L, -3);
+    lua_pushstring(L, "_creategui");
+    lua_pushcfunction(L, pdlua_object_creategui);
     lua_settable(L, -3);
     lua_pushstring(L, "_canvaspath");
     lua_pushcfunction(L, pdlua_object_canvaspath);

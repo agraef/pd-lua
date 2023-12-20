@@ -311,6 +311,7 @@ function pd.Class:construct(sel, atoms)
   if self:initialize(sel, atoms) then
     pd._createinlets(self._object, self.inlets)
     pd._createoutlets(self._object, self.outlets)
+    pd._creategui(self._object, self.gui)
     self:postinitialize()
     return self
   else
@@ -419,6 +420,7 @@ local lua = pd.Class:new():register("pdlua")  -- global controls (the [pdlua] ob
 
 function lua:initialize(sel, atoms)
   self.inlets = 1
+  self.gui = 0
   self.outlets = 0    -- FIXME: might be nice to have errors go here?
   return true
 end
