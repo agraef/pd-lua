@@ -98,16 +98,14 @@ static t_object* get_current_object(lua_State* L)
     lua_pushvalue(L, LUA_REGISTRYINDEX);
     lua_geti(L, -1, PDLUA_OBJECT_REGISTRTY_ID);
 
-    // Check if the value is a light userdata
     if (lua_islightuserdata(L, -1)) {
-        // Retrieve the userdata pointer
         return lua_touserdata(L, -1);
     }
     
     return NULL;
 }
 
-// Register C++ functions with Lua
+// Register functions with Lua
 static const luaL_Reg gfx[] = {
     {"set_color", set_color},
     {"fill_ellipse", fill_ellipse},
@@ -390,7 +388,6 @@ static int set_color(lua_State* L) {
     return 0;
 }
 
-
 static int fill_ellipse(lua_State* L) {
     t_object* obj = get_current_object(L);
     t_pdlua_gfx* gfx = get_pdlua_gfx_state(obj);
@@ -441,7 +438,7 @@ static int fill_all(lua_State* L) {
     
     const char* tags[] =  { register_drawing(obj) };
     
-    char hex_color[8];  // Assuming #RRGGBB format
+    char hex_color[8]; 
     snprintf(hex_color, sizeof(hex_color), "#%02X%02X%02X", gfx->current_red, gfx->current_green, gfx->current_blue);
 
     pdgui_vmess(0, "crr iiii rs rS", cnv, "create", "rectangle", x1, y1, x2, y2, "-fill", hex_color, "-tags", 1, tags);
@@ -460,7 +457,7 @@ static int fill_rect(lua_State* L) {
     
     const char* tags[] = { register_drawing(obj) };
     
-    char hex_color[8];  // Assuming #RRGGBB format
+    char hex_color[8]; 
     snprintf(hex_color, sizeof(hex_color), "#%02X%02X%02X", gfx->current_red, gfx->current_green, gfx->current_blue);
 
     pdgui_vmess(0, "crr iiii rs rS", cnv, "create", "rectangle", x1, y1, x2, y2, "-fill", hex_color, "-tags", 1, tags);
@@ -479,7 +476,7 @@ static int stroke_rect(lua_State* L) {
 
     const char* tags[] = { register_drawing(obj) };
     
-    char hex_color[8];  // Assuming #RRGGBB format
+    char hex_color[8];
     snprintf(hex_color, sizeof(hex_color), "#%02X%02X%02X", gfx->current_red, gfx->current_green, gfx->current_blue);
 
     pdgui_vmess(0, "crr iiii rs rS", cnv, "create", "rectangle", x1, y1, x2, y2, "-outline", hex_color, "-tags", 1, tags);
@@ -499,7 +496,7 @@ static int fill_rounded_rect(lua_State* L) {
     
     const char* tags[] = { register_drawing(obj) };
     
-    char hex_color[8];  // Assuming #RRGGBB format
+    char hex_color[8];
     snprintf(hex_color, sizeof(hex_color), "#%02X%02X%02X", gfx->current_red, gfx->current_green, gfx->current_blue);
 
     // Draw the main body of the rounded rectangle
@@ -526,7 +523,7 @@ static int stroke_rounded_rect(lua_State* L) {
     
     const char* tags[] = { register_drawing(obj) };
     
-    char hex_color[8];  // Assuming #RRGGBB format
+    char hex_color[8]; 
     snprintf(hex_color, sizeof(hex_color), "#%02X%02X%02X", gfx->current_red, gfx->current_green, gfx->current_blue);
 
     // Draw the main body of the rounded rectangle with an outline
