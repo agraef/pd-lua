@@ -1,25 +1,8 @@
-typedef struct _pdlua_gfx
-{
-#if !PLUGDATA
-    char object_tag[128];
-    char active_tags[128][128];
-    int num_tags;
-    
-    int path_segments[4096][2];
-    int num_path_segments;
-    int path_start_x, path_start_y;
-    int path_smooth;
-    
-    int mouse_x, mouse_y, mouse_up;
-    int translate_x, translate_y;
-    float scale_x, scale_y;
-    char current_color[8];
-#endif
-    int width, height;
-} t_pdlua_gfx;
 
-static int gfx_initialize(t_object* obj);
-static int start_paint(lua_State* L);
+static int gfx_initialize(t_pdlua *obj);
+
+static int set_size(lua_State *L);
+static int start_paint(lua_State *L);
 static int end_paint(lua_State* L);
 
 static int set_color(lua_State* L);
@@ -44,14 +27,16 @@ static int translate(lua_State* L);
 static int scale(lua_State* L);
 static int reset_transform(lua_State* L);
 
-void pdlua_gfx_clear(t_object* obj);
+void pdlua_gfx_clear(t_pdlua *obj);
 
-lua_State* get_lua_state();
-t_canvas* get_pdlua_canvas(t_object* object);
-t_pdlua_gfx* get_pdlua_gfx_state(t_object* object);
+typedef struct _pdlua_mouse_proxy{
+    t_object    p_obj;
+    t_symbol   *p_sym;
+    t_clock    *p_clock;
+    t_pdlua    *p_parent;
+}t_pdlua_mouse_proxy;
 
-void pdlua_gfx_repaint(t_object* o) {
-    lua_State* __L = get_lua_state();
+void pdlua_gfx_repaint(t_pdlua *o) {
     lua_getglobal(__L, "pd");
     lua_getfield (__L, -1, "_repaint");
     lua_pushlightuserdata(__L, o);
@@ -65,8 +50,7 @@ void pdlua_gfx_repaint(t_object* o) {
     lua_pop(__L, 1); /* pop the global "pd" */
 }
 
-void pdlua_gfx_mouse_event(t_object* o, int x, int y, int type) {
-    lua_State* __L = get_lua_state();
+void pdlua_gfx_mouse_event(t_pdlua *o, int x, int y, int type) {
     lua_getglobal(__L, "pd");
     lua_getfield (__L, -1, "_mouseevent");
     lua_pushlightuserdata(__L, o);
@@ -83,24 +67,24 @@ void pdlua_gfx_mouse_event(t_object* o, int x, int y, int type) {
     lua_pop(__L, 1); /* pop the global "pd" */
 }
 
-void pdlua_gfx_mouse_down(t_object* o, int x, int y) {
+void pdlua_gfx_mouse_down(t_pdlua *o, int x, int y) {
     pdlua_gfx_mouse_event(o, x, y, 0);
 }
-void pdlua_gfx_mouse_up(t_object* o, int x, int y) {
+void pdlua_gfx_mouse_up(t_pdlua *o, int x, int y) {
     pdlua_gfx_mouse_event(o, x, y, 1);
 }
 
-void pdlua_gfx_mouse_move(t_object* o, int x, int y) {
+void pdlua_gfx_mouse_move(t_pdlua *o, int x, int y) {
     pdlua_gfx_mouse_event(o, x, y, 2);
 }
 
-void pdlua_gfx_mouse_drag(t_object* o, int x, int y) {
+void pdlua_gfx_mouse_drag(t_pdlua *o, int x, int y) {
     pdlua_gfx_mouse_event(o, x, y, 3);
 }
 
 #define PDLUA_OBJECT_REGISTRTY_ID 512
 
-static t_object* get_current_object(lua_State* L)
+static t_pdlua* get_current_object(lua_State* L)
 {
     lua_pushvalue(L, LUA_REGISTRYINDEX);
     lua_geti(L, -1, PDLUA_OBJECT_REGISTRTY_ID);
@@ -114,6 +98,7 @@ static t_object* get_current_object(lua_State* L)
 
 // Register functions with Lua
 static const luaL_Reg gfx_lib[] = {
+    {"set_size", set_size},
     {"set_color", set_color},
     {"fill_ellipse", fill_ellipse},
     {"stroke_ellipse", stroke_ellipse},
@@ -140,46 +125,101 @@ static const luaL_Reg gfx_lib[] = {
 void* gui_target;
 void(*register_gui)(void*, t_object*);
 
+
 int set_gui_callback(void* callback_target, void(*callback)(void*, t_object*)) {
     gui_target = callback_target;
     register_gui = callback;
     return 0;
 }
 
-int initialize_graphics(lua_State* L) {
+#if !PLUGDATA
+t_class* pdlua_mouse_proxy_class;
+
+static void pdlua_mouse_proxy_any(t_pdlua_mouse_proxy *p, t_symbol*s, int ac, t_atom *av){
+    
+    if(s == gensym("motion") && ! p->p_parent->gfx.mouse_up)
+    {
+        t_canvas *cnv = p->p_parent->canvas;
+        int zoom = glist_getzoom(cnv);
+        int x = (int)(av->a_w.w_float / zoom);
+        int y = (int)((av+1)->a_w.w_float / zoom);
+        x -= text_xpix(p->p_parent, cnv);
+        y -= text_ypix(p->p_parent, cnv);
+       
+        if(x > 0 && y > 0 && x < p->p_parent->gfx.width && y < p->p_parent->gfx.height) {
+            pdlua_gfx_mouse_move(p->p_parent, x, y);
+        }
+    }
+}
+
+static void pdlua_mouse_proxy_free(t_pdlua_mouse_proxy *p){
+    pd_unbind(&p->p_obj.ob_pd, p->p_sym);
+    //clock_free(p->p_clock);
+    pd_free(&p->p_obj.ob_pd);
+}
+
+static t_pdlua_mouse_proxy *pdlua_mouse_proxy_new(t_pdlua *x, t_symbol *s){
+    t_pdlua_mouse_proxy *p = (t_pdlua_mouse_proxy*)pd_new(pdlua_mouse_proxy_class);
+    p->p_parent = x;
+    pd_bind(&p->p_obj.ob_pd, p->p_sym = s);
+    //p->p_clock = clock_new(p, (t_method)pdlua_mouse_proxy_free);
+    return(p);
+}
+#endif
+
+
+int pdlua_gfx_setup(lua_State* L) {
     // Register functions with Lua
     luaL_newlib(L, gfx_lib);
     lua_setglobal(L, "gfx");
+    
+#if !PLUGDATA
+    pdlua_mouse_proxy_class = class_new(0, 0, 0, sizeof(t_pdlua_mouse_proxy), CLASS_NOINLET | CLASS_PD, 0);
+    class_addanything(pdlua_mouse_proxy_class, pdlua_mouse_proxy_any);
+#endif
+    
     return 1; // Number of values pushed onto the stack
 }
 
 #if PLUGDATA
 void plugdata_forward_message(void* x, t_symbol *s, int argc, t_atom *argv);
 
-void pdlua_gfx_clear(t_object* obj) {
+void pdlua_gfx_clear(t_pdlua* obj) {
 }
 
-static int gfx_initialize(t_object* obj)
+static int gfx_initialize(t_pdlua* obj)
 {
     register_gui(gui_target, obj);
     pdlua_gfx_repaint(obj);
     return 0;
 }
 
+static int set_size(lua_State* L)
+{
+    t_pdlua* obj = get_current_object(L);
+    obj->gfx.width = luaL_checknumber(L, 1);
+    obj->gfx.height = luaL_checknumber(L, 2);
+    t_atom args[2];
+    SETFLOAT(args, luaL_checknumber(L, 1)); // w
+    SETFLOAT(args + 1, luaL_checknumber(L, 2)); // h
+    plugdata_forward_message(obj, gensym("lua_resized"), 2, args);
+    return 0;
+}
+
 static int start_paint(lua_State* L) {
-    t_object* obj = get_current_object(L);
+    t_pdlua* obj = get_current_object(L);
     plugdata_forward_message(obj, gensym("lua_start_paint"), 0, NULL);
     return 0;
 }
 
 static int end_paint(lua_State* L) {
-    t_object* obj = get_current_object(L);
+    t_pdlua* obj = get_current_object(L);
     plugdata_forward_message(obj, gensym("lua_end_paint"), 0, NULL);
     return 0;
 }
 
 static int set_color(lua_State* L) {
-    t_object* obj = get_current_object(L);
+    t_pdlua* obj = get_current_object(L);
     t_atom args[4];
     SETFLOAT(args, luaL_checknumber(L, 1)); // r
     SETFLOAT(args + 1, luaL_checknumber(L, 2)); // g
@@ -190,7 +230,7 @@ static int set_color(lua_State* L) {
 }
 
 static int fill_ellipse(lua_State* L) {
-    t_object* obj = get_current_object(L);
+    t_pdlua* obj = get_current_object(L);
     t_atom args[4];
     SETFLOAT(args, luaL_checknumber(L, 1)); // x
     SETFLOAT(args + 1, luaL_checknumber(L, 2)); // y
@@ -201,7 +241,7 @@ static int fill_ellipse(lua_State* L) {
 }
 
 static int stroke_ellipse(lua_State* L) {
-    t_object* obj = get_current_object(L);
+    t_pdlua* obj = get_current_object(L);
     t_atom args[4];
     SETFLOAT(args, luaL_checknumber(L, 1)); // x
     SETFLOAT(args + 1, luaL_checknumber(L, 2)); // y
@@ -213,13 +253,13 @@ static int stroke_ellipse(lua_State* L) {
 }
 
 static int fill_all(lua_State* L) {
-    t_object* obj = get_current_object(L);
+    t_pdlua* obj = get_current_object(L);
     plugdata_forward_message(obj, gensym("lua_fill_all"), 0, NULL);
     return 0;
 }
 
 static int fill_rect(lua_State* L) {
-    t_object* obj = get_current_object(L);
+    t_pdlua* obj = get_current_object(L);
     t_atom args[4];
     SETFLOAT(args, luaL_checknumber(L, 1)); // x
     SETFLOAT(args + 1, luaL_checknumber(L, 2)); // y
@@ -230,7 +270,7 @@ static int fill_rect(lua_State* L) {
 }
 
 static int stroke_rect(lua_State* L) {
-    t_object* obj = get_current_object(L);
+    t_pdlua* obj = get_current_object(L);
     t_atom args[5];
     SETFLOAT(args, luaL_checknumber(L, 1)); // x
     SETFLOAT(args + 1, luaL_checknumber(L, 2)); // y
@@ -242,7 +282,7 @@ static int stroke_rect(lua_State* L) {
 }
 
 static int fill_rounded_rect(lua_State* L) {
-    t_object* obj = get_current_object(L);
+    t_pdlua* obj = get_current_object(L);
     t_atom args[4];
     SETFLOAT(args, luaL_checknumber(L, 1)); // x
     SETFLOAT(args + 1, luaL_checknumber(L, 2)); // y
@@ -253,7 +293,7 @@ static int fill_rounded_rect(lua_State* L) {
 }
 
 static int stroke_rounded_rect(lua_State* L) {
-    t_object* obj = get_current_object(L);
+    t_pdlua* obj = get_current_object(L);
     t_atom args[6];
     SETFLOAT(args, luaL_checknumber(L, 1)); // x
     SETFLOAT(args + 1, luaL_checknumber(L, 2)); // y
@@ -266,7 +306,7 @@ static int stroke_rounded_rect(lua_State* L) {
 }
 
 static int draw_text(lua_State* L) {
-    t_object* obj = get_current_object(L);
+    t_pdlua* obj = get_current_object(L);
     const char* text = luaL_checkstring(L, 1);
     t_atom args[5];
     SETSYMBOL(args, gensym(text));
@@ -278,7 +318,7 @@ static int draw_text(lua_State* L) {
 }
 
 static int start_path(lua_State* L) {
-    t_object* obj = get_current_object(L);
+    t_pdlua* obj = get_current_object(L);
     t_atom args[2];
     SETFLOAT(args , luaL_checknumber(L, 1)); // x
     SETFLOAT(args + 1, luaL_checknumber(L, 2)); // y
@@ -287,7 +327,7 @@ static int start_path(lua_State* L) {
 }
 
 static int line_to(lua_State* L) {
-    t_object* obj = get_current_object(L);
+    t_pdlua* obj = get_current_object(L);
     t_atom args[2];
     SETFLOAT(args, luaL_checknumber(L, 1)); // x
     SETFLOAT(args + 1, luaL_checknumber(L, 2)); // y
@@ -296,26 +336,28 @@ static int line_to(lua_State* L) {
 }
 
 static int close_path(lua_State* L) {
-    t_object* obj = get_current_object(L);
+    t_pdlua* obj = get_current_object(L);
     plugdata_forward_message(obj, gensym("lua_close_path"), 0, NULL);
     return 0;
 }
 
 
 static int stroke_path(lua_State* L) {
-    t_object* obj = get_current_object(L);
-    plugdata_forward_message(obj, gensym("lua_stroke_path"), 0, NULL);
+    t_pdlua* obj = get_current_object(L);
+    t_atom arg;
+    SETFLOAT(&arg, luaL_checknumber(L, 1)); // line thickness
+    plugdata_forward_message(obj, gensym("lua_stroke_path"), 1, &arg);
     return 0;
 }
 
 static int fill_path(lua_State* L) {
-    t_object* obj = get_current_object(L);
+    t_pdlua* obj = get_current_object(L);
     plugdata_forward_message(obj, gensym("lua_fill_path"), 0, NULL);
     return 0;
 }
 
 static int translate(lua_State* L) {
-    t_object* obj = get_current_object(L);
+    t_pdlua* obj = get_current_object(L);
     t_atom args[2];
     SETFLOAT(args, luaL_checknumber(L, 1)); // tx
     SETFLOAT(args + 1, luaL_checknumber(L, 2)); // ty
@@ -324,7 +366,7 @@ static int translate(lua_State* L) {
 }
 
 static int scale(lua_State* L) {
-    t_object* obj = get_current_object(L);
+    t_pdlua* obj = get_current_object(L);
     t_atom args[2];
     SETFLOAT(args, luaL_checknumber(L, 1)); // sx
     SETFLOAT(args + 1, luaL_checknumber(L, 2)); // sy
@@ -333,7 +375,7 @@ static int scale(lua_State* L) {
 }
 
 static int reset_transform(lua_State* L) {
-    t_object* obj = get_current_object(L);
+    t_pdlua* obj = get_current_object(L);
     plugdata_forward_message(obj, gensym("lua_reset_transform"), 0, NULL);
     return 0;
 }
@@ -347,9 +389,9 @@ static int min(int a, int b) {
     return (a < b) ? a : b;
 }
 
-void pdlua_gfx_clear(t_object* obj) {
-    t_pdlua_gfx* gfx = get_pdlua_gfx_state(obj);
-    t_canvas* cnv = get_pdlua_canvas(obj);
+void pdlua_gfx_clear(t_pdlua *obj) {
+    t_pdlua_gfx *gfx = &obj->gfx;
+    t_canvas *cnv = obj->canvas;
     
     for(int i = 0; i < gfx->num_tags; i++)
     {
@@ -358,8 +400,8 @@ void pdlua_gfx_clear(t_object* obj) {
     gfx->num_tags = 0;
 }
 
-static void get_bounds_args(lua_State* L, t_object* obj, t_pdlua_gfx* gfx, int* x1, int* y1, int* x2, int* y2) {
-    t_canvas* cnv = get_pdlua_canvas(obj);
+static void get_bounds_args(lua_State* L, t_pdlua* obj, t_pdlua_gfx *gfx, int* x1, int* y1, int* x2, int* y2) {
+    t_canvas *cnv = obj->canvas;
     
     int x = luaL_checknumber(L, 1);
     int y = luaL_checknumber(L, 2);
@@ -390,28 +432,47 @@ static void get_bounds_args(lua_State* L, t_object* obj, t_pdlua_gfx* gfx, int* 
 }
 
 
-static const char* register_drawing(t_object* object)
+static const char* register_drawing(t_pdlua *object)
 {
-    t_pdlua_gfx* gfx = get_pdlua_gfx_state(object);
+    t_pdlua_gfx *gfx = &object->gfx;
     snprintf(gfx->active_tags[gfx->num_tags], 128, ".x%lx", rand());
     gfx->active_tags[gfx->num_tags][127] = '\0';
     
     return gfx->active_tags[gfx->num_tags++];
 }
 
-static int gfx_initialize(t_object* obj)
+
+static int gfx_initialize(t_pdlua *obj)
 {
-    t_pdlua_gfx* gfx = get_pdlua_gfx_state(obj);
+    t_pdlua_gfx *gfx = &obj->gfx;
+    t_canvas *cnv = obj->canvas;
+    
     snprintf(gfx->object_tag, 128, ".x%lx", obj);
     gfx->object_tag[127] = '\0';
+    pdlua_gfx_repaint(obj);
+    
+    char buf[MAXPDSTRING];
+    snprintf(buf, MAXPDSTRING-1, ".x%lx", (unsigned long)cnv);
+    buf[MAXPDSTRING-1] = 0;
+    
+    gfx->mouse_proxy = pdlua_mouse_proxy_new(obj, gensym(buf));
+    
+    return 0;
+}
+
+static int set_size(lua_State* L)
+{
+    t_pdlua* obj = get_current_object(L);
+    obj->gfx.width = luaL_checknumber(L, 1);
+    obj->gfx.height = luaL_checknumber(L, 2);
     pdlua_gfx_repaint(obj);
     return 0;
 }
 
 static int start_paint(lua_State* L) {
-    t_object* obj = get_current_object(L);
-    t_canvas* cnv = get_pdlua_canvas(obj);
-    t_pdlua_gfx* gfx = get_pdlua_gfx_state(obj);
+    t_pdlua* obj = get_current_object(L);
+    t_canvas *cnv = obj->canvas;
+    t_pdlua_gfx *gfx = &obj->gfx;
     
     // Delete drawings made previously
     for(int i = 0; i < gfx->num_tags; i++)
@@ -427,8 +488,8 @@ static int end_paint(lua_State* L) {
 }
 
 static int set_color(lua_State* L) {
-    t_object* obj = get_current_object(L);
-    t_pdlua_gfx* gfx = get_pdlua_gfx_state(obj);
+    t_pdlua* obj = get_current_object(L);
+    t_pdlua_gfx *gfx = &obj->gfx;
     
     int r = luaL_checknumber(L, 1);
     int g = luaL_checknumber(L, 2);
@@ -441,9 +502,9 @@ static int set_color(lua_State* L) {
 }
 
 static int fill_ellipse(lua_State* L) {
-    t_object* obj = get_current_object(L);
-    t_pdlua_gfx* gfx = get_pdlua_gfx_state(obj);
-    t_canvas* cnv = get_pdlua_canvas(obj);
+    t_pdlua* obj = get_current_object(L);
+    t_pdlua_gfx *gfx = &obj->gfx;
+    t_canvas *cnv = obj->canvas;
     
     int x1, y1, x2, y2;
     get_bounds_args(L, obj, gfx, &x1, &y1, &x2, &y2);
@@ -456,9 +517,9 @@ static int fill_ellipse(lua_State* L) {
 }
 
 static int stroke_ellipse(lua_State* L) {
-    t_object* obj = get_current_object(L);
-    t_pdlua_gfx* gfx = get_pdlua_gfx_state(obj);
-    t_canvas* cnv = get_pdlua_canvas(obj);
+    t_pdlua* obj = get_current_object(L);
+    t_pdlua_gfx *gfx = &obj->gfx;
+    t_canvas *cnv = obj->canvas;
 
     int x1, y1, x2, y2;
     get_bounds_args(L, obj, gfx, &x1, &y1, &x2, &y2);
@@ -471,9 +532,9 @@ static int stroke_ellipse(lua_State* L) {
 }
 
 static int fill_all(lua_State* L) {
-    t_object* obj = get_current_object(L);
-    t_pdlua_gfx* gfx = get_pdlua_gfx_state(obj);
-    t_canvas* cnv = get_pdlua_canvas(obj);
+    t_pdlua* obj = get_current_object(L);
+    t_pdlua_gfx *gfx = &obj->gfx;
+    t_canvas *cnv = obj->canvas;
     
     int x1 = text_xpix(obj, cnv);
     int y1 = text_ypix(obj, cnv);
@@ -488,9 +549,9 @@ static int fill_all(lua_State* L) {
 }
 
 static int fill_rect(lua_State* L) {
-    t_object* obj = get_current_object(L);
-    t_pdlua_gfx* gfx = get_pdlua_gfx_state(obj);
-    t_canvas* cnv = get_pdlua_canvas(obj);
+    t_pdlua* obj = get_current_object(L);
+    t_pdlua_gfx *gfx = &obj->gfx;
+    t_canvas *cnv = obj->canvas;
     
     int x1, y1, x2, y2;
     get_bounds_args(L, obj, gfx, &x1, &y1, &x2, &y2);
@@ -503,9 +564,9 @@ static int fill_rect(lua_State* L) {
 }
 
 static int stroke_rect(lua_State* L) {
-    t_object* obj = get_current_object(L);
-    t_pdlua_gfx* gfx = get_pdlua_gfx_state(obj);
-    t_canvas* cnv = get_pdlua_canvas(obj);
+    t_pdlua* obj = get_current_object(L);
+    t_pdlua_gfx *gfx = &obj->gfx;
+    t_canvas *cnv = obj->canvas;
     
     int x1, y1, x2, y2;
     get_bounds_args(L, obj, gfx, &x1, &y1, &x2, &y2);
@@ -518,9 +579,9 @@ static int stroke_rect(lua_State* L) {
 }
 
 static int fill_rounded_rect(lua_State* L) {
-    t_object* obj = get_current_object(L);
-    t_pdlua_gfx* gfx = get_pdlua_gfx_state(obj);
-    t_canvas* cnv = get_pdlua_canvas(obj);
+    t_pdlua* obj = get_current_object(L);
+    t_pdlua_gfx *gfx = &obj->gfx;
+    t_canvas *cnv = obj->canvas;
     
     int x1, y1, x2, y2;
     get_bounds_args(L, obj, gfx, &x1, &y1, &x2, &y2);
@@ -546,9 +607,9 @@ static int fill_rounded_rect(lua_State* L) {
 }
 
 static int stroke_rounded_rect(lua_State* L) {
-    t_object* obj = get_current_object(L);
-    t_pdlua_gfx* gfx = get_pdlua_gfx_state(obj);
-    t_canvas* cnv = get_pdlua_canvas(obj);
+    t_pdlua* obj = get_current_object(L);
+    t_pdlua_gfx *gfx = &obj->gfx;
+    t_canvas *cnv = obj->canvas;
     
     int x1, y1, x2, y2;
     get_bounds_args(L, obj, gfx, &x1, &y1, &x2, &y2);
@@ -586,9 +647,9 @@ static int stroke_rounded_rect(lua_State* L) {
 }
 
 static int draw_text(lua_State* L) {
-    t_object* obj = get_current_object(L);
-    t_pdlua_gfx* gfx = get_pdlua_gfx_state(obj);
-    t_canvas* cnv = get_pdlua_canvas(obj);
+    t_pdlua* obj = get_current_object(L);
+    t_pdlua_gfx *gfx = &obj->gfx;
+    t_canvas *cnv = obj->canvas;
     
     const char* text = luaL_checkstring(L, 1); // Assuming text is a string
     
@@ -614,15 +675,15 @@ static int draw_text(lua_State* L) {
     
     const char* tags[] = { gfx->object_tag, register_drawing(obj) };
     
-    pdgui_vmess(0, "crr ii rs rs rs rS", cnv, "create", "text",
+    pdgui_vmess(0, "crr ii rs ri rs rS", cnv, "create", "text",
                 x, y, "-anchor", "w", "-width", w, "-text", text, "-tags", 2, tags);
 
     return 0;
 }
 
 static int start_path(lua_State* L) {
-    t_object* obj = get_current_object(L);
-    t_pdlua_gfx* gfx = get_pdlua_gfx_state(obj);
+    t_pdlua* obj = get_current_object(L);
+    t_pdlua_gfx *gfx = &obj->gfx;
     
     gfx->num_path_segments = 0;
     gfx->path_start_x = luaL_checknumber(L, 1);
@@ -637,8 +698,8 @@ static int start_path(lua_State* L) {
 
 // Function to add a line to the current path
 static int line_to(lua_State* L) {
-    t_object* obj = get_current_object(L);
-    t_pdlua_gfx* gfx = get_pdlua_gfx_state(obj);
+    t_pdlua* obj = get_current_object(L);
+    t_pdlua_gfx *gfx = &obj->gfx;
     
     if(gfx->num_path_segments >= 4096) return 0;
     
@@ -654,8 +715,8 @@ static int line_to(lua_State* L) {
 
 // Function to close the current path
 static int close_path(lua_State* L) {
-    t_object* obj = get_current_object(L);
-    t_pdlua_gfx* gfx = get_pdlua_gfx_state(obj);
+    t_pdlua* obj = get_current_object(L);
+    t_pdlua_gfx *gfx = &obj->gfx;
     
     if(gfx->num_path_segments >= 4096) return 0;
 
@@ -667,9 +728,11 @@ static int close_path(lua_State* L) {
 }
 
 static int stroke_path(lua_State* L) {
-    t_object* obj = get_current_object(L);
-    t_pdlua_gfx* gfx = get_pdlua_gfx_state(obj);
-    t_canvas* cnv = get_pdlua_canvas(obj);
+    t_pdlua* obj = get_current_object(L);
+    t_pdlua_gfx *gfx = &obj->gfx;
+    t_canvas *cnv = obj->canvas;
+    
+    int stroke_width = luaL_checknumber(L, 1);
 
     char coordinates[16384];
     int offset = 0;
@@ -698,15 +761,15 @@ static int stroke_path(lua_State* L) {
     
     const char* tags[] = { gfx->object_tag, register_drawing(obj) };
 
-    pdgui_vmess(0, "crr r ri ri rs rs rS", cnv, "create", "polygon", coordinates, "-smooth", gfx->path_smooth, "-smooth", gfx->path_smooth, "-outline", gfx->current_color, "-fill", "", "-tags", 2, tags);
+    pdgui_vmess(0, "crr r ri ri ri rs rs rS", cnv, "create", "polygon", coordinates, "-width", stroke_width, "-smooth", gfx->path_smooth, "-smooth", gfx->path_smooth, "-outline", gfx->current_color, "-fill", "", "-tags", 2, tags);
     
     return 0;
 }
 
 static int fill_path(lua_State* L) {
-    t_object* obj = get_current_object(L);
-    t_pdlua_gfx* gfx = get_pdlua_gfx_state(obj);
-    t_canvas* cnv = get_pdlua_canvas(obj);
+    t_pdlua* obj = get_current_object(L);
+    t_pdlua_gfx *gfx = &obj->gfx;
+    t_canvas *cnv = obj->canvas;
 
     char coordinates[16384];
     int offset = 0;
@@ -742,16 +805,16 @@ static int fill_path(lua_State* L) {
 
 
 static int translate(lua_State* L) {
-    t_object* obj = get_current_object(L);
-    t_pdlua_gfx* gfx = get_pdlua_gfx_state(obj);
+    t_pdlua* obj = get_current_object(L);
+    t_pdlua_gfx *gfx = &obj->gfx;
     gfx->translate_x = luaL_checknumber(L, 1);
     gfx->translate_y = luaL_checknumber(L, 2);
     return 0;
 }
 
 static int scale(lua_State* L) {
-    t_object* obj = get_current_object(L);
-    t_pdlua_gfx* gfx = get_pdlua_gfx_state(obj);
+    t_pdlua* obj = get_current_object(L);
+    t_pdlua_gfx *gfx = &obj->gfx;
     gfx->scale_x = luaL_checknumber(L, 1);
     gfx->scale_y = luaL_checknumber(L, 2);
     return 0;
@@ -759,13 +822,12 @@ static int scale(lua_State* L) {
 
 
 static int reset_transform(lua_State* L) {
-    t_object* obj = get_current_object(L);
-    t_pdlua_gfx* gfx = get_pdlua_gfx_state(obj);
+    t_pdlua* obj = get_current_object(L);
+    t_pdlua_gfx *gfx = &obj->gfx;
     gfx->translate_x = 0;
     gfx->translate_y = 0;
     gfx->scale_x = 1.0f;
     gfx->scale_y = 1.0f;
     return 0;
 }
-
 #endif

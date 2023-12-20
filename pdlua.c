@@ -46,8 +46,9 @@
 #include <lauxlib.h>
 #include <lualib.h>
 
-/* we use Pd */
-#include "m_pd.h"
+
+#include "pdlua.h"
+
 #include "s_stuff.h" // for sys_register_loader()
 #include "m_imp.h" // for struct _class
 #include "g_canvas.h"
@@ -119,19 +120,6 @@ typedef struct pdlua_readerdata
     int         fd; /**< File descriptor to read from. */
     char        buffer[MAXPDSTRING]; /**< Buffer to read into. */
 } t_pdlua_readerdata;
-
-/** Pd object data. */
-typedef struct pdlua 
-{
-    t_object                pd; /**< We are a Pd object. */
-    int                     inlets; /**< Number of inlets. */
-    struct pdlua_proxyinlet *in; /**< The inlets themselves. */
-    int                     outlets; /**< Number of outlets. */
-    t_outlet                **out; /**< The outlets themselves. */
-    t_canvas                *canvas; /**< The canvas that the object was created on. */
-    int                     has_gui;  /**< True if graphics are enabled. */
-    t_pdlua_gfx             gfx;      /**< Holds state for graphics. */
-} t_pdlua;
 
 /** Proxy inlet object data. */
 typedef struct pdlua_proxyinlet
@@ -612,8 +600,6 @@ static void pdlua_motion(void *z, t_floatarg dx, t_floatarg dy,
 
     if (up)
     {
-        pdlua_gfx_mouse_move((t_object*)x, x->gfx.mouse_x, x->gfx.mouse_y);
-        
         if(!x->gfx.mouse_up)
         {
             pdlua_gfx_mouse_up((t_object*)x, x->gfx.mouse_x, x->gfx.mouse_y);
@@ -2026,23 +2012,6 @@ static int pdlua_loader_pathwise
     return pdlua_loader_wrappath(fd, objectname, dirbuf);
 }
 
-
-
-lua_State* get_lua_state()
-{
-    return __L;
-}
-
-t_canvas* get_pdlua_canvas(t_object* x)
-{
-    return ((t_pdlua*)x)->canvas;
-}
-
-t_pdlua_gfx* get_pdlua_gfx_state(t_object* x)
-{
-    return &((t_pdlua*)x)->gfx;
-}
-
 #ifdef WIN32
 #include <windows.h>
 #else
@@ -2204,7 +2173,7 @@ void pdlua_setup(void)
         pd_error(NULL, "lua: loader will not be registered!");
     }
 
-    initialize_graphics(__L);
+    pdlua_gfx_setup(__L);
     
 #if PLUGDATA
     set_gui_callback(callback_target, register_gui_callback);
