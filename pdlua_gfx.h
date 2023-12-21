@@ -1,4 +1,7 @@
 
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
+#define PDLUA_OBJECT_REGISTRTY_ID 512
+
 // Functions that need to be implemented separately for each Pd flavour
 static int gfx_initialize(t_pdlua *obj);
 
@@ -33,10 +36,10 @@ static int reset_transform(lua_State* L);
 void pdlua_gfx_clear(t_pdlua *obj);
 
 typedef struct _pdlua_mouse_proxy{
-    t_object    p_obj;
-    t_symbol   *p_sym;
-    t_clock    *p_clock;
-    t_pdlua    *p_parent;
+    t_object    object;
+    t_symbol   *bind_sym;
+    t_clock    *free_clock;
+    t_pdlua    *parent;
 }t_pdlua_mouse_proxy;
 
 void pdlua_gfx_repaint(t_pdlua *o) {
@@ -54,12 +57,19 @@ void pdlua_gfx_repaint(t_pdlua *o) {
 }
 
 void pdlua_gfx_mouse_event(t_pdlua *o, int x, int y, int type) {
+        
     lua_getglobal(__L, "pd");
     lua_getfield (__L, -1, "_mouseevent");
     lua_pushlightuserdata(__L, o);
     lua_pushinteger(__L, x);
     lua_pushinteger(__L, y);
     lua_pushinteger(__L, type);
+    
+    // Write object ptr to registry to make it reliably accessible
+    lua_pushvalue(__L, LUA_REGISTRYINDEX);
+    lua_pushlightuserdata(__L, o);
+    lua_seti(__L, -2, PDLUA_OBJECT_REGISTRTY_ID);
+    lua_pop(__L, 1);
     
     if (lua_pcall(__L, 4, 0, 0))
     {
@@ -84,8 +94,6 @@ void pdlua_gfx_mouse_move(t_pdlua *o, int x, int y) {
 void pdlua_gfx_mouse_drag(t_pdlua *o, int x, int y) {
     pdlua_gfx_mouse_event(o, x, y, 3);
 }
-
-#define PDLUA_OBJECT_REGISTRTY_ID 512
 
 static t_pdlua* get_current_object(lua_State* L)
 {
@@ -142,32 +150,32 @@ t_class* pdlua_mouse_proxy_class;
 
 static void pdlua_mouse_proxy_any(t_pdlua_mouse_proxy *p, t_symbol*s, int ac, t_atom *av){
     
-    if(s == gensym("motion") && ! p->p_parent->gfx.mouse_up)
+    if(s == gensym("motion") && p->parent->gfx.mouse_up)
     {
-        t_canvas *cnv = glist_getcanvas(p->p_parent->canvas);
+        t_canvas *cnv = glist_getcanvas(p->parent->canvas);
         int zoom = glist_getzoom(cnv);
         int x = (int)(av->a_w.w_float / zoom);
         int y = (int)((av+1)->a_w.w_float / zoom);
-        x -= text_xpix(p->p_parent, cnv);
-        y -= text_ypix(p->p_parent, cnv);
+        x -= text_xpix(p->parent, cnv);
+        y -= text_ypix(p->parent, cnv);
        
-        if(x > 0 && y > 0 && x < p->p_parent->gfx.width && y < p->p_parent->gfx.height) {
-            pdlua_gfx_mouse_move(p->p_parent, x, y);
+        if(x > 0 && y > 0 && x < p->parent->gfx.width && y < p->parent->gfx.height) {
+            pdlua_gfx_mouse_move(p->parent, x, y);
         }
     }
 }
 
 static void pdlua_mouse_proxy_free(t_pdlua_mouse_proxy *p){
-    pd_unbind(&p->p_obj.ob_pd, p->p_sym);
-    //clock_free(p->p_clock);
-    pd_free(&p->p_obj.ob_pd);
+    pd_unbind(&p->object.ob_pd, p->bind_sym);
+    clock_free(p->free_clock);
+    pd_free(&p->object.ob_pd);
 }
 
 static t_pdlua_mouse_proxy *pdlua_mouse_proxy_new(t_pdlua *x, t_symbol *s){
     t_pdlua_mouse_proxy *p = (t_pdlua_mouse_proxy*)pd_new(pdlua_mouse_proxy_class);
-    p->p_parent = x;
-    pd_bind(&p->p_obj.ob_pd, p->p_sym = s);
-    //p->p_clock = clock_new(p, (t_method)pdlua_mouse_proxy_free);
+    p->parent = x;
+    pd_bind(&p->object.ob_pd, p->bind_sym = s);
+    p->free_clock = clock_new(p, (t_method)pdlua_mouse_proxy_free);
     return(p);
 }
 #endif
@@ -203,6 +211,10 @@ static int gfx_initialize(t_pdlua* obj)
     register_gui(gui_target, obj);
     pdlua_gfx_repaint(obj);
     return 0;
+}
+
+static void gfx_free(t_pdlua_gfx* gfx)
+{
 }
 
 static int set_size(lua_State* L)
@@ -421,12 +433,10 @@ static int reset_transform(lua_State* L) {
 }
 #else
 
-static int max(int a, int b) {
-    return (a > b) ? a : b;
-}
-
-static int min(int a, int b) {
-    return (a < b) ? a : b;
+static void gfx_free(t_pdlua_gfx* gfx)
+{
+    freebytes(gfx->path_segments, gfx->num_path_segments_allocated * sizeof(int));
+    clock_delay(((t_pdlua_mouse_proxy*)gfx->mouse_proxy)->free_clock, 0);
 }
 
 void pdlua_gfx_clear(t_pdlua *obj) {
@@ -447,13 +457,7 @@ static void get_bounds_args(lua_State* L, t_pdlua* obj, t_pdlua_gfx *gfx, int* x
     int y = luaL_checknumber(L, 2);
     int w = luaL_checknumber(L, 3);
     int h = luaL_checknumber(L, 4);
-    
-    // Calculate the clipped rectangle
-    x = min(max(x, 0), gfx->width - w);
-    y = min(max(y, 0), gfx->height - h);
-    w = min(x + w, gfx->width) - x;
-    h = min(y + h, gfx->height) - y;
-    
+        
     x *= gfx->scale_x * glist_getzoom(cnv);
     y *= gfx->scale_y * glist_getzoom(cnv);
     w *= gfx->scale_x * glist_getzoom(cnv);
@@ -697,11 +701,6 @@ static int draw_text(lua_State* L) {
     int w = luaL_checknumber(L, 4);
     int fontHeight = luaL_checknumber(L, 5);
     
-    // Calculate the clipped rectangle
-    x = min(max(x, 0), gfx->width - w);
-    y = min(max(y, 0), gfx->height);
-    w = min(x + w, gfx->width) - x;
-    
     int zoom = glist_getzoom(cnv);
     x *= gfx->scale_x * zoom;
     y *= gfx->scale_y * zoom;
@@ -736,6 +735,17 @@ static int draw_text(lua_State* L) {
     return 0;
 }
 
+static void add_path_segment(t_pdlua_gfx* gfx, int x, int y)
+{
+    int path_segment_space =  (gfx->num_path_segments + 1) * 2;
+    gfx->path_segments = (int*)resizebytes(gfx->path_segments, gfx->num_path_segments_allocated * sizeof(int), MAX((path_segment_space + 1), gfx->num_path_segments_allocated) * sizeof(int));
+    gfx->num_path_segments_allocated = path_segment_space;
+    
+    gfx->path_segments[gfx->num_path_segments * 2] = x;
+    gfx->path_segments[gfx->num_path_segments * 2 + 1] = y;
+    gfx->num_path_segments++;
+}
+
 static int start_path(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
     t_pdlua_gfx *gfx = &obj->gfx;
@@ -744,29 +754,20 @@ static int start_path(lua_State* L) {
     gfx->path_start_x = luaL_checknumber(L, 1);
     gfx->path_start_y = luaL_checknumber(L, 2);
 
-    gfx->path_segments[gfx->num_path_segments][0] = gfx->path_start_x;
-    gfx->path_segments[gfx->num_path_segments][1] = gfx->path_start_y;
-    gfx->num_path_segments++;
+    add_path_segment(gfx, gfx->path_start_x, gfx->path_start_y);
     return 0;
 }
+
+
 
 // Function to add a line to the current path
 static int line_to(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
     t_pdlua_gfx *gfx = &obj->gfx;
-    
-    if(gfx->num_path_segments >= 4096)  {
-        luaL_error(L, "Too many path segments");
-        return 0;
-    }
-    
+        
     int x = luaL_checknumber(L, 1);
     int y = luaL_checknumber(L, 2);
-
-    gfx->path_segments[gfx->num_path_segments][0] = x;
-    gfx->path_segments[gfx->num_path_segments][1] = y;
-    gfx->num_path_segments++;
-    
+    add_path_segment(gfx, x, y);
     return 0;
 }
 
@@ -779,26 +780,19 @@ static int quad_to(lua_State* L) {
     int x3 = luaL_checknumber(L, 3);
     int y3 = luaL_checknumber(L, 4);
     
-    int x1 = gfx->num_path_segments > 0 ? gfx->path_segments[gfx->num_path_segments - 1][0] : x2;
-    int y1 = gfx->num_path_segments > 0 ? gfx->path_segments[gfx->num_path_segments - 1][1] : y2;
+    int x1 = gfx->num_path_segments > 0 ? gfx->path_segments[(gfx->num_path_segments - 1) * 2] : x2;
+    int y1 = gfx->num_path_segments > 0 ? gfx->path_segments[(gfx->num_path_segments - 1) * 2 + 1] : y2;
     
     // Get the last point
     float t = 0.0;
     const float resolution = 100;
     while (t <= 1.0) {
         t += 1.0 / resolution;
-        if (gfx->num_path_segments < 4096) {
-            // Calculate quadratic bezier curve as points (source: https://en.wikipedia.org/wiki/B%C3%A9zier_curve)
-            int x = (1.0f - t) * (1.0f - t) * x1 + 2.0f * (1.0f - t) * t * x2 + t * t * x3;
-            int y = (1.0f - t) * (1.0f - t) * y1 + 2.0f * (1.0f - t) * t * y2 + t * t * y3;
-            
-            gfx->path_segments[gfx->num_path_segments][0] = x;
-            gfx->path_segments[gfx->num_path_segments][1] = y;
-            gfx->num_path_segments++;
-        } else {
-            luaL_error(L, "Too many path segments");
-            return 0;
-        }
+        
+        // Calculate quadratic bezier curve as points (source: https://en.wikipedia.org/wiki/B%C3%A9zier_curve)
+        int x = (1.0f - t) * (1.0f - t) * x1 + 2.0f * (1.0f - t) * t * x2 + t * t * x3;
+        int y = (1.0f - t) * (1.0f - t) * y1 + 2.0f * (1.0f - t) * t * y2 + t * t * y3;
+        add_path_segment(gfx, x, y);
     }
     
     return 0;
@@ -814,27 +808,20 @@ static int cubic_to(lua_State* L) {
     int x4 = luaL_checknumber(L, 5);
     int y4 = luaL_checknumber(L, 6);
     
-    int x1 = gfx->num_path_segments > 0 ? gfx->path_segments[gfx->num_path_segments - 1][0] : x2;
-    int y1 = gfx->num_path_segments > 0 ? gfx->path_segments[gfx->num_path_segments - 1][1] : y2;
+    int x1 = gfx->num_path_segments > 0 ? gfx->path_segments[(gfx->num_path_segments - 1) * 2] : x2;
+    int y1 = gfx->num_path_segments > 0 ? gfx->path_segments[(gfx->num_path_segments - 1) * 2 + 1] : y2;
    
     // Get the last point
     float t = 0.0;
     const float resolution = 100;
     while (t <= 1.0) {
         t += 1.0 / resolution;
-        if (gfx->num_path_segments < 4096) {
-            
-            int x = (1 - t)*(1 - t)*(1 - t) * x1 + 3 * (1 - t)*(1 - t) * t * x2 + 3 * (1 - t) * t*t * x3 + t*t*t * x4;
-            int y = (1 - t)*(1 - t)*(1 - t) * y1 + 3 * (1 - t)*(1 - t) * t * y2 + 3 * (1 - t) * t*t * y3 + t*t*t * y4;
-            
-            // Calculate bezier curve as points (source: https://en.wikipedia.org/wiki/B%C3%A9zier_curve)
-            gfx->path_segments[gfx->num_path_segments][0] = x;
-            gfx->path_segments[gfx->num_path_segments][1] = y;
-            gfx->num_path_segments++;
-        } else {
-            luaL_error(L, "Too many path segments");
-            return 0;
-        }
+
+        // Calculate cubic bezier curve as points (source: https://en.wikipedia.org/wiki/B%C3%A9zier_curve)
+        int x = (1 - t)*(1 - t)*(1 - t) * x1 + 3 * (1 - t)*(1 - t) * t * x2 + 3 * (1 - t) * t*t * x3 + t*t*t * x4;
+        int y = (1 - t)*(1 - t)*(1 - t) * y1 + 3 * (1 - t)*(1 - t) * t * y2 + 3 * (1 - t) * t*t * y3 + t*t*t * y4;
+        
+        add_path_segment(gfx, x, y);
     }
     
     return 0;
@@ -844,13 +831,7 @@ static int cubic_to(lua_State* L) {
 static int close_path(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
     t_pdlua_gfx *gfx = &obj->gfx;
-    
-    if(gfx->num_path_segments >= 4096) return 0;
-
-    gfx->path_segments[gfx->num_path_segments][0] = gfx->path_start_x;
-    gfx->path_segments[gfx->num_path_segments][1] = gfx->path_start_y;
-    gfx->num_path_segments++;
-    
+    add_path_segment(gfx, gfx->path_start_x, gfx->path_start_y);
     return 0;
 }
 
@@ -865,22 +846,22 @@ static int stroke_path(lua_State* L) {
     int obj_x = text_xpix(obj, cnv);
     int obj_y = text_ypix(obj, cnv);
     for (int i = 0; i < gfx->num_path_segments; i++) {
-        int x = gfx->path_segments[i][0], y = gfx->path_segments[i][1];
-        
+        int x = gfx->path_segments[i * 2], y = gfx->path_segments[i * 2 + 1];
+                
         x *= gfx->scale_x * glist_getzoom(cnv);
         y *= gfx->scale_y * glist_getzoom(cnv);
         
         x += gfx->translate_x + obj_x;
         y += gfx->translate_y + obj_y;
         
-        gfx->path_segments[i][0] = x;
-        gfx->path_segments[i][1] = y;
+        gfx->path_segments[i * 2] = x;
+        gfx->path_segments[i * 2 + 1] = y;
     }
     
     int totalSize = 0;
     // Determine the total size needed
     for (int i = 0; i < gfx->num_path_segments; i++) {
-        int x = gfx->path_segments[i][0], y = gfx->path_segments[i][1];
+        int x = gfx->path_segments[i * 2], y = gfx->path_segments[i * 2 + 1];
         // Calculate size for x and y
         totalSize += snprintf(NULL, 0, "%i %i ", x, y);
     }
@@ -888,7 +869,7 @@ static int stroke_path(lua_State* L) {
 
     int offset = 0;
     for (int i = 0; i < gfx->num_path_segments; i++) {
-        int x = gfx->path_segments[i][0], y = gfx->path_segments[i][1];
+        int x = gfx->path_segments[i * 2], y = gfx->path_segments[i * 2 + 1];
         int charsWritten = snprintf(coordinates + offset, totalSize - offset, "%i %i ",  x, y);
         if (charsWritten >= 0) {
             offset += charsWritten;
@@ -919,7 +900,7 @@ static int fill_path(lua_State* L) {
     int obj_x = text_xpix(obj, cnv);
     int obj_y = text_ypix(obj, cnv);
     for (int i = 0; i < gfx->num_path_segments; i++) {
-        int x = gfx->path_segments[i][0], y = gfx->path_segments[i][1];
+        int x = gfx->path_segments[i * 2], y = gfx->path_segments[i * 2 + 1];
         
         x *= gfx->scale_x * glist_getzoom(cnv);
         y *= gfx->scale_y * glist_getzoom(cnv);
@@ -927,14 +908,14 @@ static int fill_path(lua_State* L) {
         x += gfx->translate_x + obj_x;
         y += gfx->translate_y + obj_y;
         
-        gfx->path_segments[i][0] = x;
-        gfx->path_segments[i][1] = y;
+        gfx->path_segments[i * 2] = x;
+        gfx->path_segments[i * 2 + 1] = y;
     }
     
     int totalSize = 0;
     // Determine the total size needed
     for (int i = 0; i < gfx->num_path_segments; i++) {
-        int x = gfx->path_segments[i][0], y = gfx->path_segments[i][1];
+        int x = gfx->path_segments[i * 2], y = gfx->path_segments[i * 2 + 1];
         // Calculate size for x and y
         totalSize += snprintf(NULL, 0, "%i %i ", x, y);
     }
@@ -942,7 +923,7 @@ static int fill_path(lua_State* L) {
     
     int offset = 0;
     for (int i = 0; i < gfx->num_path_segments; i++) {
-        int x = gfx->path_segments[i][0], y = gfx->path_segments[i][1];
+        int x = gfx->path_segments[i * 2], y = gfx->path_segments[i * 2 + 1];
         int charsWritten = snprintf(coordinates + offset, totalSize - offset, "%i %i ",  x, y);
         if (charsWritten >= 0) {
             offset += charsWritten;

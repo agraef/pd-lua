@@ -10,8 +10,9 @@ typedef struct _pdlua_gfx
     char active_tags[128][128];
     int num_tags;
     
-    int path_segments[4096][2];
+    int* path_segments;
     int num_path_segments;
+    int num_path_segments_allocated;
     int path_start_x, path_start_y;
     
     int mouse_x, mouse_y, mouse_up;

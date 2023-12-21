@@ -866,6 +866,7 @@ static int pdlua_object_new(lua_State *L)
                 o->gfx.translate_y = 0;
                 o->gfx.mouse_x = 0;
                 o->gfx.mouse_y = 0;
+                o->gfx.mouse_up = 1;
 #else
                 o->gfx.plugdata_draw_callback = NULL;
                 o->gfx.plugdata_callback_target = NULL;
@@ -1140,6 +1141,8 @@ static int pdlua_object_free(lua_State *L)
     if (lua_islightuserdata(L, 1))
     {
         t_pdlua *o = lua_touserdata(L, 1);
+        gfx_free(&o->gfx);
+        
         if (o)
         {
             if (o->in) free(o->in);
