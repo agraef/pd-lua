@@ -19,6 +19,7 @@ static int stroke_rect(lua_State* L);
 static int fill_rounded_rect(lua_State* L);
 static int stroke_rounded_rect(lua_State* L);
 
+static int draw_line(lua_State* L);
 static int draw_text(lua_State* L);
 
 static int start_path(lua_State* L);
@@ -110,7 +111,8 @@ static const luaL_Reg gfx_lib[] = {
     {"stroke_rect", stroke_rect},
     {"fill_rounded_rect", fill_rounded_rect},
     {"stroke_rounded_rect", stroke_rounded_rect},
-    {"text", draw_text},
+    {"draw_line", draw_line},
+    {"draw_text", draw_text},
     {"start_path", start_path},
     {"line_to", line_to},
     {"quad_to", quad_to},
@@ -280,6 +282,7 @@ static int stroke_rounded_rect(lua_State* L) {
 }
 
 static int draw_line(lua_State* L) {
+    t_pdlua* obj = get_current_object(L);
     t_atom args[5];
     SETFLOAT(args, luaL_checknumber(L, 1)); // x
     SETFLOAT(args + 1, luaL_checknumber(L, 2)); // y
@@ -425,11 +428,8 @@ static void get_bounds_args(lua_State* L, t_pdlua* obj, t_pdlua_gfx *gfx, int* x
     w *= gfx->scale_x * glist_getzoom(cnv);
     h *= gfx->scale_y * glist_getzoom(cnv);
     
-    x += gfx->translate_x;
-    y += gfx->translate_y;
-    
-    x += text_xpix(obj, cnv);
-    y += text_ypix(obj, cnv);
+    x += gfx->translate_x + text_xpix(obj, cnv);
+    y += gfx->translate_y + text_ypix(obj, cnv);
     
     *x1 = x;
     *y1 = y;
@@ -650,18 +650,23 @@ static int draw_line(lua_State* L) {
     t_pdlua_gfx *gfx = &obj->gfx;
     t_canvas *cnv = glist_getcanvas(obj->canvas);
     
-    const char* text = luaL_checkstring(L, 1); // Assuming text is a string
     int x1 = luaL_checknumber(L, 1);
     int y1 = luaL_checknumber(L, 2);
     int x2 = luaL_checknumber(L, 3);
-    int y2 = luaL_checknumber(L, 3);
-    int lineWidth = luaL_checknumber(L, 4);
+    int y2 = luaL_checknumber(L, 4);
+    int lineWidth = luaL_checknumber(L, 5);
     
     int zoom = glist_getzoom(cnv);
     x1 *= gfx->scale_x * zoom;
     y1 *= gfx->scale_y * zoom;
     x2 *= gfx->scale_x * zoom;
     y2 *= gfx->scale_y * zoom;
+    
+    x1 += gfx->translate_x + text_xpix(obj, cnv);
+    y1 += gfx->translate_y + text_ypix(obj, cnv);
+    x2 += gfx->translate_x + text_xpix(obj, cnv);
+    y2 += gfx->translate_y + text_ypix(obj, cnv);
+
     lineWidth *= zoom;
     
     const char* tags[] = { gfx->object_tag, register_drawing(obj) };
@@ -687,11 +692,8 @@ static int draw_text(lua_State* L) {
     y *= gfx->scale_y * zoom;
     w *= gfx->scale_x * zoom;
     
-    x += gfx->translate_x;
-    y += gfx->translate_y;
-    
-    x += text_xpix(obj, cnv);
-    y += text_ypix(obj, cnv);
+    x += gfx->translate_x + text_xpix(obj, cnv);
+    y += gfx->translate_y + text_ypix(obj, cnv);
     
     // Font size and position are offset to make sure they match drawing in plugdata
     fontHeight *= 0.8f;
