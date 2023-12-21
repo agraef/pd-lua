@@ -7,8 +7,7 @@ typedef struct _pdlua_gfx
 {
 #if !PLUGDATA
     char object_tag[128];
-    char active_tags[8192][128];
-    int num_tags;
+    char current_paint_tag[128];
     
     int* path_segments;
     int num_path_segments;

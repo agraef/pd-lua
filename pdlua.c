@@ -583,88 +583,8 @@ static void pdlua_free( t_pdlua *o /**< The object to destruct. */)
     return;
 }
 
-
-static void pdlua_key(void *z, t_symbol *keysym, t_floatarg fkey){
-    
-}
-
-
-static void pdlua_motion(void *z, t_floatarg dx, t_floatarg dy,
-    t_floatarg up)
-{
-#if !PLUGDATA
-    t_pdlua *x = (t_pdlua *)z;
-    x->gfx.mouse_drag_x = x->gfx.mouse_drag_x + dx;
-    x->gfx.mouse_drag_y = x->gfx.mouse_drag_y + dy;
-
-    if (!up)
-    {
-        pdlua_gfx_mouse_drag((t_object*)x, x->gfx.mouse_drag_x - text_xpix(&x->pd, x->canvas), x->gfx.mouse_drag_y - text_ypix(&x->pd, x->canvas));
-    }
-#endif
-}
-
-static int pdlua_click(t_pdlua *x, t_glist *gl, int xpos, int ypos, int shift, int alt, int dbl, int doit){
-    alt = dbl = 0; // remove warning
-    if(x->has_gui)
-    {
-        int xpix = xpos - text_xpix(&x->pd, gl);
-        int ypix = ypos - text_ypix(&x->pd, gl);
-                
-        if(doit){
-            if(x->gfx.mouse_down)
-            {
-                pdlua_gfx_mouse_down((t_object*)x, xpix, ypix);
-            }
-            
-            x->gfx.mouse_drag_x = xpos;
-            x->gfx.mouse_drag_y = ypos;
-            
-            glist_grab(x->canvas, &x->pd.te_g, (t_glistmotionfn)pdlua_motion, (t_glistkeyfn)pdlua_key, xpos, ypos);
-        }
-        else {
-            pdlua_gfx_mouse_move(x, xpix, ypix);
-            
-            if(!x->gfx.mouse_down)
-            {
-                pdlua_gfx_mouse_up((t_object*)x, xpix, ypix);
-            }
-        }
-        
-        x->gfx.mouse_down = doit;
-    }
-    else {
-        text_widgetbehavior.w_clickfn(x, gl, xpos, ypos, shift, alt, dbl, doit);
-    }
-
-    return(1);
-}
-
-static void pdlua_displace(t_pdlua *z, t_glist *glist, int dx, int dy){
-    t_pdlua *x = (t_pdlua *)z;
-    x->pd.te_xpix += dx, x->pd.te_ypix += dy;
-    dx *= glist_getzoom(glist), dy *= glist_getzoom(glist);
-    pdlua_gfx_repaint(z);
-    canvas_fixlinesfor(glist, (t_text*)x);
-}
-
-
-static void pdlua_getrect(t_gobj *z, t_glist *glist, int *xp1, int *yp1, int *xp2, int *yp2)
-{
-    t_pdlua *x = (t_pdlua *)z;
-    if(x->has_gui) {
-        float x1 = text_xpix((t_text *)x, glist), y1 = text_ypix((t_text *)x, glist);
-        *xp1 = x1;
-        *yp1 = y1;
-        *xp2 = x1 + x->gfx.width * glist->gl_zoom;
-        *yp2 = y1 + x->gfx.height * glist->gl_zoom;
-    }
-    else {
-        text_widgetbehavior.w_getrectfn(x, glist, xp1, yp1, xp2, yp2);
-    }
-}
-
 void pdlua_vis(t_gobj *z, t_glist *glist, int vis){
+    // If there's no gui, use default text vis behavior
     if(!((t_pdlua *)z)->has_gui)
     {
         t_text *x = (t_text *)z;
@@ -689,6 +609,8 @@ void pdlua_vis(t_gobj *z, t_glist *glist, int vis){
         }
         return;
     }
+    
+    // Otherwise, repaint or clear the custom graphics
     if(vis)
     {
         pdlua_gfx_repaint((t_object*)z);
@@ -698,6 +620,91 @@ void pdlua_vis(t_gobj *z, t_glist *glist, int vis){
     }
 }
 
+static void pdlua_motion(t_gobj *z, t_floatarg dx, t_floatarg dy,
+    t_floatarg up)
+{
+#if !PLUGDATA
+    t_pdlua *x = (t_pdlua *)z;
+    x->gfx.mouse_drag_x = x->gfx.mouse_drag_x + dx;
+    x->gfx.mouse_drag_y = x->gfx.mouse_drag_y + dy;
+
+    if (!up)
+    {
+        pdlua_gfx_mouse_drag((t_object*)x, x->gfx.mouse_drag_x - text_xpix(&x->pd, x->canvas), x->gfx.mouse_drag_y - text_ypix(&x->pd, x->canvas));
+    }
+#endif
+}
+
+static int pdlua_click(t_gobj *z, t_glist *gl, int xpos, int ypos, int shift, int alt, int dbl, int doit){
+    t_pdlua *x = (t_pdlua *)z;
+#if !PLUGDATA
+    if(x->has_gui)
+    {
+        int xpix = xpos - text_xpix(&x->pd, gl);
+        int ypix = ypos - text_ypix(&x->pd, gl);
+                
+        if(doit){
+            if(x->gfx.mouse_down)
+            {
+                pdlua_gfx_mouse_down((t_object*)x, xpix, ypix);
+            }
+            
+            x->gfx.mouse_drag_x = xpos;
+            x->gfx.mouse_drag_y = ypos;
+            
+            glist_grab(x->canvas, &x->pd.te_g, (t_glistmotionfn)pdlua_motion, NULL, xpos, ypos);
+        }
+        else {
+            pdlua_gfx_mouse_move(x, xpix, ypix);
+            
+            if(!x->gfx.mouse_down)
+            {
+                pdlua_gfx_mouse_up((t_object*)x, xpix, ypix);
+            }
+        }
+        
+        x->gfx.mouse_down = doit;
+    }
+    else {
+        text_widgetbehavior.w_clickfn(x, gl, xpos, ypos, shift, alt, dbl, doit);
+    }
+
+#endif
+    return(1);
+}
+
+static void pdlua_displace(t_gobj *z, t_glist *glist, int dx, int dy){
+    t_pdlua *x = (t_pdlua *)z;
+    x->pd.te_xpix += dx, x->pd.te_ypix += dy;
+    dx *= glist_getzoom(glist), dy *= glist_getzoom(glist);
+    
+    pdlua_vis(z, glist, 0);
+    pdlua_vis(z, glist, 1);
+    canvas_fixlinesfor(glist, (t_text*)x);
+}
+
+static void pdlua_activate(t_pdlua *z, t_glist *glist, int state)
+{
+    if(!((t_pdlua *)z)->has_gui)
+    {
+        text_widgetbehavior.w_activatefn(z, glist, state);
+    }
+}
+
+static void pdlua_getrect(t_gobj *z, t_glist *glist, int *xp1, int *yp1, int *xp2, int *yp2)
+{
+    t_pdlua *x = (t_pdlua *)z;
+    if(x->has_gui) {
+        float x1 = text_xpix((t_text *)x, glist), y1 = text_ypix((t_text *)x, glist);
+        *xp1 = x1;
+        *yp1 = y1;
+        *xp2 = x1 + x->gfx.width * glist->gl_zoom;
+        *yp2 = y1 + x->gfx.height * glist->gl_zoom;
+    }
+    else {
+        text_widgetbehavior.w_getrectfn(x, glist, xp1, yp1, xp2, yp2);
+    }
+}
 
 #if 0
 static void pdlua_stack_dump (lua_State *L)
@@ -826,7 +833,7 @@ static int pdlua_class_new(lua_State *L)
     pdlua_widgetbehavior.w_deletefn   = text_widgetbehavior.w_deletefn;
     pdlua_widgetbehavior.w_clickfn    = pdlua_click;
     pdlua_widgetbehavior.w_visfn      = pdlua_vis;
-    pdlua_widgetbehavior.w_activatefn = NULL;
+    pdlua_widgetbehavior.w_activatefn = pdlua_activate;
     class_setwidget(c, &pdlua_widgetbehavior);
     
 /* a class with a "menu-open" method will have the "Open" item highlighted in the right-click menu */
@@ -874,7 +881,6 @@ static int pdlua_object_new(lua_State *L)
                 o->gfx.height = 80;
                
 #if !PLUGDATA
-                o->gfx.num_tags = 0;
                 o->gfx.num_path_segments = 0;
                 o->gfx.scale_x = 1.0f;
                 o->gfx.scale_y = 1.0f;

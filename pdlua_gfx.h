@@ -290,6 +290,8 @@ static int draw_line(lua_State* L) {
     SETFLOAT(args + 3, luaL_checknumber(L, 4)); // h
     SETFLOAT(args + 4, luaL_checknumber(L, 5)); // line width
     plugdata_draw(obj, gensym("lua_draw_line"), 5, args);
+    
+    return 0;
 }
 
 static int draw_text(lua_State* L) {
@@ -405,14 +407,7 @@ static void gfx_free(t_pdlua_gfx* gfx)
 void pdlua_gfx_clear(t_pdlua *obj) {
     t_pdlua_gfx *gfx = &obj->gfx;
     t_canvas *cnv = glist_getcanvas(obj->canvas);
-    
-    for(int i = 0; i < gfx->num_tags; i++)
-    {
-        //pdgui_vmess(0, "crs", cnv, "delete", gfx->active_tags[i]);
-    }
-    
     pdgui_vmess(0, "crs", cnv, "delete", gfx->object_tag);
-    gfx->num_tags = 0;
 }
 
 static void get_bounds_args(lua_State* L, t_pdlua* obj, t_pdlua_gfx *gfx, int* x1, int* y1, int* x2, int* y2) {
@@ -441,10 +436,9 @@ static void get_bounds_args(lua_State* L, t_pdlua* obj, t_pdlua_gfx *gfx, int* x
 static const char* register_drawing(t_pdlua *object)
 {
     t_pdlua_gfx *gfx = &object->gfx;
-    snprintf(gfx->active_tags[gfx->num_tags], 128, ".x%lx", rand());
-    gfx->active_tags[gfx->num_tags][127] = '\0';
-    
-    return gfx->active_tags[gfx->num_tags++];
+    snprintf(gfx->current_paint_tag, 128, ".x%lx", rand());
+    gfx->current_paint_tag[127] = '\0';
+    return gfx->current_paint_tag;
 }
 
 
@@ -470,15 +464,7 @@ static int set_size(lua_State* L)
 
 static int start_paint(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
-    t_canvas *cnv = glist_getcanvas(obj->canvas);
-    t_pdlua_gfx *gfx = &obj->gfx;
-    
-    // Delete drawings made previously
-    for(int i = 0; i < gfx->num_tags; i++)
-    {
-        pdgui_vmess(0, "crs", cnv, "delete", gfx->active_tags[i]);
-    }
-    gfx->num_tags = 0;
+    pdlua_gfx_clear(obj);
     return 0;
 }
 
