@@ -307,6 +307,7 @@ function pd.Class:construct(sel, atoms)
   self._object = pd._create(self._class)
   self.inlets = 0
   self.outlets = 0
+  self.gui = 0
   self._canvaspath = pd._canvaspath(self._object) .. "/"
   if self:initialize(sel, atoms) then
     pd._createinlets(self._object, self.inlets)
@@ -437,6 +438,7 @@ function luax:initialize(sel, atoms)          -- motivation: pd-list 2007-09-23
     -- create a dummy object, which can still be clicked for help
     self.inlets = 0
     self.outlets = 0
+    self.gui = 0
     self._scriptname = ""
     return true
   end
