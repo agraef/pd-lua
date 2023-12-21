@@ -853,10 +853,9 @@ static int stroke_path(lua_State* L) {
     t_pdlua_gfx *gfx = &obj->gfx;
     t_canvas *cnv = glist_getcanvas(obj->canvas);
     
-    int stroke_width = luaL_checknumber(L, 1);
-
-    char coordinates[16384];
-    int offset = 0;
+    int stroke_width = luaL_checknumber(L, 1) * glist_getzoom(cnv);
+    
+    // Apply transformations to all coordinates
     int obj_x = text_xpix(obj, cnv);
     int obj_y = text_ypix(obj, cnv);
     for (int i = 0; i < gfx->num_path_segments; i++) {
@@ -867,15 +866,31 @@ static int stroke_path(lua_State* L) {
         
         x += gfx->translate_x + obj_x;
         y += gfx->translate_y + obj_y;
+        
+        gfx->path_segments[i][0] = x;
+        gfx->path_segments[i][1] = y;
+    }
+    
+    int totalSize = 0;
+    // Determine the total size needed
+    for (int i = 0; i < gfx->num_path_segments; i++) {
+        int x = gfx->path_segments[i][0], y = gfx->path_segments[i][1];
+        // Calculate size for x and y
+        totalSize += snprintf(NULL, 0, "%i %i ", x, y);
+    }
+    char *coordinates = (char*)getbytes(totalSize + 1); // +1 for null terminator
 
-        int charsWritten = snprintf(coordinates + offset, 16384 - offset, "%i %i ",  x, y);
+    int offset = 0;
+    for (int i = 0; i < gfx->num_path_segments; i++) {
+        int x = gfx->path_segments[i][0], y = gfx->path_segments[i][1];
+        int charsWritten = snprintf(coordinates + offset, totalSize - offset, "%i %i ",  x, y);
         if (charsWritten >= 0) {
             offset += charsWritten;
         } else {
             break;
         }
     }
-    // Remove the trailing space
+    // Replace the trailing space with string terminator
     if (offset > 0) {
         coordinates[offset - 1] = '\0';
     }
@@ -883,6 +898,8 @@ static int stroke_path(lua_State* L) {
     const char* tags[] = { gfx->object_tag, register_drawing(obj) };
 
     pdgui_vmess(0, "crr r ri rs rs rS", cnv, "create", "polygon", coordinates, "-width", stroke_width, "-outline", gfx->current_color, "-fill", "", "-tags", 2, tags);
+    
+    freebytes(coordinates, totalSize+1);
     
     return 0;
 }
@@ -892,8 +909,7 @@ static int fill_path(lua_State* L) {
     t_pdlua_gfx *gfx = &obj->gfx;
     t_canvas *cnv = glist_getcanvas(obj->canvas);
 
-    char coordinates[16384];
-    int offset = 0;
+    // Apply transformations to all coordinates
     int obj_x = text_xpix(obj, cnv);
     int obj_y = text_ypix(obj, cnv);
     for (int i = 0; i < gfx->num_path_segments; i++) {
@@ -905,13 +921,30 @@ static int fill_path(lua_State* L) {
         x += gfx->translate_x + obj_x;
         y += gfx->translate_y + obj_y;
         
-        int charsWritten = snprintf(coordinates + offset, 16384 - offset, "%d %d ", x, y );
+        gfx->path_segments[i][0] = x;
+        gfx->path_segments[i][1] = y;
+    }
+    
+    int totalSize = 0;
+    // Determine the total size needed
+    for (int i = 0; i < gfx->num_path_segments; i++) {
+        int x = gfx->path_segments[i][0], y = gfx->path_segments[i][1];
+        // Calculate size for x and y
+        totalSize += snprintf(NULL, 0, "%i %i ", x, y);
+    }
+    char *coordinates = (char*)getbytes(totalSize + 1); // +1 for null terminator
+    
+    int offset = 0;
+    for (int i = 0; i < gfx->num_path_segments; i++) {
+        int x = gfx->path_segments[i][0], y = gfx->path_segments[i][1];
+        int charsWritten = snprintf(coordinates + offset, totalSize - offset, "%i %i ",  x, y);
         if (charsWritten >= 0) {
             offset += charsWritten;
         } else {
             break;
         }
     }
+    
     // Remove the trailing space
     if (offset > 0) {
         coordinates[offset - 1] = '\0';
@@ -920,6 +953,8 @@ static int fill_path(lua_State* L) {
     const char* tags[] = { gfx->object_tag, register_drawing(obj) };
 
     pdgui_vmess(0, "crr r ri rs rS", cnv, "create", "polygon", coordinates, "-width", 0, "-fill", gfx->current_color, "-tags", 2, tags);
+    
+    freebytes(coordinates, totalSize+1);
     
     return 0;
 }
