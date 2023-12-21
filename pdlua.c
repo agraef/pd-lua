@@ -594,33 +594,49 @@ static void pdlua_motion(void *z, t_floatarg dx, t_floatarg dy,
 {
 #if !PLUGDATA
     t_pdlua *x = (t_pdlua *)z;
-    x->gfx.mouse_x = x->gfx.mouse_x + dx;
-    x->gfx.mouse_y = x->gfx.mouse_y + dy;
+    x->gfx.mouse_drag_x = x->gfx.mouse_drag_x + dx;
+    x->gfx.mouse_drag_y = x->gfx.mouse_drag_y + dy;
 
-    if (up)
+    if (!up)
     {
-        if(!x->gfx.mouse_up)
-        {
-            pdlua_gfx_mouse_up((t_object*)x, x->gfx.mouse_x, x->gfx.mouse_y);
-        }
+        pdlua_gfx_mouse_drag((t_object*)x, x->gfx.mouse_drag_x - text_xpix(&x->pd, x->canvas), x->gfx.mouse_drag_y - text_ypix(&x->pd, x->canvas));
     }
-    else {
-        if(x->gfx.mouse_up)
-        {
-            pdlua_gfx_mouse_down((t_object*)x, x->gfx.mouse_x, x->gfx.mouse_y);
-        }
-        pdlua_gfx_mouse_drag((t_object*)x, x->gfx.mouse_x, x->gfx.mouse_y);
-    }
-    
-    x->gfx.mouse_up = up;
 #endif
 }
 
 static int pdlua_click(t_pdlua *x, t_glist *gl, int xpos, int ypos, int shift, int alt, int dbl, int doit){
     alt = dbl = 0; // remove warning
-    if(doit){
-        glist_grab(x->canvas, &x->pd.te_g, (t_glistmotionfn)pdlua_motion, (t_glistkeyfn)pdlua_key, xpos, ypos);
+    if(x->has_gui)
+    {
+        int xpix = xpos - text_xpix(&x->pd, gl);
+        int ypix = ypos - text_ypix(&x->pd, gl);
+                
+        if(doit){
+            if(x->gfx.mouse_down)
+            {
+                pdlua_gfx_mouse_down((t_object*)x, xpix, ypix);
+            }
+            
+            x->gfx.mouse_drag_x = xpos;
+            x->gfx.mouse_drag_y = ypos;
+            
+            glist_grab(x->canvas, &x->pd.te_g, (t_glistmotionfn)pdlua_motion, (t_glistkeyfn)pdlua_key, xpos, ypos);
+        }
+        else {
+            pdlua_gfx_mouse_move(x, xpix, ypix);
+            
+            if(!x->gfx.mouse_down)
+            {
+                pdlua_gfx_mouse_up((t_object*)x, xpix, ypix);
+            }
+        }
+        
+        x->gfx.mouse_down = doit;
     }
+    else {
+        text_widgetbehavior.w_clickfn(x, gl, xpos, ypos, shift, alt, dbl, doit);
+    }
+
     return(1);
 }
 
@@ -864,9 +880,9 @@ static int pdlua_object_new(lua_State *L)
                 o->gfx.scale_y = 1.0f;
                 o->gfx.translate_x = 0;
                 o->gfx.translate_y = 0;
-                o->gfx.mouse_x = 0;
-                o->gfx.mouse_y = 0;
-                o->gfx.mouse_up = 1;
+                o->gfx.mouse_drag_x = 0;
+                o->gfx.mouse_drag_y = 0;
+                o->gfx.mouse_down = 1;
 #else
                 o->gfx.plugdata_draw_callback = NULL;
                 o->gfx.plugdata_callback_target = NULL;

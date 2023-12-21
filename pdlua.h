@@ -7,7 +7,7 @@ typedef struct _pdlua_gfx
 {
 #if !PLUGDATA
     char object_tag[128];
-    char active_tags[128][128];
+    char active_tags[8192][128];
     int num_tags;
     
     int* path_segments;
@@ -15,7 +15,7 @@ typedef struct _pdlua_gfx
     int num_path_segments_allocated;
     int path_start_x, path_start_y;
     
-    int mouse_x, mouse_y, mouse_up;
+    int mouse_drag_x, mouse_drag_y, mouse_down;
     int translate_x, translate_y;
     float scale_x, scale_y;
     char current_color[8];

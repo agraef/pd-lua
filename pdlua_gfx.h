@@ -35,13 +35,6 @@ static int reset_transform(lua_State* L);
 
 void pdlua_gfx_clear(t_pdlua *obj);
 
-typedef struct _pdlua_mouse_proxy{
-    t_object    object;
-    t_symbol   *bind_sym;
-    t_clock    *free_clock;
-    t_pdlua    *parent;
-}t_pdlua_mouse_proxy;
-
 void pdlua_gfx_repaint(t_pdlua *o) {
     lua_getglobal(__L, "pd");
     lua_getfield (__L, -1, "_repaint");
@@ -145,52 +138,10 @@ int set_gui_callback(void* callback_target, void(*callback)(void*, t_object*)) {
     return 0;
 }
 
-#if !PLUGDATA
-t_class* pdlua_mouse_proxy_class;
-
-static void pdlua_mouse_proxy_any(t_pdlua_mouse_proxy *p, t_symbol*s, int ac, t_atom *av){
-    
-    if(s == gensym("motion") && p->parent->gfx.mouse_up)
-    {
-        t_canvas *cnv = glist_getcanvas(p->parent->canvas);
-        int zoom = glist_getzoom(cnv);
-        int x = (int)(av->a_w.w_float / zoom);
-        int y = (int)((av+1)->a_w.w_float / zoom);
-        x -= text_xpix(p->parent, cnv);
-        y -= text_ypix(p->parent, cnv);
-       
-        if(x > 0 && y > 0 && x < p->parent->gfx.width && y < p->parent->gfx.height) {
-            pdlua_gfx_mouse_move(p->parent, x, y);
-        }
-    }
-}
-
-static void pdlua_mouse_proxy_free(t_pdlua_mouse_proxy *p){
-    pd_unbind(&p->object.ob_pd, p->bind_sym);
-    clock_free(p->free_clock);
-    pd_free(&p->object.ob_pd);
-}
-
-static t_pdlua_mouse_proxy *pdlua_mouse_proxy_new(t_pdlua *x, t_symbol *s){
-    t_pdlua_mouse_proxy *p = (t_pdlua_mouse_proxy*)pd_new(pdlua_mouse_proxy_class);
-    p->parent = x;
-    pd_bind(&p->object.ob_pd, p->bind_sym = s);
-    p->free_clock = clock_new(p, (t_method)pdlua_mouse_proxy_free);
-    return(p);
-}
-#endif
-
-
 int pdlua_gfx_setup(lua_State* L) {
     // Register functions with Lua
     luaL_newlib(L, gfx_lib);
     lua_setglobal(L, "gfx");
-    
-#if !PLUGDATA
-    pdlua_mouse_proxy_class = class_new(0, 0, 0, sizeof(t_pdlua_mouse_proxy), CLASS_NOINLET | CLASS_PD, 0);
-    class_addanything(pdlua_mouse_proxy_class, pdlua_mouse_proxy_any);
-#endif
-    
     return 1; // Number of values pushed onto the stack
 }
 
@@ -328,6 +279,16 @@ static int stroke_rounded_rect(lua_State* L) {
     return 0;
 }
 
+static int draw_line(lua_State* L) {
+    t_atom args[5];
+    SETFLOAT(args, luaL_checknumber(L, 1)); // x
+    SETFLOAT(args + 1, luaL_checknumber(L, 2)); // y
+    SETFLOAT(args + 2, luaL_checknumber(L, 3)); // w
+    SETFLOAT(args + 3, luaL_checknumber(L, 4)); // h
+    SETFLOAT(args + 4, luaL_checknumber(L, 5)); // line width
+    plugdata_draw(obj, gensym("lua_draw_line"), 5, args);
+}
+
 static int draw_text(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
     const char* text = luaL_checkstring(L, 1);
@@ -436,7 +397,6 @@ static int reset_transform(lua_State* L) {
 static void gfx_free(t_pdlua_gfx* gfx)
 {
     freebytes(gfx->path_segments, gfx->num_path_segments_allocated * sizeof(int));
-    clock_delay(((t_pdlua_mouse_proxy*)gfx->mouse_proxy)->free_clock, 0);
 }
 
 void pdlua_gfx_clear(t_pdlua *obj) {
@@ -445,8 +405,10 @@ void pdlua_gfx_clear(t_pdlua *obj) {
     
     for(int i = 0; i < gfx->num_tags; i++)
     {
-        pdgui_vmess(0, "crs", cnv, "delete", gfx->active_tags[i]);
+        //pdgui_vmess(0, "crs", cnv, "delete", gfx->active_tags[i]);
     }
+    
+    pdgui_vmess(0, "crs", cnv, "delete", gfx->object_tag);
     gfx->num_tags = 0;
 }
 
@@ -494,13 +456,6 @@ static int gfx_initialize(t_pdlua *obj)
     snprintf(gfx->object_tag, 128, ".x%lx", obj);
     gfx->object_tag[127] = '\0';
     pdlua_gfx_repaint(obj);
-    
-    char buf[MAXPDSTRING];
-    snprintf(buf, MAXPDSTRING-1, ".x%lx", (unsigned long)cnv);
-    buf[MAXPDSTRING-1] = 0;
-    
-    gfx->mouse_proxy = pdlua_mouse_proxy_new(obj, gensym(buf));
-    
     return 0;
 }
 
@@ -689,6 +644,32 @@ static int stroke_rounded_rect(lua_State* L) {
     
     return 0;
 }
+
+static int draw_line(lua_State* L) {
+    t_pdlua* obj = get_current_object(L);
+    t_pdlua_gfx *gfx = &obj->gfx;
+    t_canvas *cnv = glist_getcanvas(obj->canvas);
+    
+    const char* text = luaL_checkstring(L, 1); // Assuming text is a string
+    int x1 = luaL_checknumber(L, 1);
+    int y1 = luaL_checknumber(L, 2);
+    int x2 = luaL_checknumber(L, 3);
+    int y2 = luaL_checknumber(L, 3);
+    int lineWidth = luaL_checknumber(L, 4);
+    
+    int zoom = glist_getzoom(cnv);
+    x1 *= gfx->scale_x * zoom;
+    y1 *= gfx->scale_y * zoom;
+    x2 *= gfx->scale_x * zoom;
+    y2 *= gfx->scale_y * zoom;
+    lineWidth *= zoom;
+    
+    const char* tags[] = { gfx->object_tag, register_drawing(obj) };
+    
+    pdgui_vmess(0, "crr iiii ri rs rS", cnv, "create", "line", x1, y1, x2, y2,
+                "-width", lineWidth, "-fill", gfx->current_color, "-tags", 2, tags);
+}
+
 
 static int draw_text(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
