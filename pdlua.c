@@ -641,8 +641,8 @@ static void pdlua_getrect(t_gobj *z, t_glist *glist, int *xp1, int *yp1, int *xp
         float x1 = text_xpix((t_text *)x, glist), y1 = text_ypix((t_text *)x, glist);
         *xp1 = x1;
         *yp1 = y1;
-        *xp2 = x1 + x->gfx.width;
-        *yp2 = y1 + x->gfx.height;
+        *xp2 = x1 + x->gfx.width * glist->gl_zoom;
+        *yp2 = y1 + x->gfx.height * glist->gl_zoom;
     }
     else {
         text_widgetbehavior.w_getrectfn(x, glist, xp1, yp1, xp2, yp2);

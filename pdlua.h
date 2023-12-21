@@ -13,7 +13,6 @@ typedef struct _pdlua_gfx
     int path_segments[4096][2];
     int num_path_segments;
     int path_start_x, path_start_y;
-    int path_smooth;
     
     int mouse_x, mouse_y, mouse_up;
     int translate_x, translate_y;
