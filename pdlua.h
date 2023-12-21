@@ -21,6 +21,9 @@ typedef struct _pdlua_gfx
     
     t_symbol* mouse_proxy_sym;
     void* mouse_proxy;
+#else
+    void(*plugdata_draw_callback)(void*, t_symbol*, int, t_atom*);
+    void* plugdata_callback_target;
 #endif
     int width, height;
 } t_pdlua_gfx;

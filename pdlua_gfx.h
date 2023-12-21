@@ -187,7 +187,13 @@ int pdlua_gfx_setup(lua_State* L) {
 }
 
 #if PLUGDATA
-void plugdata_forward_message(void* x, t_symbol *s, int argc, t_atom *argv);
+
+static inline void plugdata_draw(t_pdlua* obj, t_symbol* sym, int argc, t_atom* argv)
+{
+    if(obj->gfx.plugdata_callback_target) {
+        obj->gfx.plugdata_draw_callback(obj->gfx.plugdata_callback_target, sym, argc, argv);
+    }
+}
 
 void pdlua_gfx_clear(t_pdlua* obj) {
 }
@@ -207,19 +213,19 @@ static int set_size(lua_State* L)
     t_atom args[2];
     SETFLOAT(args, luaL_checknumber(L, 1)); // w
     SETFLOAT(args + 1, luaL_checknumber(L, 2)); // h
-    plugdata_forward_message(obj, gensym("lua_resized"), 2, args);
+    plugdata_draw(obj, gensym("lua_resized"), 2, args);
     return 0;
 }
 
 static int start_paint(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
-    plugdata_forward_message(obj, gensym("lua_start_paint"), 0, NULL);
+    plugdata_draw(obj, gensym("lua_start_paint"), 0, NULL);
     return 0;
 }
 
 static int end_paint(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
-    plugdata_forward_message(obj, gensym("lua_end_paint"), 0, NULL);
+    plugdata_draw(obj, gensym("lua_end_paint"), 0, NULL);
     return 0;
 }
 
@@ -230,7 +236,7 @@ static int set_color(lua_State* L) {
     SETFLOAT(args + 1, luaL_checknumber(L, 2)); // g
     SETFLOAT(args + 2, luaL_checknumber(L, 3)); // b
     SETFLOAT(args + 3, luaL_optnumber(L, 4, 1.0)); // a (optional, default to 1.0)
-    plugdata_forward_message(obj, gensym("lua_set_color"), 4, args);
+    plugdata_draw(obj, gensym("lua_set_color"), 4, args);
     return 0;
 }
 
@@ -241,7 +247,7 @@ static int fill_ellipse(lua_State* L) {
     SETFLOAT(args + 1, luaL_checknumber(L, 2)); // y
     SETFLOAT(args + 2, luaL_checknumber(L, 3)); // w
     SETFLOAT(args + 3, luaL_checknumber(L, 4)); // h
-    plugdata_forward_message(obj, gensym("lua_fill_ellipse"), 4, args);
+    plugdata_draw(obj, gensym("lua_fill_ellipse"), 4, args);
     return 0;
 }
 
@@ -253,13 +259,13 @@ static int stroke_ellipse(lua_State* L) {
     SETFLOAT(args + 2, luaL_checknumber(L, 3)); // w
     SETFLOAT(args + 3, luaL_checknumber(L, 4)); // h
     SETFLOAT(args + 4, luaL_checknumber(L, 5)); // width
-    plugdata_forward_message(obj, gensym("lua_stroke_ellipse"), 4, args);
+    plugdata_draw(obj, gensym("lua_stroke_ellipse"), 4, args);
     return 0;
 }
 
 static int fill_all(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
-    plugdata_forward_message(obj, gensym("lua_fill_all"), 0, NULL);
+    plugdata_draw(obj, gensym("lua_fill_all"), 0, NULL);
     return 0;
 }
 
@@ -270,7 +276,7 @@ static int fill_rect(lua_State* L) {
     SETFLOAT(args + 1, luaL_checknumber(L, 2)); // y
     SETFLOAT(args + 2, luaL_checknumber(L, 3)); // w
     SETFLOAT(args + 3, luaL_checknumber(L, 4)); // h
-    plugdata_forward_message(obj, gensym("lua_fill_rect"), 4, args);
+    plugdata_draw(obj, gensym("lua_fill_rect"), 4, args);
     return 0;
 }
 
@@ -282,7 +288,7 @@ static int stroke_rect(lua_State* L) {
     SETFLOAT(args + 2, luaL_checknumber(L, 3)); // w
     SETFLOAT(args + 3, luaL_checknumber(L, 4)); // h
     SETFLOAT(args + 4, luaL_checknumber(L, 5)); // corner_radius
-    plugdata_forward_message(obj, gensym("lua_stroke_rect"), 5, args);
+    plugdata_draw(obj, gensym("lua_stroke_rect"), 5, args);
     return 0;
 }
 
@@ -293,7 +299,7 @@ static int fill_rounded_rect(lua_State* L) {
     SETFLOAT(args + 1, luaL_checknumber(L, 2)); // y
     SETFLOAT(args + 2, luaL_checknumber(L, 3)); // w
     SETFLOAT(args + 3, luaL_checknumber(L, 4)); // h
-    plugdata_forward_message(obj, gensym("lua_fill_rounded_rect"), 4, args);
+    plugdata_draw(obj, gensym("lua_fill_rounded_rect"), 4, args);
     return 0;
 }
 
@@ -306,7 +312,7 @@ static int stroke_rounded_rect(lua_State* L) {
     SETFLOAT(args + 3, luaL_checknumber(L, 4)); // h
     SETFLOAT(args + 4, luaL_checknumber(L, 5)); // corner_radius
     SETFLOAT(args + 5, luaL_checknumber(L, 6)); // width
-    plugdata_forward_message(obj, gensym("lua_stroke_rounded_rect"), 6, args);
+    plugdata_draw(obj, gensym("lua_stroke_rounded_rect"), 6, args);
     return 0;
 }
 
@@ -319,7 +325,7 @@ static int draw_text(lua_State* L) {
     SETFLOAT(args + 2, luaL_checknumber(L, 3)); // y
     SETFLOAT(args + 3, luaL_checknumber(L, 4)); // w
     SETFLOAT(args + 4, luaL_checknumber(L, 5)); // h
-    plugdata_forward_message(obj, gensym("lua_text"), 5, args);
+    plugdata_draw(obj, gensym("lua_text"), 5, args);
     return 0;
 }
 
@@ -328,7 +334,7 @@ static int start_path(lua_State* L) {
     t_atom args[2];
     SETFLOAT(args , luaL_checknumber(L, 1)); // x
     SETFLOAT(args + 1, luaL_checknumber(L, 2)); // y
-    plugdata_forward_message(obj, gensym("lua_start_path"), 2, args);
+    plugdata_draw(obj, gensym("lua_start_path"), 2, args);
     return 0;
 }
 
@@ -337,7 +343,7 @@ static int line_to(lua_State* L) {
     t_atom args[2];
     SETFLOAT(args, luaL_checknumber(L, 1)); // x
     SETFLOAT(args + 1, luaL_checknumber(L, 2)); // y
-    plugdata_forward_message(obj, gensym("lua_line_to"), 2, args);
+    plugdata_draw(obj, gensym("lua_line_to"), 2, args);
     return 0;
 }
 
@@ -348,9 +354,9 @@ static int quad_to(lua_State* L) {
     SETFLOAT(args + 1, luaL_checknumber(L, 2)); // y1
     SETFLOAT(args + 2, luaL_checknumber(L, 3)); // x2
     SETFLOAT(args + 3, luaL_checknumber(L, 4)); // y2
-
+    
     // Forward the message to the appropriate function
-    plugdata_forward_message(obj, gensym("lua_quad_to"), 4, args);
+    plugdata_draw(obj, gensym("lua_quad_to"), 4, args);
     return 0;
 }
 
@@ -363,15 +369,15 @@ static int cubic_to(lua_State* L) {
     SETFLOAT(args + 3, luaL_checknumber(L, 4)); // y2
     SETFLOAT(args + 4, luaL_checknumber(L, 5)); // x3
     SETFLOAT(args + 5, luaL_checknumber(L, 6)); // y3
-
+    
     // Forward the message to the appropriate function
-    plugdata_forward_message(obj, gensym("lua_cubic_to"), 6, args);
+    plugdata_draw(obj, gensym("lua_cubic_to"), 6, args);
     return 0;
 }
 
 static int close_path(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
-    plugdata_forward_message(obj, gensym("lua_close_path"), 0, NULL);
+    plugdata_draw(obj, gensym("lua_close_path"), 0, NULL);
     return 0;
 }
 
@@ -380,13 +386,13 @@ static int stroke_path(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
     t_atom arg;
     SETFLOAT(&arg, luaL_checknumber(L, 1)); // line thickness
-    plugdata_forward_message(obj, gensym("lua_stroke_path"), 1, &arg);
+    plugdata_draw(obj, gensym("lua_stroke_path"), 1, &arg);
     return 0;
 }
 
 static int fill_path(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
-    plugdata_forward_message(obj, gensym("lua_fill_path"), 0, NULL);
+    plugdata_draw(obj, gensym("lua_fill_path"), 0, NULL);
     return 0;
 }
 
@@ -395,7 +401,7 @@ static int translate(lua_State* L) {
     t_atom args[2];
     SETFLOAT(args, luaL_checknumber(L, 1)); // tx
     SETFLOAT(args + 1, luaL_checknumber(L, 2)); // ty
-    plugdata_forward_message(obj, gensym("lua_translate"), 2, args);
+    plugdata_draw(obj, gensym("lua_translate"), 2, args);
     return 0;
 }
 
@@ -404,13 +410,13 @@ static int scale(lua_State* L) {
     t_atom args[2];
     SETFLOAT(args, luaL_checknumber(L, 1)); // sx
     SETFLOAT(args + 1, luaL_checknumber(L, 2)); // sy
-    plugdata_forward_message(obj, gensym("lua_scale"), 2, args);
+    plugdata_draw(obj, gensym("lua_scale"), 2, args);
     return 0;
 }
 
 static int reset_transform(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
-    plugdata_forward_message(obj, gensym("lua_reset_transform"), 0, NULL);
+    plugdata_draw(obj, gensym("lua_reset_transform"), 0, NULL);
     return 0;
 }
 #else
@@ -778,7 +784,7 @@ static int quad_to(lua_State* L) {
     
     // Get the last point
     float t = 0.0;
-    const float resolution = 1000;
+    const float resolution = 100;
     while (t <= 1.0) {
         t += 1.0 / resolution;
         if (gfx->num_path_segments < 4096) {
@@ -813,7 +819,7 @@ static int cubic_to(lua_State* L) {
    
     // Get the last point
     float t = 0.0;
-    const float resolution = 1000;
+    const float resolution = 100;
     while (t <= 1.0) {
         t += 1.0 / resolution;
         if (gfx->num_path_segments < 4096) {

@@ -46,7 +46,6 @@
 #include <lauxlib.h>
 #include <lualib.h>
 
-
 #include "pdlua.h"
 
 #include "s_stuff.h" // for sys_register_loader()
@@ -867,6 +866,9 @@ static int pdlua_object_new(lua_State *L)
                 o->gfx.translate_y = 0;
                 o->gfx.mouse_x = 0;
                 o->gfx.mouse_y = 0;
+#else
+                o->gfx.plugdata_draw_callback = NULL;
+                o->gfx.plugdata_callback_target = NULL;
 #endif
                 
                 lua_pushlightuserdata(L, o);
