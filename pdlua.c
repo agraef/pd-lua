@@ -587,26 +587,7 @@ void pdlua_vis(t_gobj *z, t_glist *glist, int vis){
     // If there's no gui, use default text vis behavior
     if(!((t_pdlua *)z)->has_gui)
     {
-        t_text *x = (t_text *)z;
-        if (vis)
-        {
-            if (gobj_shouldvis(&x->te_g, glist))
-            {
-                t_rtext *y = glist_findrtext(glist, x);
-                text_drawborder(x, glist, rtext_gettag(y),
-                    rtext_width(y), rtext_height(y), 1);
-                rtext_draw(y);
-            }
-        }
-        else
-        {
-            t_rtext *y = glist_findrtext(glist, x);
-            if (gobj_shouldvis(&x->te_g, glist))
-            {
-                text_eraseborder(x, glist, rtext_gettag(y));
-                rtext_erase(y);
-            }
-        }
+        text_widgetbehavior.w_visfn(z, glist, vis);
         return;
     }
     
@@ -620,17 +601,30 @@ void pdlua_vis(t_gobj *z, t_glist *glist, int vis){
     }
 }
 
+static void pdlua_delete(t_gobj *z, t_glist *glist){
+    if(!((t_pdlua *)z)->has_gui)
+    {
+        text_widgetbehavior.w_deletefn(z, glist);
+        return;
+    }
+    pdlua_vis(z, glist, 0);
+    canvas_deletelinesfor(glist, (t_text *)z);
+}
+
 static void pdlua_motion(t_gobj *z, t_floatarg dx, t_floatarg dy,
     t_floatarg up)
 {
 #if !PLUGDATA
-    t_pdlua *x = (t_pdlua *)z;
-    x->gfx.mouse_drag_x = x->gfx.mouse_drag_x + dx;
-    x->gfx.mouse_drag_y = x->gfx.mouse_drag_y + dy;
-
     if (!up)
     {
-        pdlua_gfx_mouse_drag((t_object*)x, x->gfx.mouse_drag_x - text_xpix(&x->pd, x->canvas), x->gfx.mouse_drag_y - text_ypix(&x->pd, x->canvas));
+        t_pdlua *x = (t_pdlua *)z;
+        x->gfx.mouse_drag_x = x->gfx.mouse_drag_x + dx;
+        x->gfx.mouse_drag_y = x->gfx.mouse_drag_y + dy;
+        int zoom = glist_getzoom(glist_getcanvas(x->canvas));
+        int xpos = (x->gfx.mouse_drag_x / zoom) - text_xpix(&x->pd, x->canvas);
+        int ypos = (x->gfx.mouse_drag_y / zoom) - text_ypix(&x->pd, x->canvas);
+                
+        pdlua_gfx_mouse_drag((t_object*)x, xpos, ypos);
     }
 #endif
 }
@@ -640,8 +634,9 @@ static int pdlua_click(t_gobj *z, t_glist *gl, int xpos, int ypos, int shift, in
 #if !PLUGDATA
     if(x->has_gui)
     {
-        int xpix = xpos - text_xpix(&x->pd, gl);
-        int ypix = ypos - text_ypix(&x->pd, gl);
+        int zoom = glist_getzoom(gl);
+        int xpix = (xpos / zoom) - text_xpix(&x->pd, gl);
+        int ypix = (ypos / zoom) - text_ypix(&x->pd, gl);
                 
         if(doit){
             if(!x->gfx.mouse_down)
@@ -670,6 +665,7 @@ static int pdlua_click(t_gobj *z, t_glist *gl, int xpos, int ypos, int shift, in
 
 #endif
 }
+
 
 static void pdlua_displace(t_gobj *z, t_glist *glist, int dx, int dy){
     t_pdlua *x = (t_pdlua *)z;
@@ -839,8 +835,8 @@ static int pdlua_class_new(lua_State *L)
 
     pdlua_widgetbehavior.w_getrectfn  = pdlua_getrect;
     pdlua_widgetbehavior.w_displacefn = pdlua_displace;
-    pdlua_widgetbehavior.w_selectfn   = text_widgetbehavior.w_selectfn;;
-    pdlua_widgetbehavior.w_deletefn   = text_widgetbehavior.w_deletefn;
+    pdlua_widgetbehavior.w_selectfn   = text_widgetbehavior.w_selectfn;
+    pdlua_widgetbehavior.w_deletefn   = pdlua_delete;
     pdlua_widgetbehavior.w_clickfn    = pdlua_click;
     pdlua_widgetbehavior.w_visfn      = pdlua_vis;
     pdlua_widgetbehavior.w_activatefn = pdlua_activate;
