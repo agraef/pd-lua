@@ -446,6 +446,8 @@ void pdlua_gfx_clear(t_pdlua *obj) {
     t_canvas *cnv = glist_getcanvas(obj->canvas);
     pdgui_vmess(0, "crs", cnv, "delete", gfx->object_tag);
     gfx->current_paint_tag[0] = '\0';
+    
+    glist_eraseiofor(glist_getcanvas(cnv), obj, gfx->object_tag);
 }
 
 static void get_bounds_args(lua_State* L, t_pdlua* obj, t_pdlua_gfx *gfx, int* x1, int* y1, int* x2, int* y2) {
@@ -509,6 +511,13 @@ static int start_paint(lua_State* L) {
 }
 
 static int end_paint(lua_State* L) {
+    t_pdlua* obj = get_current_object(L);
+    
+    // Draw iolets on top
+    int xpos = text_xpix((t_object*)obj, obj->canvas);
+    int ypos = text_ypix((t_object*)obj, obj->canvas);
+    glist_drawiofor(glist_getcanvas(obj->canvas), (t_object*)obj, 1, obj->gfx.object_tag, xpos, ypos, xpos + obj->gfx.width, ypos + obj->gfx.height);
+    
     return 0;
 }
 

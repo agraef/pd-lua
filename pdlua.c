@@ -584,20 +584,22 @@ static void pdlua_free( t_pdlua *o /**< The object to destruct. */)
 }
 
 void pdlua_vis(t_gobj *z, t_glist *glist, int vis){
+    
+    t_pdlua* x = (t_pdlua *)z;
     // If there's no gui, use default text vis behavior
-    if(!((t_pdlua *)z)->has_gui)
+    if(!x->has_gui)
     {
         text_widgetbehavior.w_visfn(z, glist, vis);
         return;
     }
-    
+
     // Otherwise, repaint or clear the custom graphics
     if(vis)
     {
-        pdlua_gfx_repaint((t_pdlua *)z);
+        pdlua_gfx_repaint(x);
     }
     else {
-        pdlua_gfx_clear((t_pdlua *)z);
+        pdlua_gfx_clear(x);
     }
 }
 
@@ -665,7 +667,9 @@ static int pdlua_click(t_gobj *z, t_glist *gl, int xpos, int ypos, int shift, in
 #endif
 }
 
-
+// The _reload method will tell the pdlua object to reload the original script that spawned it
+// This is used in plugdata for dynamic reloading, but can be useful in other environments too
+// Prefixed with _ to prevent namespace pollution
 static void pdlua_reload(t_gobj* z)
 {
     pdlua_dispatch((t_pdlua *)z, 0, gensym("_reload"), 0, NULL);
@@ -676,8 +680,10 @@ static void pdlua_displace(t_gobj *z, t_glist *glist, int dx, int dy){
     x->pd.te_xpix += dx, x->pd.te_ypix += dy;
     dx *= glist_getzoom(glist), dy *= glist_getzoom(glist);
     
+    // Will re-draw GUI
     pdlua_vis(z, glist, 0);
     pdlua_vis(z, glist, 1);
+    
     canvas_fixlinesfor(glist, (t_text*)x);
 }
 
@@ -685,6 +691,7 @@ static void pdlua_activate(t_gobj *z, t_glist *glist, int state)
 {
     if(!((t_pdlua *)z)->has_gui)
     {
+        // Bypass to text widgetbehaviour if we're not a GUI
         text_widgetbehavior.w_activatefn(z, glist, state);
     }
 }
@@ -700,6 +707,7 @@ static void pdlua_getrect(t_gobj *z, t_glist *glist, int *xp1, int *yp1, int *xp
         *yp2 = y1 + x->gfx.height * glist->gl_zoom;
     }
     else {
+        // Bypass to text widgetbehaviour if we're not a GUI
         text_widgetbehavior.w_getrectfn(z, glist, xp1, yp1, xp2, yp2);
     }
 }
@@ -752,6 +760,8 @@ void plugdata_forward_message(void* x, t_symbol *s, int argc, t_atom *argv);
 static void pdlua_menu_open(t_pdlua *o)
 {
     #if PLUGDATA
+        // This is a more reliable method of finding out what file an object came from
+        // TODO: we might also want to use something like this for pd-vanilla?
         lua_getglobal(__L, "pd");
         lua_getfield(__L, -1, "_whereami");
         lua_pushstring(__L,  o->pd.te_pd->c_name->s_name);
@@ -859,6 +869,7 @@ static int pdlua_class_new(lua_State *L)
     c = class_new(gensym((char *) name), (t_newmethod) pdlua_new,
         (t_method) pdlua_free, sizeof(t_pdlua), CLASS_NOINLET, A_GIMME, 0);
 
+    // Set custom widgetbehaviour for GUIs
     pdlua_widgetbehavior.w_getrectfn  = pdlua_getrect;
     pdlua_widgetbehavior.w_displacefn = pdlua_displace;
     pdlua_widgetbehavior.w_selectfn   = text_widgetbehavior.w_selectfn;
@@ -916,6 +927,7 @@ static int pdlua_object_new(lua_State *L)
                 o->gfx.height = 80;
                
 #if !PLUGDATA
+                // Init graphics state for pd
                 o->gfx.num_path_segments = 0;
                 o->gfx.scale_x = 1.0f;
                 o->gfx.scale_y = 1.0f;
@@ -925,6 +937,7 @@ static int pdlua_object_new(lua_State *L)
                 o->gfx.mouse_drag_y = 0;
                 o->gfx.mouse_down = 0;
 #else
+                // NULL until plugdata overrides them with something useful
                 o->gfx.plugdata_draw_callback = NULL;
                 o->gfx.plugdata_callback_target = NULL;
 #endif
