@@ -422,8 +422,8 @@ static void get_bounds_args(lua_State* L, t_pdlua* obj, t_pdlua_gfx *gfx, int* x
     w *= gfx->scale_x;
     h *= gfx->scale_y;
     
-    x += gfx->translate_x + text_xpix(obj, cnv);
-    y += gfx->translate_y + text_ypix(obj, cnv);
+    x += gfx->translate_x + text_xpix(obj, obj->canvas);
+    y += gfx->translate_y + text_ypix(obj, obj->canvas);
     
     *x1 = x * glist_getzoom(cnv);
     *y1 = y * glist_getzoom(cnv);
@@ -522,8 +522,8 @@ static int fill_all(lua_State* L) {
     t_pdlua_gfx *gfx = &obj->gfx;
     t_canvas *cnv = glist_getcanvas(obj->canvas);
     
-    int x1 = text_xpix(obj, cnv) * glist_getzoom(cnv);
-    int y1 = text_ypix(obj, cnv) * glist_getzoom(cnv);
+    int x1 = text_xpix(obj, obj->canvas) * glist_getzoom(cnv);
+    int y1 = text_ypix(obj, obj->canvas) * glist_getzoom(cnv);
     int x2 = x1 + gfx->width * glist_getzoom(cnv);
     int y2 = y1 + gfx->height * glist_getzoom(cnv);
     
@@ -653,10 +653,10 @@ static int draw_line(lua_State* L) {
     x2 *= gfx->scale_x;
     y2 *= gfx->scale_y;
     
-    x1 += gfx->translate_x + text_xpix(obj, cnv);
-    y1 += gfx->translate_y + text_ypix(obj, cnv);
-    x2 += gfx->translate_x + text_xpix(obj, cnv);
-    y2 += gfx->translate_y + text_ypix(obj, cnv);
+    x1 += gfx->translate_x + text_xpix(obj, obj->canvas);
+    y1 += gfx->translate_y + text_ypix(obj, obj->canvas);
+    x2 += gfx->translate_x + text_xpix(obj, obj->canvas);
+    y2 += gfx->translate_y + text_ypix(obj, obj->canvas);
 
     int canvas_zoom = glist_getzoom(cnv);
     x1 *= canvas_zoom;
@@ -687,8 +687,8 @@ static int draw_text(lua_State* L) {
     y *= gfx->scale_y;
     w *= gfx->scale_x;
     
-    x += gfx->translate_x + text_xpix(obj, cnv);
-    y += gfx->translate_y + text_ypix(obj, cnv);
+    x += gfx->translate_x + text_xpix(obj, obj->canvas);
+    y += gfx->translate_y + text_ypix(obj, obj->canvas);
     
     int canvas_zoom = glist_getzoom(cnv);
     x *= canvas_zoom;
@@ -826,8 +826,8 @@ static int stroke_path(lua_State* L) {
     int stroke_width = luaL_checknumber(L, 1) * glist_getzoom(cnv);
     
     // Apply transformations to all coordinates
-    int obj_x = text_xpix(obj, cnv);
-    int obj_y = text_ypix(obj, cnv);
+    int obj_x = text_xpix(obj, obj->canvas);
+    int obj_y = text_ypix(obj, obj->canvas);
     for (int i = 0; i < gfx->num_path_segments; i++) {
         int x = gfx->path_segments[i * 2], y = gfx->path_segments[i * 2 + 1];
                 
@@ -881,8 +881,8 @@ static int fill_path(lua_State* L) {
     t_canvas *cnv = glist_getcanvas(obj->canvas);
 
     // Apply transformations to all coordinates
-    int obj_x = text_xpix(obj, cnv);
-    int obj_y = text_ypix(obj, cnv);
+    int obj_x = text_xpix(obj, obj->canvas);
+    int obj_y = text_ypix(obj, obj->canvas);
     for (int i = 0; i < gfx->num_path_segments; i++) {
         int x = gfx->path_segments[i * 2], y = gfx->path_segments[i * 2 + 1];
         
