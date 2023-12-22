@@ -196,10 +196,13 @@ static int end_paint(lua_State* L) {
 static int set_color(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
     t_atom args[4];
+   
     SETFLOAT(args, luaL_checknumber(L, 1)); // r
     SETFLOAT(args + 1, luaL_checknumber(L, 2)); // g
     SETFLOAT(args + 2, luaL_checknumber(L, 3)); // b
-    if (lua_gettop(L) > 1) {  // a (optional, default to 1.0)
+    
+    if (lua_gettop(L) > 5) { // object and table are already on stack, hence 5
+        // alpha (optional, default to 1.0)
         SETFLOAT(args + 3, luaL_checknumber(L, 4));
     }
     else {
