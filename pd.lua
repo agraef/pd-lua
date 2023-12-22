@@ -25,6 +25,7 @@ pd._objects = { }
 pd._clocks = { }
 pd._receives = { }
 pd._loadpath = ""
+pd._fullpath = ""
 
 -- add a path to Lua's "require" search paths
 pd._setrequirepath = function(path)
@@ -118,6 +119,14 @@ pd._whoami = function (object)
     return pd._objects[object]:whoami()
   end
 end
+
+--whoami method dispatcher
+pd._whereami = function (object)
+  if nil ~= pd._objects[object] then
+    return pd._objects[object]._fullpath
+  end
+end
+
 
 --class method dispatcher
 pd._get_class = function (object)
@@ -295,6 +304,13 @@ function pd.Class:register(name)
   self._class = pd._register(name)  -- register new class
   self._name = name
   self._loadpath = fullpath
+
+  if pd._fullpath == nil or pd._fullpath == '' then
+    self._fullpath = fullname .. ".pd_lua"
+  else
+    self._fullpath = self._currentpath
+  end
+
   if name == "pdlua" then
     self._scriptname = "pd.lua"
   else
@@ -385,7 +401,9 @@ function pd.Class:dofilex(file)
   local pathsave = pd._loadpath
   pd._loadname = nil
   pd._loadpath = self._loadpath
+  pd._fullpath = file
   local f, path = pd._dofilex(self._class, file)
+  pd._fullpath = = nil
   pd._loadname = namesave
   pd._loadpath = pathsave
   return f, path
@@ -399,7 +417,9 @@ function pd.Class:dofile(file)
   local pathsave = pd._loadpath
   pd._loadname = nil
   pd._loadpath = self._loadpath
+  pd._fullpath = file
   local f, path = pd._dofile(self._object, file)
+  pd._fullpath = = nil
   pd._loadname = namesave
   pd._loadpath = pathsave
   return f, path
@@ -411,6 +431,10 @@ end
 
 function pd.Class:whoami()
   return self._scriptname or self._name
+end
+
+function pd.Class:in_1_reload()
+  return self:dofile(self._fullpath)
 end
 
 function pd.Class:get_class() -- accessor for t_class*

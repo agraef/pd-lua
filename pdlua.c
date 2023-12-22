@@ -667,6 +667,11 @@ static int pdlua_click(t_gobj *z, t_glist *gl, int xpos, int ypos, int shift, in
 }
 
 
+static void pdlua_reload(t_gobj* z)
+{
+    pdlua_dispatch((t_pdlua *)z, 0, gensym("_reload"), 0, NULL);
+}
+
 static void pdlua_displace(t_gobj *z, t_glist *glist, int dx, int dy){
     t_pdlua *x = (t_pdlua *)z;
     x->pd.te_xpix += dx, x->pd.te_ypix += dy;
@@ -747,6 +752,28 @@ void plugdata_forward_message(void* x, t_symbol *s, int argc, t_atom *argv);
 /** Here we find the lua code for the object and open it in an editor */
 static void pdlua_menu_open(t_pdlua *o)
 {
+    #if PLUGDATA
+        lua_getglobal(__L, "pd");
+        lua_getfield(__L, -1, "_whereami");
+        lua_pushstring(__L,  o->pd.te_pd->c_name->s_name);
+
+        if (lua_pcall(__L, 1, 1, 0))
+        {
+            pd_error(NULL, "lua: error in whereami:\n%s", lua_tostring(__L, -1));
+            lua_pop(__L, 2); /* pop the error string and the global "pd" */
+            return;
+        }
+        if(lua_isstring(__L, -1)) {
+            const char* fullpath = luaL_checkstring(__L, -1);
+            if(fullpath) {
+                t_atom arg;
+                SETSYMBOL(&arg, gensym(fullpath));
+                plugdata_forward_message(o, gensym("open_textfile"), 1, &arg);
+            }
+            return;
+        }
+#endif
+
     const char  *name;
     const char  *path;
     char        pathname[FILENAME_MAX];
@@ -842,9 +869,12 @@ static int pdlua_class_new(lua_State *L)
     pdlua_widgetbehavior.w_activatefn = pdlua_activate;
     class_setwidget(c, &pdlua_widgetbehavior);
     
-/* a class with a "menu-open" method will have the "Open" item highlighted in the right-click menu */
-    if (c)
+
+    if (c) {
+        /* a class with a "menu-open" method will have the "Open" item highlighted in the right-click menu */
         class_addmethod(c, (t_method)pdlua_menu_open, gensym("menu-open"), A_NULL);/* (mrpeach 20111025) */
+        class_addmethod(c, (t_method)pdlua_reload, gensym("_reload"), A_NULL);/* (mrpeach 20111025) */
+    }
 /**/
 
     lua_pushlightuserdata(L, c);
