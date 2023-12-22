@@ -217,13 +217,13 @@ static int fill_ellipse(lua_State* L) {
 
 static int stroke_ellipse(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
-    t_atom args[4];
+    t_atom args[5];
     SETFLOAT(args, luaL_checknumber(L, 1)); // x
     SETFLOAT(args + 1, luaL_checknumber(L, 2)); // y
     SETFLOAT(args + 2, luaL_checknumber(L, 3)); // w
     SETFLOAT(args + 3, luaL_checknumber(L, 4)); // h
     SETFLOAT(args + 4, luaL_checknumber(L, 5)); // width
-    plugdata_draw(obj, gensym("lua_stroke_ellipse"), 4, args);
+    plugdata_draw(obj, gensym("lua_stroke_ellipse"), 5, args);
     return 0;
 }
 
