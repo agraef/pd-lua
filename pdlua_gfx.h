@@ -258,12 +258,13 @@ static int stroke_rect(lua_State* L) {
 
 static int fill_rounded_rect(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
-    t_atom args[4];
+    t_atom args[5];
     SETFLOAT(args, luaL_checknumber(L, 1)); // x
     SETFLOAT(args + 1, luaL_checknumber(L, 2)); // y
     SETFLOAT(args + 2, luaL_checknumber(L, 3)); // w
     SETFLOAT(args + 3, luaL_checknumber(L, 4)); // h
-    plugdata_draw(obj, gensym("lua_fill_rounded_rect"), 4, args);
+    SETFLOAT(args + 4, luaL_checknumber(L, 5)); // corner radius
+    plugdata_draw(obj, gensym("lua_fill_rounded_rect"), 5, args);
     return 0;
 }
 
