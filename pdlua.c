@@ -621,9 +621,8 @@ static void pdlua_motion(t_gobj *z, t_floatarg dx, t_floatarg dy,
         x->gfx.mouse_drag_x = x->gfx.mouse_drag_x + dx;
         x->gfx.mouse_drag_y = x->gfx.mouse_drag_y + dy;
         int zoom = glist_getzoom(glist_getcanvas(x->canvas));
-        int xpos = (x->gfx.mouse_drag_x / zoom) - text_xpix(&x->pd, x->canvas);
-        int ypos = (x->gfx.mouse_drag_y / zoom) - text_ypix(&x->pd, x->canvas);
-                
+        int xpos = (x->gfx.mouse_drag_x - text_xpix(&x->pd, x->canvas)) / zoom;
+        int ypos = (x->gfx.mouse_drag_y - text_ypix(&x->pd, x->canvas)) / zoom;
         pdlua_gfx_mouse_drag(x, xpos, ypos);
     }
 #endif
@@ -635,8 +634,8 @@ static int pdlua_click(t_gobj *z, t_glist *gl, int xpos, int ypos, int shift, in
     if(x->has_gui)
     {
         int zoom = glist_getzoom(gl);
-        int xpix = (xpos / zoom) - text_xpix(&x->pd, gl);
-        int ypix = (ypos / zoom) - text_ypix(&x->pd, gl);
+        int xpix = (xpos - text_xpix(&x->pd, gl)) / zoom; 
+        int ypix = (ypos - text_ypix(&x->pd, gl)) / zoom;
                 
         if(doit){
             if(!x->gfx.mouse_down)

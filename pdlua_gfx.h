@@ -199,7 +199,12 @@ static int set_color(lua_State* L) {
     SETFLOAT(args, luaL_checknumber(L, 1)); // r
     SETFLOAT(args + 1, luaL_checknumber(L, 2)); // g
     SETFLOAT(args + 2, luaL_checknumber(L, 3)); // b
-    SETFLOAT(args + 3, luaL_optnumber(L, 4, 1.0)); // a (optional, default to 1.0)
+    if (lua_gettop(L) > 1) {  // a (optional, default to 1.0)
+        SETFLOAT(args + 3, luaL_checknumber(L, 4));
+    }
+    else {
+        SETFLOAT(args + 3, 1.0f);
+    }
     plugdata_draw(obj, gensym("lua_set_color"), 4, args);
     return 0;
 }
@@ -423,8 +428,8 @@ static void get_bounds_args(lua_State* L, t_pdlua* obj, t_pdlua_gfx *gfx, int* x
     w *= gfx->scale_x;
     h *= gfx->scale_y;
     
-    x += gfx->translate_x + text_xpix((t_object*)obj, obj->canvas);
-    y += gfx->translate_y + text_ypix((t_object*)obj, obj->canvas);
+    x += gfx->translate_x + (text_xpix((t_object*)obj, obj->canvas) / glist_getzoom(cnv));
+    y += gfx->translate_y + (text_ypix((t_object*)obj, obj->canvas) / glist_getzoom(cnv));
     
     *x1 = x * glist_getzoom(cnv);
     *y1 = y * glist_getzoom(cnv);
@@ -481,7 +486,8 @@ static int set_color(lua_State* L) {
     int r = luaL_checknumber(L, 1);
     int g = luaL_checknumber(L, 2);
     int b = luaL_checknumber(L, 3);
-    
+    // AFAIK, alpha is not supported in tcl/tk
+
     snprintf(gfx->current_color, 8, "#%02X%02X%02X", r, g, b);
     gfx->current_color[7] = '\0';
     
@@ -525,11 +531,11 @@ static int fill_all(lua_State* L) {
     t_pdlua_gfx *gfx = &obj->gfx;
     t_canvas *cnv = glist_getcanvas(obj->canvas);
     
-    int x1 = text_xpix((t_object*)obj, obj->canvas) * glist_getzoom(cnv);
-    int y1 = text_ypix((t_object*)obj, obj->canvas) * glist_getzoom(cnv);
+    int x1 = text_xpix((t_object*)obj, obj->canvas);
+    int y1 = text_ypix((t_object*)obj, obj->canvas);
     int x2 = x1 + gfx->width * glist_getzoom(cnv);
     int y2 = y1 + gfx->height * glist_getzoom(cnv);
-    
+        
     const char* tags[] =  { gfx->object_tag, register_drawing(obj) };
     
     pdgui_vmess(0, "crr iiii rs rS", cnv, "create", "rectangle", x1, y1, x2, y2, "-fill", gfx->current_color, "-tags", 2, tags);
@@ -648,12 +654,13 @@ static int draw_line(lua_State* L) {
     x2 *= gfx->scale_x;
     y2 *= gfx->scale_y;
     
-    x1 += gfx->translate_x + text_xpix((t_object*)obj, obj->canvas);
-    y1 += gfx->translate_y + text_ypix((t_object*)obj, obj->canvas);
-    x2 += gfx->translate_x + text_xpix((t_object*)obj, obj->canvas);
-    y2 += gfx->translate_y + text_ypix((t_object*)obj, obj->canvas);
-
     int canvas_zoom = glist_getzoom(cnv);
+
+    x1 += gfx->translate_x + (text_xpix((t_object*)obj, obj->canvas) / canvas_zoom);
+    y1 += gfx->translate_y + (text_ypix((t_object*)obj, obj->canvas) / canvas_zoom);
+    x2 += gfx->translate_x + (text_xpix((t_object*)obj, obj->canvas) / canvas_zoom);
+    y2 += gfx->translate_y + (text_ypix((t_object*)obj, obj->canvas) / canvas_zoom);
+
     x1 *= canvas_zoom;
     y1 *= canvas_zoom;
     x2 *= canvas_zoom;
@@ -683,10 +690,10 @@ static int draw_text(lua_State* L) {
     y *= gfx->scale_y;
     w *= gfx->scale_x;
     
-    x += gfx->translate_x + text_xpix((t_object*)obj, obj->canvas);
-    y += gfx->translate_y + text_ypix((t_object*)obj, obj->canvas);
-    
     int canvas_zoom = glist_getzoom(cnv);
+    x += gfx->translate_x + (text_xpix((t_object*)obj, obj->canvas) / canvas_zoom);
+    y += gfx->translate_y + (text_ypix((t_object*)obj, obj->canvas) / canvas_zoom);
+    
     x *= canvas_zoom;
     y *= canvas_zoom;
     w *= canvas_zoom;
@@ -820,6 +827,7 @@ static int stroke_path(lua_State* L) {
     int stroke_width = luaL_checknumber(L, 1) * glist_getzoom(cnv);
     
     // Apply transformations to all coordinates
+    // Apply transformations to all coordinates
     int obj_x = text_xpix((t_object*)obj, obj->canvas);
     int obj_y = text_ypix((t_object*)obj, obj->canvas);
     for (int i = 0; i < gfx->num_path_segments; i++) {
@@ -828,12 +836,12 @@ static int stroke_path(lua_State* L) {
         x *= gfx->scale_x;
         y *= gfx->scale_y;
         
-        x += gfx->translate_x + obj_x;
-        y += gfx->translate_y + obj_y;
+        x += gfx->translate_x;
+        y += gfx->translate_y;
         
         int canvas_zoom = glist_getzoom(cnv);
-        gfx->path_segments[i * 2] = x * canvas_zoom;
-        gfx->path_segments[i * 2 + 1] = y * canvas_zoom;
+        gfx->path_segments[i * 2] = (x * canvas_zoom) + obj_x;
+        gfx->path_segments[i * 2 + 1] = (y * canvas_zoom) + obj_y;
     }
     
     int totalSize = 0;
@@ -883,11 +891,11 @@ static int fill_path(lua_State* L) {
         x *= gfx->scale_x;
         y *= gfx->scale_y;
         
-        x += gfx->translate_x + obj_x;
-        y += gfx->translate_y + obj_y;
+        x += gfx->translate_x;
+        y += gfx->translate_y;
         
-        gfx->path_segments[i * 2] = x * glist_getzoom(cnv);
-        gfx->path_segments[i * 2 + 1] = y * glist_getzoom(cnv);
+        gfx->path_segments[i * 2] = x * glist_getzoom(cnv) + obj_x;
+        gfx->path_segments[i * 2 + 1] = y * glist_getzoom(cnv) + obj_y;
     }
     
     int totalSize = 0;
