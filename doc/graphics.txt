@@ -34,11 +34,11 @@ end
 API overview
 --------------
 -- Callback functions you can define
-paint()                                                        -- Paint callback. This is the only place where you're allowed to call any of the paint functions
-pd:Class:mouse_down(x, y)                                               -- Mouse down callback, called when the mouse is clicked
-pd:Class:mouse_up(x, y)                                                 -- Mouse up callback, called when the mouse button is released
-pd:Class:mouse_move(x, y)                                               -- Mouse move callback, called when the mouse is moved while not being down
-pd:Class:mouse_drag(x, y)                                               -- Mouse drag callback, called when the mouse is moved while also being down
+paint()                                                             -- Paint callback. This is the only place where you're allowed to call any of the paint functions
+pd:Class:mouse_down(x, y)                                           -- Mouse down callback, called when the mouse is clicked
+pd:Class:mouse_up(x, y)                                             -- Mouse up callback, called when the mouse button is released
+pd:Class:mouse_move(x, y)                                           -- Mouse move callback, called when the mouse is moved while not being down
+pd:Class:mouse_drag(x, y)                                           -- Mouse drag callback, called when the mouse is moved while also being down
 
 -- Functions you can call
 pd:Class:repaint()                                                  -- Request a repaint, after this the "paint" callback will occur
@@ -54,7 +54,7 @@ gfx.fill_rect(x, y, w, h)                                           -- Draws a f
 gfx.stroke_rect(x, y, w, h, line_width)                             -- Draws the outline of a rectangle at the specified position and size.
 
 gfx.fill_rounded_rect(x, y, w, h, corner_radius)                    -- Draws a filled rounded rectangle at the specified position and size.
-gfx.troke_rounded_rect(x, y, w, h, corner_radius, line_width)      -- Draws the outline of a rounded rectangle at the specified position and size.
+gfx.troke_rounded_rect(x, y, w, h, corner_radius, line_width)       -- Draws the outline of a rounded rectangle at the specified position and size.
 
 gfx.draw_line(x1, y1, x2, y2)                                       -- Draws a line between two points.
 gfx.draw_text(text, x, y, w, fontsize)                              -- Draws text at the specified position and size.
