@@ -241,7 +241,7 @@ static int pdlua_loader_legacy (t_canvas *canvas, char *name);
 __declspec(dllexport)
 #endif 
 #ifdef PLUGDATA
-void pdlua_setup(const char *datadir, char *versbuf, int versbuf_length, void* callback_target, void(*register_gui_callback)(void*, t_object*));
+void pdlua_setup(const char *datadir, char *versbuf, int versbuf_length, void(*register_gui_callback)(t_object*));
 #else
 void pdlua_setup (void);
 #endif
@@ -743,6 +743,12 @@ static void pdlua_stack_dump (lua_State *L)
    Wilkes' Pd-L2Ork variant and access to the GUI uses JavaScript. */
 static void (*nw_gui_vmess)(const char *sel, char *fmt, ...) = NULL;
 
+/* plugdata support. Similarly, if we're running inside plugdata, we can send GUI messages with plugdata_forward_message
+ This allows opening an in-gui text editor instead of opening another app
+ */
+#if PLUGDATA
+void plugdata_forward_message(void* x, t_symbol *s, int argc, t_atom *argv);
+#endif
 /** a handler for the open item in the right-click menu (mrpeach 20111025) */
 /** Here we find the lua code for the object and open it in an editor */
 static void pdlua_menu_open(t_pdlua *o)
@@ -799,10 +805,16 @@ static void pdlua_menu_open(t_pdlua *o)
 #else
         logpost(NULL, 3, "Opening %s for editing", pathname);
 #endif
+#if PLUGDATA
+        t_atom arg;
+        SETSYMBOL(&arg, gensym(pathname));
+        plugdata_forward_message(o, gensym("open_textfile"), 1, &arg);
+#else
         if (nw_gui_vmess)
           nw_gui_vmess("open_textfile", "s", pathname);
         else
           sys_vgui("::pd_menucommands::menu_openfile {%s}\n", pathname);
+#endif
     }
     PDLUA_DEBUG("pdlua_menu_open end. stack top is %d", lua_gettop(__L));
 }
@@ -2059,7 +2071,7 @@ static int pdlua_loader_pathwise
 __declspec(dllexport)
 #endif
 #ifdef PLUGDATA
-void pdlua_setup(const char *datadir, char *versbuf, int versbuf_length, void* callback_target, void(*register_gui_callback)(void*, t_object*))
+void pdlua_setup(const char *datadir, char *versbuf, int versbuf_length, void(*register_gui_callback)(t_object*))
 #else
 void pdlua_setup(void)
 #endif
@@ -2203,7 +2215,7 @@ void pdlua_setup(void)
     pdlua_gfx_setup(__L);
     
 #if PLUGDATA
-    set_gui_callback(callback_target, register_gui_callback);
+    pdlua_gfx_register_gui = register_gui_callback;
 #endif
 
     PDLUA_DEBUG("pdlua_setup: end. stack top %d", lua_gettop(__L));

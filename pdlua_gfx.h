@@ -41,6 +41,13 @@ void pdlua_gfx_repaint(t_pdlua *o) {
     lua_getfield (__L, -1, "_repaint");
     lua_pushlightuserdata(__L, o);
     
+    // Write object ptr to registry to make it reliably accessible
+    lua_pushvalue(__L, LUA_REGISTRYINDEX);
+    lua_pushlightuserdata(__L, o);
+    lua_seti(__L, -2, PDLUA_OBJECT_REGISTRTY_ID);
+    lua_pop(__L, 1);
+    
+    
     if (lua_pcall(__L, 1, 0, 0))
     {
         pd_error(o, "lua: error in repaint:\n%s", lua_tostring(__L, -1));
@@ -129,16 +136,8 @@ static const luaL_Reg gfx_lib[] = {
     {NULL, NULL} // Sentinel to end the list
 };
 
-
-void* gui_target;
-void(*register_gui)(void*, t_object*);
-
-
-int set_gui_callback(void* callback_target, void(*callback)(void*, t_object*)) {
-    gui_target = callback_target;
-    register_gui = callback;
-    return 0;
-}
+// Hook to inform plugdata which class names are lua GUIs
+void(*pdlua_gfx_register_gui)(t_object*);
 
 int pdlua_gfx_setup(lua_State* L) {
     // Register functions with Lua
@@ -161,7 +160,7 @@ void pdlua_gfx_clear(t_pdlua* obj) {
 
 static int gfx_initialize(t_pdlua* obj)
 {
-    register_gui(gui_target, obj);
+    pdlua_gfx_register_gui(obj);
     pdlua_gfx_repaint(obj);
     return 0;
 }
@@ -303,7 +302,7 @@ static int draw_text(lua_State* L) {
     SETFLOAT(args + 2, luaL_checknumber(L, 3)); // y
     SETFLOAT(args + 3, luaL_checknumber(L, 4)); // w
     SETFLOAT(args + 4, luaL_checknumber(L, 5)); // h
-    plugdata_draw(obj, gensym("lua_text"), 5, args);
+    plugdata_draw(obj, gensym("lua_draw_text"), 5, args);
     return 0;
 }
 
@@ -358,7 +357,6 @@ static int close_path(lua_State* L) {
     plugdata_draw(obj, gensym("lua_close_path"), 0, NULL);
     return 0;
 }
-
 
 static int stroke_path(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
