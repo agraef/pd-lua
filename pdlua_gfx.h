@@ -56,8 +56,11 @@ static int translate(lua_State* L);
 static int scale(lua_State* L);
 static int reset_transform(lua_State* L);
 
-void pdlua_gfx_clear(t_pdlua *obj);
+// pdlua_gfx_clear, pdlua_gfx_repaint and pdlua_gfx_mouse_* correspond to the various callbacks the user can assign
 
+void pdlua_gfx_clear(t_pdlua *obj); // only for pd-vanilla, to delete all tcl/tk items
+
+// Trigger repaint callback in lua script
 void pdlua_gfx_repaint(t_pdlua *o) {
     lua_getglobal(__L, "pd");
     lua_getfield (__L, -1, "_repaint");
@@ -79,6 +82,7 @@ void pdlua_gfx_repaint(t_pdlua *o) {
     lua_pop(__L, 1); /* pop the global "pd" */
 }
 
+// Pass mouse events to lua script
 void pdlua_gfx_mouse_event(t_pdlua *o, int x, int y, int type) {
         
     lua_getglobal(__L, "pd");
@@ -103,6 +107,7 @@ void pdlua_gfx_mouse_event(t_pdlua *o, int x, int y, int type) {
     lua_pop(__L, 1); /* pop the global "pd" */
 }
 
+// Pass mouse events to lua script (but easier to understand)
 void pdlua_gfx_mouse_down(t_pdlua *o, int x, int y) {
     pdlua_gfx_mouse_event(o, x, y, 0);
 }
@@ -118,6 +123,8 @@ void pdlua_gfx_mouse_drag(t_pdlua *o, int x, int y) {
     pdlua_gfx_mouse_event(o, x, y, 3);
 }
 
+// We need to have access to the current object always, even in the constructor
+// This function can guarantee that
 static t_pdlua* get_current_object(lua_State* L)
 {
     lua_pushvalue(L, LUA_REGISTRYINDEX);
@@ -170,6 +177,7 @@ int pdlua_gfx_setup(lua_State* L) {
 
 #if PLUGDATA
 
+// Wrapper around draw callback to plugdata
 static inline void plugdata_draw(t_pdlua* obj, t_symbol* sym, int argc, t_atom* argv)
 {
     if(obj->gfx.plugdata_callback_target) {
@@ -182,8 +190,8 @@ void pdlua_gfx_clear(t_pdlua* obj) {
 
 static int gfx_initialize(t_pdlua* obj)
 {
-    pdlua_gfx_register_gui(obj);
-    pdlua_gfx_repaint(obj);
+    pdlua_gfx_register_gui(obj); // let plugdata know that our classname is a GUI object
+    pdlua_gfx_repaint(obj); // Initial repaint
     return 0;
 }
 
