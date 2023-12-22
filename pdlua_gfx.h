@@ -165,9 +165,6 @@ static const luaL_Reg gfx_lib[] = {
     {NULL, NULL} // Sentinel to end the list
 };
 
-// Hook to inform plugdata which class names are lua GUIs
-void(*pdlua_gfx_register_gui)(t_object*);
-
 int pdlua_gfx_setup(lua_State* L) {
     // Register functions with Lua
     luaL_newlib(L, gfx_lib);
@@ -190,7 +187,6 @@ void pdlua_gfx_clear(t_pdlua* obj) {
 
 static int gfx_initialize(t_pdlua* obj)
 {
-    pdlua_gfx_register_gui(obj); // let plugdata know that our classname is a GUI object
     pdlua_gfx_repaint(obj); // Initial repaint
     return 0;
 }

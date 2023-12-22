@@ -108,6 +108,9 @@
 // So we pass a data directory to the setup function instead and store it here
 #if PLUGDATA
     char plugdata_datadir[MAXPDSTRING];
+
+    // Hook to inform plugdata which class names are lua objects
+    void(*plugdata_register_class)(const char*);
 #endif
 
 /** Global Lua interpreter state, needed in the constructor. */
@@ -241,7 +244,7 @@ static int pdlua_loader_legacy (t_canvas *canvas, char *name);
 __declspec(dllexport)
 #endif 
 #ifdef PLUGDATA
-void pdlua_setup(const char *datadir, char *versbuf, int versbuf_length, void(*register_gui_callback)(t_object*));
+void pdlua_setup(const char *datadir, char *versbuf, int versbuf_length, void(*register_class_callback)(const char*));
 #else
 void pdlua_setup (void);
 #endif
@@ -868,7 +871,12 @@ static int pdlua_class_new(lua_State *L)
     PDLUA_DEBUG3("pdlua_class_new: L is %p, name is %s stack top is %d", L, name, lua_gettop(L));
     c = class_new(gensym((char *) name), (t_newmethod) pdlua_new,
         (t_method) pdlua_free, sizeof(t_pdlua), CLASS_NOINLET, A_GIMME, 0);
-
+    
+    // Let plugdata know this class is a lua object
+#if PLUGDATA
+    plugdata_register_class(name);
+#endif
+    
     // Set custom widgetbehaviour for GUIs
     pdlua_widgetbehavior.w_getrectfn  = pdlua_getrect;
     pdlua_widgetbehavior.w_displacefn = pdlua_displace;
@@ -2121,7 +2129,7 @@ static int pdlua_loader_pathwise
 __declspec(dllexport)
 #endif
 #ifdef PLUGDATA
-void pdlua_setup(const char *datadir, char *versbuf, int versbuf_length, void(*register_gui_callback)(t_object*))
+void pdlua_setup(const char *datadir, char *versbuf, int versbuf_length, void(*register_class_callback)(const char*))
 #else
 void pdlua_setup(void)
 #endif
@@ -2265,7 +2273,7 @@ void pdlua_setup(void)
     pdlua_gfx_setup(__L);
     
 #if PLUGDATA
-    pdlua_gfx_register_gui = register_gui_callback;
+    plugdata_register_class = register_class_callback;
 #endif
 
     PDLUA_DEBUG("pdlua_setup: end. stack top %d", lua_gettop(__L));
