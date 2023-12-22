@@ -407,6 +407,7 @@ void pdlua_gfx_clear(t_pdlua *obj) {
     t_pdlua_gfx *gfx = &obj->gfx;
     t_canvas *cnv = glist_getcanvas(obj->canvas);
     pdgui_vmess(0, "crs", cnv, "delete", gfx->object_tag);
+    gfx->current_paint_tag[0] = '\0';
 }
 
 static void get_bounds_args(lua_State* L, t_pdlua* obj, t_pdlua_gfx *gfx, int* x1, int* y1, int* x2, int* y2) {
@@ -448,6 +449,8 @@ static int gfx_initialize(t_pdlua *obj)
     
     snprintf(gfx->object_tag, 128, ".x%lx", obj);
     gfx->object_tag[127] = '\0';
+    gfx->current_paint_tag[0] = '\0';
+    
     pdlua_gfx_repaint(obj);
     return 0;
 }
@@ -463,7 +466,10 @@ static int set_size(lua_State* L)
 
 static int start_paint(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
-    pdlua_gfx_clear(obj);
+    
+    // check if anything was painted before
+    if(strlen(obj->gfx.current_paint_tag))
+        pdlua_gfx_clear(obj);
     return 0;
 }
 
