@@ -2170,6 +2170,8 @@ void pdlua_setup(void)
     snprintf(luaversionStr, MAXPDSTRING-1, "Using lua version %d.%d", lvm, lvl);
 
 #if PLUGDATA
+    plugdata_register_class = register_class_callback;
+    
     snprintf(versbuf, versbuf_length-1,
 #ifdef ELSE
              "pdlua %s ELSE (lua %d.%d)",
@@ -2272,10 +2274,6 @@ void pdlua_setup(void)
 
     pdlua_gfx_setup(__L);
     
-#if PLUGDATA
-    plugdata_register_class = register_class_callback;
-#endif
-
     PDLUA_DEBUG("pdlua_setup: end. stack top %d", lua_gettop(__L));
 #ifndef PLUGDATA
     /* nw.js support. */
