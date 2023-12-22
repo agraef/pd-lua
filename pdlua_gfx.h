@@ -908,8 +908,10 @@ static int stroke_path(lua_State* L) {
     
     const char* tags[] = { gfx->object_tag, register_drawing(obj) };
 
-    pdgui_vmess(0, "crr r ri rs rs rS", cnv, "create", "polygon", coordinates, "-width", stroke_width, "-outline", gfx->current_color, "-fill", "", "-tags", 2, tags);
+    pdgui_vmess(0, "crr iiii ri rs rS", cnv, "create", "line", 0, 0, 0, 0, "-width", stroke_width, "-fill", gfx->current_color, "-tags", 2, tags);
     
+    pdgui_vmess(0, "crs r", cnv, "coords", tags[1], coordinates);
+
     freebytes(coordinates, totalSize+1);
     
     return 0;
