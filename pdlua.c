@@ -644,33 +644,31 @@ static int pdlua_click(t_gobj *z, t_glist *gl, int xpos, int ypos, int shift, in
         int ypix = ypos - text_ypix(&x->pd, gl);
                 
         if(doit){
-            if(x->gfx.mouse_down)
+            if(!x->gfx.mouse_down)
             {
                 pdlua_gfx_mouse_down((t_object*)x, xpix, ypix);
+                x->gfx.mouse_drag_x = xpos;
+                x->gfx.mouse_drag_y = ypos;
             }
-            
-            x->gfx.mouse_drag_x = xpos;
-            x->gfx.mouse_drag_y = ypos;
             
             glist_grab(x->canvas, &x->pd.te_g, (t_glistmotionfn)pdlua_motion, NULL, xpos, ypos);
         }
         else {
             pdlua_gfx_mouse_move(x, xpix, ypix);
             
-            if(!x->gfx.mouse_down)
+            if(x->gfx.mouse_down)
             {
                 pdlua_gfx_mouse_up((t_object*)x, xpix, ypix);
             }
         }
         
         x->gfx.mouse_down = doit;
+        return 1;
     }
-    else {
-        text_widgetbehavior.w_clickfn(x, gl, xpos, ypos, shift, alt, dbl, doit);
-    }
+    
+    return text_widgetbehavior.w_clickfn(x, gl, xpos, ypos, shift, alt, dbl, doit);
 
 #endif
-    return(1);
 }
 
 static void pdlua_displace(t_gobj *z, t_glist *glist, int dx, int dy){
@@ -900,7 +898,7 @@ static int pdlua_object_new(lua_State *L)
                 o->gfx.translate_y = 0;
                 o->gfx.mouse_drag_x = 0;
                 o->gfx.mouse_drag_y = 0;
-                o->gfx.mouse_down = 1;
+                o->gfx.mouse_down = 0;
 #else
                 o->gfx.plugdata_draw_callback = NULL;
                 o->gfx.plugdata_callback_target = NULL;
@@ -1244,6 +1242,13 @@ static void pdlua_receivedispatch
     lua_pushlightuserdata(__L, r);
     lua_pushstring(__L, s->s_name);
     pdlua_pushatomtable(argc, argv);
+    
+    // Write object ptr to registry to make it reliably accessible
+    lua_pushvalue(__L, LUA_REGISTRYINDEX);
+    lua_pushlightuserdata(__L, r->owner);
+    lua_seti(__L, -2, PDLUA_OBJECT_REGISTRTY_ID);
+    lua_pop(__L, 1);
+    
     if (lua_pcall(__L, 3, 0, 0))
     {
         pd_error(r->owner, "lua: error in receive dispatcher:\n%s", lua_tostring(__L, -1));
@@ -1262,6 +1267,13 @@ static void pdlua_clockdispatch( t_pdlua_proxyclock *clock)
     lua_getglobal(__L, "pd");
     lua_getfield (__L, -1, "_clockdispatch");
     lua_pushlightuserdata(__L, clock);
+    
+    // Write object ptr to registry to make it reliably accessible
+    lua_pushvalue(__L, LUA_REGISTRYINDEX);
+    lua_pushlightuserdata(__L, clock->owner);
+    lua_seti(__L, -2, PDLUA_OBJECT_REGISTRTY_ID);
+    lua_pop(__L, 1);
+    
     if (lua_pcall(__L, 1, 0, 0))
     {
         pd_error(clock->owner, "lua: error in clock dispatcher:\n%s", lua_tostring(__L, -1));
