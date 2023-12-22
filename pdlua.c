@@ -594,10 +594,10 @@ void pdlua_vis(t_gobj *z, t_glist *glist, int vis){
     // Otherwise, repaint or clear the custom graphics
     if(vis)
     {
-        pdlua_gfx_repaint((t_object*)z);
+        pdlua_gfx_repaint((t_pdlua *)z);
     }
     else {
-        pdlua_gfx_clear((t_object*)z);
+        pdlua_gfx_clear((t_pdlua *)z);
     }
 }
 
@@ -624,7 +624,7 @@ static void pdlua_motion(t_gobj *z, t_floatarg dx, t_floatarg dy,
         int xpos = (x->gfx.mouse_drag_x / zoom) - text_xpix(&x->pd, x->canvas);
         int ypos = (x->gfx.mouse_drag_y / zoom) - text_ypix(&x->pd, x->canvas);
                 
-        pdlua_gfx_mouse_drag((t_object*)x, xpos, ypos);
+        pdlua_gfx_mouse_drag(x, xpos, ypos);
     }
 #endif
 }
@@ -641,7 +641,7 @@ static int pdlua_click(t_gobj *z, t_glist *gl, int xpos, int ypos, int shift, in
         if(doit){
             if(!x->gfx.mouse_down)
             {
-                pdlua_gfx_mouse_down((t_object*)x, xpix, ypix);
+                pdlua_gfx_mouse_down(x, xpix, ypix);
                 x->gfx.mouse_drag_x = xpos;
                 x->gfx.mouse_drag_y = ypos;
             }
@@ -653,7 +653,7 @@ static int pdlua_click(t_gobj *z, t_glist *gl, int xpos, int ypos, int shift, in
             
             if(x->gfx.mouse_down)
             {
-                pdlua_gfx_mouse_up((t_object*)x, xpix, ypix);
+                pdlua_gfx_mouse_up(x, xpix, ypix);
             }
         }
         
@@ -661,7 +661,7 @@ static int pdlua_click(t_gobj *z, t_glist *gl, int xpos, int ypos, int shift, in
         return 1;
     }
     
-    return text_widgetbehavior.w_clickfn(x, gl, xpos, ypos, shift, alt, dbl, doit);
+    return text_widgetbehavior.w_clickfn(z, gl, xpos, ypos, shift, alt, dbl, doit);
 
 #endif
 }
@@ -682,7 +682,7 @@ static void pdlua_displace(t_gobj *z, t_glist *glist, int dx, int dy){
     canvas_fixlinesfor(glist, (t_text*)x);
 }
 
-static void pdlua_activate(t_pdlua *z, t_glist *glist, int state)
+static void pdlua_activate(t_gobj *z, t_glist *glist, int state)
 {
     if(!((t_pdlua *)z)->has_gui)
     {
@@ -701,7 +701,7 @@ static void pdlua_getrect(t_gobj *z, t_glist *glist, int *xp1, int *yp1, int *xp
         *yp2 = y1 + x->gfx.height * glist->gl_zoom;
     }
     else {
-        text_widgetbehavior.w_getrectfn(x, glist, xp1, yp1, xp2, yp2);
+        text_widgetbehavior.w_getrectfn(z, glist, xp1, yp1, xp2, yp2);
     }
 }
 

@@ -423,8 +423,8 @@ static void get_bounds_args(lua_State* L, t_pdlua* obj, t_pdlua_gfx *gfx, int* x
     w *= gfx->scale_x;
     h *= gfx->scale_y;
     
-    x += gfx->translate_x + text_xpix(obj, obj->canvas);
-    y += gfx->translate_y + text_ypix(obj, obj->canvas);
+    x += gfx->translate_x + text_xpix((t_object*)obj, obj->canvas);
+    y += gfx->translate_y + text_ypix((t_object*)obj, obj->canvas);
     
     *x1 = x * glist_getzoom(cnv);
     *y1 = y * glist_getzoom(cnv);
@@ -432,22 +432,19 @@ static void get_bounds_args(lua_State* L, t_pdlua* obj, t_pdlua_gfx *gfx, int* x
     *y2 = (y + h) * glist_getzoom(cnv);
 }
 
-
 static const char* register_drawing(t_pdlua *object)
 {
     t_pdlua_gfx *gfx = &object->gfx;
-    snprintf(gfx->current_paint_tag, 128, ".x%lx", rand());
+    snprintf(gfx->current_paint_tag, 128, ".x%d", rand());
     gfx->current_paint_tag[127] = '\0';
     return gfx->current_paint_tag;
 }
 
-
 static int gfx_initialize(t_pdlua *obj)
 {
     t_pdlua_gfx *gfx = &obj->gfx;
-    t_canvas *cnv = glist_getcanvas(obj->canvas);
     
-    snprintf(gfx->object_tag, 128, ".x%lx", obj);
+    snprintf(gfx->object_tag, 128, ".x%lx", (long)obj);
     gfx->object_tag[127] = '\0';
     gfx->current_paint_tag[0] = '\0';
     
@@ -528,8 +525,8 @@ static int fill_all(lua_State* L) {
     t_pdlua_gfx *gfx = &obj->gfx;
     t_canvas *cnv = glist_getcanvas(obj->canvas);
     
-    int x1 = text_xpix(obj, obj->canvas) * glist_getzoom(cnv);
-    int y1 = text_ypix(obj, obj->canvas) * glist_getzoom(cnv);
+    int x1 = text_xpix((t_object*)obj, obj->canvas) * glist_getzoom(cnv);
+    int y1 = text_ypix((t_object*)obj, obj->canvas) * glist_getzoom(cnv);
     int x2 = x1 + gfx->width * glist_getzoom(cnv);
     int y2 = y1 + gfx->height * glist_getzoom(cnv);
     
@@ -583,10 +580,7 @@ static int fill_rounded_rect(lua_State* L) {
     int radius = luaL_checknumber(L, 5);  // Radius for rounded corners
     int radius_x = radius * gfx->scale_x * glist_getzoom(cnv);
     int radius_y = radius * gfx->scale_y * glist_getzoom(cnv);
-    
-    int width = x2 - x1;
-    int height = y2 - y1;
-    
+        
     const char* tags[] = { gfx->object_tag, register_drawing(obj) };
 
     // Tcl/tk can't fill rounded rectangles, so we draw 2 smaller rectangles with 4 ovals over the corners
@@ -611,11 +605,7 @@ static int stroke_rounded_rect(lua_State* L) {
     int radius = luaL_checknumber(L, 5);       // Radius for rounded corners
     int radius_x = radius * gfx->scale_x * glist_getzoom(cnv);
     int radius_y = radius * gfx->scale_y * glist_getzoom(cnv);
-    
     int line_width = luaL_checknumber(L, 6) * glist_getzoom(cnv);
-    
-    int width = x2 - x1;
-    int height = y2 - y1;
     
     const char* tags[] = { gfx->object_tag, register_drawing(obj) };
     
@@ -632,7 +622,7 @@ static int stroke_rounded_rect(lua_State* L) {
     // Connect with lines
     pdgui_vmess(0, "crr iiii ri rs rS", cnv, "create", "line", x1 + radius_x, y1, x2 - radius_x, y1,
                 "-width", line_width, "-fill", gfx->current_color, "-tags", 2, tags);
-    pdgui_vmess(0, "crr iiii ri rs rS", cnv, "create", "line", x1 + radius_y, y2, x1 + width - radius_y, y2,
+    pdgui_vmess(0, "crr iiii ri rs rS", cnv, "create", "line", x1 + radius_y, y2, x2 - radius_y, y2,
                 "-width", line_width,  "-fill", gfx->current_color, "-tags", 2, tags);
     pdgui_vmess(0, "crr iiii ri rs rS", cnv, "create", "line", x1 , y1 + radius_y, x1, y2 - radius_y,
                 "-width", line_width, "-fill", gfx->current_color, "-tags", 2, tags);
@@ -653,16 +643,15 @@ static int draw_line(lua_State* L) {
     int y2 = luaL_checknumber(L, 4);
     int lineWidth = luaL_checknumber(L, 5);
     
-
     x1 *= gfx->scale_x;
     y1 *= gfx->scale_y;
     x2 *= gfx->scale_x;
     y2 *= gfx->scale_y;
     
-    x1 += gfx->translate_x + text_xpix(obj, obj->canvas);
-    y1 += gfx->translate_y + text_ypix(obj, obj->canvas);
-    x2 += gfx->translate_x + text_xpix(obj, obj->canvas);
-    y2 += gfx->translate_y + text_ypix(obj, obj->canvas);
+    x1 += gfx->translate_x + text_xpix((t_object*)obj, obj->canvas);
+    y1 += gfx->translate_y + text_ypix((t_object*)obj, obj->canvas);
+    x2 += gfx->translate_x + text_xpix((t_object*)obj, obj->canvas);
+    y2 += gfx->translate_y + text_ypix((t_object*)obj, obj->canvas);
 
     int canvas_zoom = glist_getzoom(cnv);
     x1 *= canvas_zoom;
@@ -675,8 +664,9 @@ static int draw_line(lua_State* L) {
     
     pdgui_vmess(0, "crr iiii ri rs rS", cnv, "create", "line", x1, y1, x2, y2,
                 "-width", lineWidth, "-fill", gfx->current_color, "-tags", 2, tags);
-}
 
+    return 0;
+}
 
 static int draw_text(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
@@ -693,8 +683,8 @@ static int draw_text(lua_State* L) {
     y *= gfx->scale_y;
     w *= gfx->scale_x;
     
-    x += gfx->translate_x + text_xpix(obj, obj->canvas);
-    y += gfx->translate_y + text_ypix(obj, obj->canvas);
+    x += gfx->translate_x + text_xpix((t_object*)obj, obj->canvas);
+    y += gfx->translate_y + text_ypix((t_object*)obj, obj->canvas);
     
     int canvas_zoom = glist_getzoom(cnv);
     x *= canvas_zoom;
@@ -746,8 +736,6 @@ static int start_path(lua_State* L) {
     add_path_segment(gfx, gfx->path_start_x, gfx->path_start_y);
     return 0;
 }
-
-
 
 // Function to add a line to the current path
 static int line_to(lua_State* L) {
@@ -832,8 +820,8 @@ static int stroke_path(lua_State* L) {
     int stroke_width = luaL_checknumber(L, 1) * glist_getzoom(cnv);
     
     // Apply transformations to all coordinates
-    int obj_x = text_xpix(obj, obj->canvas);
-    int obj_y = text_ypix(obj, obj->canvas);
+    int obj_x = text_xpix((t_object*)obj, obj->canvas);
+    int obj_y = text_ypix((t_object*)obj, obj->canvas);
     for (int i = 0; i < gfx->num_path_segments; i++) {
         int x = gfx->path_segments[i * 2], y = gfx->path_segments[i * 2 + 1];
                 
@@ -887,8 +875,8 @@ static int fill_path(lua_State* L) {
     t_canvas *cnv = glist_getcanvas(obj->canvas);
 
     // Apply transformations to all coordinates
-    int obj_x = text_xpix(obj, obj->canvas);
-    int obj_y = text_ypix(obj, obj->canvas);
+    int obj_x = text_xpix((t_object*)obj, obj->canvas);
+    int obj_y = text_ypix((t_object*)obj, obj->canvas);
     for (int i = 0; i < gfx->num_path_segments; i++) {
         int x = gfx->path_segments[i * 2], y = gfx->path_segments[i * 2 + 1];
         
@@ -936,7 +924,6 @@ static int fill_path(lua_State* L) {
     return 0;
 }
 
-
 static int translate(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
     t_pdlua_gfx *gfx = &obj->gfx;
@@ -952,7 +939,6 @@ static int scale(lua_State* L) {
     gfx->scale_y = luaL_checknumber(L, 2);
     return 0;
 }
-
 
 static int reset_transform(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
