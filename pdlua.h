@@ -17,9 +17,6 @@
 
 #include "m_pd.h"
 
-/** Global Lua interpreter state, needed in the constructor. */
-static lua_State *__L;
-
 typedef struct _pdlua_gfx
 {
 #if !PLUGDATA
@@ -63,3 +60,5 @@ typedef struct pdlua
 } t_pdlua;
 
 
+lua_State* __L();
+void initialise_lua_state();

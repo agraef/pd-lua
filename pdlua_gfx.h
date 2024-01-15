@@ -62,49 +62,49 @@ void pdlua_gfx_clear(t_pdlua *obj); // only for pd-vanilla, to delete all tcl/tk
 
 // Trigger repaint callback in lua script
 void pdlua_gfx_repaint(t_pdlua *o) {
-    lua_getglobal(__L, "pd");
-    lua_getfield (__L, -1, "_repaint");
-    lua_pushlightuserdata(__L, o);
+    lua_getglobal(__L(), "pd");
+    lua_getfield (__L(), -1, "_repaint");
+    lua_pushlightuserdata(__L(), o);
     
     // Write object ptr to registry to make it reliably accessible
-    lua_pushvalue(__L, LUA_REGISTRYINDEX);
-    lua_pushlightuserdata(__L, o);
-    lua_seti(__L, -2, PDLUA_OBJECT_REGISTRTY_ID);
-    lua_pop(__L, 1);
+    lua_pushvalue(__L(), LUA_REGISTRYINDEX);
+    lua_pushlightuserdata(__L(), o);
+    lua_seti(__L(), -2, PDLUA_OBJECT_REGISTRTY_ID);
+    lua_pop(__L(), 1);
     
     
-    if (lua_pcall(__L, 1, 0, 0))
+    if (lua_pcall(__L(), 1, 0, 0))
     {
-        pd_error(o, "lua: error in repaint:\n%s", lua_tostring(__L, -1));
-        lua_pop(__L, 1); /* pop the error string */
+        pd_error(o, "lua: error in repaint:\n%s", lua_tostring(__L(), -1));
+        lua_pop(__L(), 1); /* pop the error string */
     }
     
-    lua_pop(__L, 1); /* pop the global "pd" */
+    lua_pop(__L(), 1); /* pop the global "pd" */
 }
 
 // Pass mouse events to lua script
 void pdlua_gfx_mouse_event(t_pdlua *o, int x, int y, int type) {
         
-    lua_getglobal(__L, "pd");
-    lua_getfield (__L, -1, "_mouseevent");
-    lua_pushlightuserdata(__L, o);
-    lua_pushinteger(__L, x);
-    lua_pushinteger(__L, y);
-    lua_pushinteger(__L, type);
+    lua_getglobal(__L(), "pd");
+    lua_getfield (__L(), -1, "_mouseevent");
+    lua_pushlightuserdata(__L(), o);
+    lua_pushinteger(__L(), x);
+    lua_pushinteger(__L(), y);
+    lua_pushinteger(__L(), type);
     
     // Write object ptr to registry to make it reliably accessible
-    lua_pushvalue(__L, LUA_REGISTRYINDEX);
-    lua_pushlightuserdata(__L, o);
-    lua_seti(__L, -2, PDLUA_OBJECT_REGISTRTY_ID);
-    lua_pop(__L, 1);
+    lua_pushvalue(__L(), LUA_REGISTRYINDEX);
+    lua_pushlightuserdata(__L(), o);
+    lua_seti(__L(), -2, PDLUA_OBJECT_REGISTRTY_ID);
+    lua_pop(__L(), 1);
     
-    if (lua_pcall(__L, 4, 0, 0))
+    if (lua_pcall(__L(), 4, 0, 0))
     {
-        pd_error(o, "lua: error in mouseevent:\n%s", lua_tostring(__L, -1));
-        lua_pop(__L, 1); /* pop the error string */
+        pd_error(o, "lua: error in mouseevent:\n%s", lua_tostring(__L(), -1));
+        lua_pop(__L(), 1); /* pop the error string */
     }
     
-    lua_pop(__L, 1); /* pop the global "pd" */
+    lua_pop(__L(), 1); /* pop the global "pd" */
 }
 
 // Pass mouse events to lua script (but easier to understand)
