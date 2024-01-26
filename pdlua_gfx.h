@@ -210,7 +210,8 @@ static int set_size(lua_State* L)
 static int start_paint(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
     plugdata_draw(obj, gensym("lua_start_paint"), 0, NULL);
-    return 0;
+    lua_pushboolean(L, 1); // Return a value, which decides whether we're allowed to paint or not
+    return 1;
 }
 
 static int end_paint(lua_State* L) {
@@ -432,6 +433,11 @@ static int reset_transform(lua_State* L) {
 }
 #else
 
+static int can_draw(t_pdlua* obj)
+{
+    return glist_isvisible(obj->canvas) && gobj_shouldvis(obj, obj->canvas);
+}
+
 static void gfx_free(t_pdlua_gfx* gfx)
 {
     freebytes(gfx->path_segments, gfx->num_path_segments_allocated * sizeof(int));
@@ -500,10 +506,14 @@ static int set_size(lua_State* L)
 static int start_paint(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
     
+    int draw = can_draw(obj);
+    lua_pushboolean(L, draw); // Return a value, which decides whether we're allowed to paint or not
+
     // check if anything was painted before
-    if(strlen(obj->gfx.current_paint_tag))
+    if(draw && strlen(obj->gfx.current_paint_tag))
         pdlua_gfx_clear(obj);
-    return 0;
+    
+    return 1;
 }
 
 static int end_paint(lua_State* L) {
@@ -519,6 +529,7 @@ static int end_paint(lua_State* L) {
 
 static int set_color(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
+    
     t_pdlua_gfx *gfx = &obj->gfx;
     
     int r = luaL_checknumber(L, 1);
@@ -534,6 +545,7 @@ static int set_color(lua_State* L) {
 
 static int fill_ellipse(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
+    
     t_pdlua_gfx *gfx = &obj->gfx;
     t_canvas *cnv = glist_getcanvas(obj->canvas);
     
@@ -549,6 +561,7 @@ static int fill_ellipse(lua_State* L) {
 
 static int stroke_ellipse(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
+    
     t_pdlua_gfx *gfx = &obj->gfx;
     t_canvas *cnv = glist_getcanvas(obj->canvas);
 
@@ -566,6 +579,7 @@ static int stroke_ellipse(lua_State* L) {
 
 static int fill_all(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
+    
     t_pdlua_gfx *gfx = &obj->gfx;
     t_canvas *cnv = glist_getcanvas(obj->canvas);
     
@@ -583,6 +597,7 @@ static int fill_all(lua_State* L) {
 
 static int fill_rect(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
+    
     t_pdlua_gfx *gfx = &obj->gfx;
     t_canvas *cnv = glist_getcanvas(obj->canvas);
     
@@ -598,6 +613,7 @@ static int fill_rect(lua_State* L) {
 
 static int stroke_rect(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
+    
     t_pdlua_gfx *gfx = &obj->gfx;
     t_canvas *cnv = glist_getcanvas(obj->canvas);
     
@@ -615,6 +631,7 @@ static int stroke_rect(lua_State* L) {
 
 static int fill_rounded_rect(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
+    
     t_pdlua_gfx *gfx = &obj->gfx;
     t_canvas *cnv = glist_getcanvas(obj->canvas);
     
@@ -640,6 +657,7 @@ static int fill_rounded_rect(lua_State* L) {
 
 static int stroke_rounded_rect(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
+    
     t_pdlua_gfx *gfx = &obj->gfx;
     t_canvas *cnv = glist_getcanvas(obj->canvas);
     
@@ -678,6 +696,7 @@ static int stroke_rounded_rect(lua_State* L) {
 
 static int draw_line(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
+    
     t_pdlua_gfx *gfx = &obj->gfx;
     t_canvas *cnv = glist_getcanvas(obj->canvas);
     
@@ -715,6 +734,7 @@ static int draw_line(lua_State* L) {
 
 static int draw_text(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
+    
     t_pdlua_gfx *gfx = &obj->gfx;
     t_canvas *cnv = glist_getcanvas(obj->canvas);
     
@@ -772,6 +792,7 @@ static void add_path_segment(t_pdlua_gfx* gfx, int x, int y)
 
 static int start_path(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
+    
     t_pdlua_gfx *gfx = &obj->gfx;
     
     gfx->num_path_segments = 0;
@@ -785,6 +806,7 @@ static int start_path(lua_State* L) {
 // Function to add a line to the current path
 static int line_to(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
+    
     t_pdlua_gfx *gfx = &obj->gfx;
         
     int x = luaL_checknumber(L, 1);
@@ -795,6 +817,7 @@ static int line_to(lua_State* L) {
 
 static int quad_to(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
+    
     t_pdlua_gfx *gfx = &obj->gfx;
     
     int x2 = luaL_checknumber(L, 1);
@@ -821,6 +844,7 @@ static int quad_to(lua_State* L) {
 }
 static int cubic_to(lua_State* L) {
   t_pdlua* obj = get_current_object(L);
+
   t_pdlua_gfx *gfx = &obj->gfx;
 
     int x2 = luaL_checknumber(L, 1);
@@ -852,6 +876,7 @@ static int cubic_to(lua_State* L) {
 // Function to close the current path
 static int close_path(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
+    
     t_pdlua_gfx *gfx = &obj->gfx;
     add_path_segment(gfx, gfx->path_start_x, gfx->path_start_y);
     return 0;
@@ -859,6 +884,7 @@ static int close_path(lua_State* L) {
 
 static int stroke_path(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
+    
     t_pdlua_gfx *gfx = &obj->gfx;
     t_canvas *cnv = glist_getcanvas(obj->canvas);
     
@@ -919,6 +945,7 @@ static int stroke_path(lua_State* L) {
 
 static int fill_path(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
+    
     t_pdlua_gfx *gfx = &obj->gfx;
     t_canvas *cnv = glist_getcanvas(obj->canvas);
 
@@ -974,6 +1001,7 @@ static int fill_path(lua_State* L) {
 
 static int translate(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
+    
     t_pdlua_gfx *gfx = &obj->gfx;
     gfx->translate_x = luaL_checknumber(L, 1);
     gfx->translate_y = luaL_checknumber(L, 2);
@@ -982,6 +1010,7 @@ static int translate(lua_State* L) {
 
 static int scale(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
+    
     t_pdlua_gfx *gfx = &obj->gfx;
     gfx->scale_x = luaL_checknumber(L, 1);
     gfx->scale_y = luaL_checknumber(L, 2);
@@ -990,6 +1019,7 @@ static int scale(lua_State* L) {
 
 static int reset_transform(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
+    
     t_pdlua_gfx *gfx = &obj->gfx;
     gfx->translate_x = 0;
     gfx->translate_y = 0;

@@ -612,8 +612,10 @@ static void pdlua_delete(t_gobj *z, t_glist *glist){
         text_widgetbehavior.w_deletefn(z, glist);
         return;
     }
-    pdlua_vis(z, glist, 0);
-    canvas_deletelinesfor(glist, (t_text *)z);
+    if(glist_isvisible(glist) && gobj_shouldvis(z, glist)) {
+        pdlua_vis(z, glist, 0);
+        canvas_deletelinesfor(glist, (t_text *)z);
+    }
 }
 
 static void pdlua_motion(t_gobj *z, t_floatarg dx, t_floatarg dy,
