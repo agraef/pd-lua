@@ -2125,6 +2125,15 @@ static int pdlua_loader_pathwise
 #ifdef _WIN32
 __declspec(dllexport)
 #endif
+
+
+void pdlua_instance_setup()
+{
+#if PDINSTANCE
+    initialise_lua_state();
+#endif
+}
+
 #ifdef PLUGDATA
 void pdlua_setup(const char *datadir, char *versbuf, int versbuf_length, void(*register_class_callback)(const char*))
 #else
