@@ -17,21 +17,12 @@
 
 #include "m_pd.h"
 
-/** Global Lua interpreter state, needed in the constructor. */
-static lua_State *__L;
-
 typedef struct _pdlua_gfx
 {
 #if !PLUGDATA
     char object_tag[128]; // Tcl/tk tag that is attached to all drawings
     char current_paint_tag[128]; // Tcl/tk tag that is only attached to the current drawing in progress
-    
-    // Variables for managing vector paths
-    int* path_segments;
-    int num_path_segments;
-    int num_path_segments_allocated;
-    int path_start_x, path_start_y;
-    
+        
     // Variables to keep track of mouse button state and drag position
     int mouse_drag_x, mouse_drag_y, mouse_down;
     
@@ -63,3 +54,5 @@ typedef struct pdlua
 } t_pdlua;
 
 
+lua_State* __L();
+void initialise_lua_state();
