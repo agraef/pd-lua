@@ -935,7 +935,6 @@ static int pdlua_class_new(lua_State *L)
     pdlua_widgetbehavior.w_visfn      = pdlua_vis;
     pdlua_widgetbehavior.w_activatefn = pdlua_activate;
     class_setwidget(c, &pdlua_widgetbehavior);
-    
 
     if (c) {
         /* a class with a "menu-open" method will have the "Open" item highlighted in the right-click menu */
