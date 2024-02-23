@@ -16,7 +16,7 @@ function hello:initialize(sel, atoms)
     self.rect_down_pos = {0, 0}
 
     self.gui = 1
-    gfx.set_size(630, 230)
+    self:set_size(630, 230)
     return true
 end
 
@@ -56,103 +56,104 @@ function hello:mouse_drag(x, y)
     end
 end
 
-function hello:paint()
-    gfx.set_color(250, 200, 240)
-    gfx.fill_all()
+function hello:paint(g)
+    g.set_color(250, 200, 240)
+    g.fill_all()
 
     -- Filled examples
-    gfx.set_color(66, 207, 201, 0.3)
-    gfx.fill_ellipse(30, 50, 30, 30)
-    gfx.set_color(0, 159, 147, 1)
-    gfx.fill_rect(120, 50, 30, 30)
-    gfx.set_color(250, 84, 108, 1)
-    gfx.fill_rounded_rect(210, 50, 30, 30, 5)
+    g.set_color(66, 207, 201, 0.3)
+    g.fill_ellipse(30, 50, 30, 30)
+    g.set_color(0, 159, 147, 1)
+    g.fill_rect(120, 50, 30, 30)
+    g.set_color(250, 84, 108, 1)
+    g.fill_rounded_rect(210, 50, 30, 30, 5)
 
-    gfx.set_color(252, 118, 81, 1)
+    g.set_color(252, 118, 81, 1)
 
     -- Star using line_to paths
     local starX1, starY1 = 310, 45
     local starSize = 15
 
-    gfx.start_path(starX1, starY1)
+    local star = path.start(starX1, starY1)
 
     -- Star using line_to paths
-    gfx.line_to(starX1 + 5, starY1 + 14)
-    gfx.line_to(starX1 + 20, starY1 + 14)
-    gfx.line_to(starX1 + 8, starY1 + 22)
-    gfx.line_to(starX1 + 14, starY1 + 36)
-    gfx.line_to(starX1, starY1 + 27)
-    gfx.line_to(starX1 - 14, starY1 + 36)
-    gfx.line_to(starX1 - 6, starY1 + 22)
-    gfx.line_to(starX1 - 18, starY1 + 14)
-    gfx.line_to(starX1 - 3, starY1 + 14)
-    gfx.close_path()
-    gfx.fill_path()
+    star:line_to(starX1 + 5, starY1 + 14)
+    star:line_to(starX1 + 20, starY1 + 14)
+    star:line_to(starX1 + 8, starY1 + 22)
+    star:line_to(starX1 + 14, starY1 + 36)
+    star:line_to(starX1, starY1 + 27)
+    star:line_to(starX1 - 14, starY1 + 36)
+    star:line_to(starX1 - 6, starY1 + 22)
+    star:line_to(starX1 - 18, starY1 + 14)
+    star:line_to(starX1 - 3, starY1 + 14)
+    star:close()
 
-    gfx.set_color(255, 219, 96, 1)
+    g.fill_path(star)
+
+    g.set_color(255, 219, 96, 1)
     -- Bezier curve example
-    gfx.translate(140, 20)
-    gfx.scale(0.5, 1.0)
-    gfx.start_path(450, 50)
-    gfx.cubic_to(500, 30, 550, 70, 600, 50)
-    gfx.close_path()
-    gfx.stroke_path(2)
-    gfx.reset_transform()
+    g.translate(140, 20)
+    g.scale(0.5, 1.0)
+    local curve = path.start(450, 50)
+    curve:cubic_to(500, 30, 550, 70, 600, 50)
+    curve:close()
+    g.stroke_path(curve, 2)
+    g.reset_transform()
 
     -- Stroked examples
-    gfx.set_color(66, 207, 201, 1)
-    gfx.stroke_ellipse(30, 150, 30, 30, 2)
-    gfx.set_color(0, 159, 147, 1)
-    gfx.stroke_rect(120, 150, 30, 30, 2)
-    gfx.set_color(250, 84, 108, 1)
-    gfx.stroke_rounded_rect(210, 150, 30, 30, 5, 2)
+    g.set_color(66, 207, 201, 1)
+    g.stroke_ellipse(30, 150, 30, 30, 2)
+    g.set_color(0, 159, 147, 1)
+    g.stroke_rect(120, 150, 30, 30, 2)
+    g.set_color(250, 84, 108, 1)
+    g.stroke_rounded_rect(210, 150, 30, 30, 5, 2)
 
-    gfx.set_color(252, 118, 81, 1)
+    g.set_color(252, 118, 81, 1)
 
     local starX2, starY2 = 310, 145
     local starSize = 15
 
     -- Star using line_to paths
-    gfx.start_path(starX2, starY2)
-    gfx.line_to(starX2 + 5, starY2 + 14)
-    gfx.line_to(starX2 + 20, starY2 + 14)
-    gfx.line_to(starX2 + 8, starY2 + 22)
-    gfx.line_to(starX2 + 14, starY2 + 36)
-    gfx.line_to(starX2, starY2 + 27)
-    gfx.line_to(starX2 - 14, starY2 + 36)
-    gfx.line_to(starX2 - 6, starY2 + 22)
-    gfx.line_to(starX2 - 18, starY2 + 14)
-    gfx.line_to(starX2 - 3, starY2 + 14)
-    gfx.close_path()
-    gfx.stroke_path(2)
+    local star2 = path.start(starX2, starY2)
+    star2:line_to(starX2 + 5, starY2 + 14)
+    star2:line_to(starX2 + 20, starY2 + 14)
+    star2:line_to(starX2 + 8, starY2 + 22)
+    star2:line_to(starX2 + 14, starY2 + 36)
+    star2:line_to(starX2, starY2 + 27)
+    star2:line_to(starX2 - 14, starY2 + 36)
+    star2:line_to(starX2 - 6, starY2 + 22)
+    star2:line_to(starX2 - 18, starY2 + 14)
+    star2:line_to(starX2 - 3, starY2 + 14)
+    star2:close()
+    g.stroke_path(star2, 2)
 
-    gfx.set_color(255, 219, 96, 1)
+    g.set_color(255, 219, 96, 1)
     -- Bezier curve example
-    gfx.translate(140, 20)
-    gfx.scale(0.5, 1.0)
-    gfx.start_path(450, 150)
-    gfx.cubic_to(500, 130, 550, 170, 600, 150)
-    gfx.fill_path()
-    gfx.reset_transform()
+    g.translate(140, 20)
+    g.scale(0.5, 1.0)
+    local curve2 = path.start(450, 150)
+    curve2:cubic_to(500, 130, 550, 170, 600, 150)
+    g.fill_path(curve2)
+    g.reset_transform()
 
     -- Draggable rectangle
-    gfx.set_color(66, 207, 201, 1)
-    gfx.fill_rounded_rect(self.draggable_rect_x, self.draggable_rect_y, self.draggable_rect_size, self.draggable_rect_size, 5)
-    gfx.set_color(0, 0, 0, 1)
-    gfx.draw_text("Drag me!", self.draggable_rect_x + 8, self.draggable_rect_y + 20, self.draggable_rect_size, 10)
+    g.set_color(66, 207, 201, 1)
+    g.fill_rounded_rect(self.draggable_rect_x, self.draggable_rect_y, self.draggable_rect_size, self.draggable_rect_size, 5)
+    g.set_color(0, 0, 0, 1)
+    g.draw_text("Drag me!", self.draggable_rect_x + 8, self.draggable_rect_y + 20, self.draggable_rect_size, 10)
 
     -- Titles
-    gfx.set_color(252, 118, 81, 1)
-    gfx.draw_text("Ellipse", 32, 190, 120, 10)
-    gfx.draw_text("Rectangle", 116, 190, 120, 10)
-    gfx.draw_text("Rounded Rectangle", 188, 190, 120, 10)
-    gfx.draw_text("Paths", 300, 190, 120, 10)
-    gfx.draw_text("Bezier Paths", 380, 190, 120, 10)
-    gfx.draw_text("Animation", 470, 190, 120, 10)
-    gfx.draw_text("Mouse Interaction", 540, 190, 120, 10)
+    g.set_color(252, 118, 81, 1)
+    g.draw_text("Ellipse", 32, 190, 120, 10)
+    g.draw_text("Rectangle", 116, 190, 120, 10)
+    g.draw_text("Rounded Rectangle", 188, 190, 120, 10)
+    g.draw_text("Paths", 300, 190, 120, 10)
+    g.draw_text("Bezier Paths", 380, 190, 120, 10)
+    g.draw_text("Animation", 470, 190, 120, 10)
+    g.draw_text("Mouse Interaction", 540, 190, 120, 10)
 
-    gfx.set_color(250, 84, 108, 1)
-    gfx.fill_ellipse(self.circle_x, self.circle_y, self.circle_radius, self.circle_radius)
+    g.set_color(250, 84, 108, 1)
+    g.fill_ellipse(self.circle_x, self.circle_y, self.circle_radius, self.circle_radius)
 end
 
 function hello:tick()

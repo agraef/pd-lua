@@ -126,7 +126,7 @@ pd._whereami = function(name)
     if nil ~= pd._fullpaths[name] then
       return pd._fullpaths[name]
     end
-    
+
     return nil
 end
 
@@ -301,7 +301,7 @@ function pd.Class:register(name)
   else
     regname = name
   end
-  
+
   --pd._fullpaths[regname] = pd._currentpath or (fullname .. ".pd_lua")
   if pd._currentpath == nil or pd._currentpath == '' then
     pd._fullpaths[regname] = fullname .. ".pd_lua"
@@ -385,12 +385,21 @@ end
 
 function pd.Class:initialize(sel, atoms) end
 
-function pd.Class:repaint() 
-  if type(self.paint) == "function" then 
-    gfx._start_paint();
-    self:paint();
-    gfx._end_paint();
+function pd.Class:repaint()
+  if type(self.paint) == "function" then
+    local g = _gfx_internal.gfx_new()
+    _gfx_internal.start_paint();
+    self:paint(g);
+    _gfx_internal.end_paint();
   end
+end
+
+function pd.Class:get_size()
+    return _gfx_internal.get_size()
+end
+
+function pd.Class:set_size(width, height)
+    return _gfx_internal.set_size(width, height)
 end
 
 function pd.Class:postinitialize() end
@@ -474,7 +483,7 @@ function luax:initialize(sel, atoms)          -- motivation: pd-list 2007-09-23
     end
     self._scriptname = pathname .. '/' .. basename(atoms[1]) .. ".pd_luax" -- mrpeach 20120201
     local atomstail = { }          -- munge for better lua<->luax compatibility
-    for i,_ in ipairs(atoms) do                  
+    for i,_ in ipairs(atoms) do
       if i > 1 then
         atomstail[i-1] = atoms[i]
       end

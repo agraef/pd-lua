@@ -55,6 +55,56 @@
 
 #include "pdlua_gfx.h"
 
+#ifdef PDINSTANCE
+#define MAX_THREADS 2048
+
+lua_State* lua_threads[MAX_THREADS] = {0};
+
+size_t hash_pointer(void *ptr) {
+    // Simple hashing function for pointers
+    size_t val = (size_t)ptr;
+    val = ((val >> 16) ^ val) * 0x45d9f3b;
+    val = ((val >> 16) ^ val) * 0x45d9f3b;
+    val = (val >> 16) ^ val;
+    return val % MAX_THREADS;
+}
+
+lua_State* __L()
+{
+    size_t idx = hash_pointer(pd_this);
+    return lua_threads[idx];
+}
+
+void initialise_lua_state()
+{
+    size_t idx = hash_pointer(pd_this);
+    if (!lua_threads[idx]) {
+        lua_threads[idx] = luaL_newstate();
+    }
+    else {
+        lua_threads[idx] = lua_newthread(lua_threads[idx]);
+    }
+}
+
+#else
+
+static lua_State* __lua_state = NULL;
+
+lua_State* __L()
+{
+    return __lua_state;
+}
+
+void initialise_lua_state()
+{
+    if (!__lua_state) {
+        __lua_state = luaL_newstate();
+    }
+}
+
+#endif
+
+
 #if PD_MAJOR_VERSION == 0
 # if PD_MINOR_VERSION >= 41
 #  define PDLUA_PD41
@@ -933,7 +983,6 @@ static int pdlua_object_new(lua_State *L)
                
 #if !PLUGDATA
                 // Init graphics state for pd
-                o->gfx.num_path_segments = 0;
                 o->gfx.scale_x = 1.0f;
                 o->gfx.scale_y = 1.0f;
                 o->gfx.translate_x = 0;
@@ -1216,8 +1265,7 @@ static int pdlua_object_free(lua_State *L)
     if (lua_islightuserdata(L, 1))
     {
         t_pdlua *o = lua_touserdata(L, 1);
-        gfx_free(&o->gfx);
-        
+ 
         if (o)
         {
             if (o->in) free(o->in);
