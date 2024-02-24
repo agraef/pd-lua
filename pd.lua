@@ -496,4 +496,5 @@ function luax:initialize(sel, atoms)          -- motivation: pd-list 2007-09-23
   end
 end
 
+Colors = {background = "0", foreground = "1", outline = "2"}
 -- fin pd.lua

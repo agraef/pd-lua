@@ -646,10 +646,10 @@ void pdlua_vis(t_gobj *z, t_glist *glist, int vis){
     // Otherwise, repaint or clear the custom graphics
     if(vis)
     {
-        pdlua_gfx_repaint(x);
+        pdlua_gfx_repaint(x, 1);
     }
     else {
-        pdlua_gfx_clear(x);
+        pdlua_gfx_clear(x, 1);
     }
 }
 
@@ -732,9 +732,9 @@ static void pdlua_displace(t_gobj *z, t_glist *glist, int dx, int dy){
     x->pd.te_xpix += dx, x->pd.te_ypix += dy;
     dx *= glist_getzoom(glist), dy *= glist_getzoom(glist);
     
-    // Will re-draw GUI
-    pdlua_vis(z, glist, 0);
-    pdlua_vis(z, glist, 1);
+#if !PLUGDATA
+    gfx_displace(z, glist, dx, dy);
+#endif
     
     canvas_fixlinesfor(glist, (t_text*)x);
 }

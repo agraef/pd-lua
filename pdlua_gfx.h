@@ -61,10 +61,13 @@ static int free_path(lua_State* L);
 
 // pdlua_gfx_clear, pdlua_gfx_repaint and pdlua_gfx_mouse_* correspond to the various callbacks the user can assign
 
-void pdlua_gfx_clear(t_pdlua *obj); // only for pd-vanilla, to delete all tcl/tk items
+void pdlua_gfx_clear(t_pdlua *obj, int removed); // only for pd-vanilla, to delete all tcl/tk items
 
 // Trigger repaint callback in lua script
-void pdlua_gfx_repaint(t_pdlua *o) {
+void pdlua_gfx_repaint(t_pdlua *o, int firsttime) {
+#if !PLUGDATA
+    o->gfx.first_draw = firsttime;
+#endif
     lua_getglobal(__L(), "pd");
     lua_getfield (__L(), -1, "_repaint");
     lua_pushlightuserdata(__L(), o);
@@ -75,7 +78,6 @@ void pdlua_gfx_repaint(t_pdlua *o) {
     lua_seti(__L(), -2, PDLUA_OBJECT_REGISTRTY_ID);
     lua_pop(__L(), 1);
     
-    
     if (lua_pcall(__L(), 1, 0, 0))
     {
         pd_error(o, "lua: error in repaint:\n%s", lua_tostring(__L(), -1));
@@ -83,6 +85,9 @@ void pdlua_gfx_repaint(t_pdlua *o) {
     }
     
     lua_pop(__L(), 1); /* pop the global "pd" */
+#if !PLUGDATA
+    o->gfx.first_draw = 0;
+#endif
 }
 
 // Pass mouse events to lua script
@@ -241,12 +246,12 @@ static inline void plugdata_draw(t_pdlua* obj, t_symbol* sym, int argc, t_atom* 
     }
 }
 
-void pdlua_gfx_clear(t_pdlua* obj) {
+void pdlua_gfx_clear(t_pdlua* obj, int removed) {
 }
 
 static int gfx_initialize(t_pdlua* obj)
 {
-    pdlua_gfx_repaint(obj); // Initial repaint
+    pdlua_gfx_repaint(obj, 0); // Initial repaint
     return 0;
 }
 
@@ -277,8 +282,15 @@ static int end_paint(lua_State* L) {
 
 static int set_color(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
+    
+    if (lua_gettop(L) == 3) { // Single argument: parse as color ID instead of RGB
+        t_atom arg;
+        SETFLOAT(&arg, luaL_checknumber(L, 1)); // color ID
+        plugdata_draw(obj, gensym("lua_set_color"), 1, &arg);
+        return 0;
+    }
+    
     t_atom args[4];
-   
     SETFLOAT(args, luaL_checknumber(L, 1)); // r
     SETFLOAT(args + 1, luaL_checknumber(L, 2)); // g
     SETFLOAT(args + 2, luaL_checknumber(L, 3)); // b
@@ -545,7 +557,7 @@ static int reset_transform(lua_State* L) {
 
 static int can_draw(t_pdlua* obj)
 {
-    return gobj_shouldvis(obj, obj->canvas);
+    return (glist_isvisible(obj->canvas) && gobj_shouldvis(obj, obj->canvas)) || obj->gfx.first_draw;
 }
 
 static int free_path(lua_State* L)
@@ -555,12 +567,18 @@ static int free_path(lua_State* L)
     return 0;
 }
 
-void pdlua_gfx_clear(t_pdlua *obj) {
+void pdlua_gfx_clear(t_pdlua *obj, int removed) {
     t_pdlua_gfx *gfx = &obj->gfx;
     t_canvas *cnv = glist_getcanvas(obj->canvas);
     pdgui_vmess(0, "crs", cnv, "delete", gfx->object_tag);
     gfx->current_paint_tag[0] = '\0';
     
+    if(removed && gfx->order_tag[0] != '\0')
+    {
+        pdgui_vmess(0, "crs", cnv, "delete", gfx->order_tag);
+        gfx->order_tag[0] = '\0';
+    }
+
     glist_eraseiofor(glist_getcanvas(cnv), &obj->pd, gfx->object_tag);
 }
 
@@ -586,6 +604,16 @@ static void get_bounds_args(lua_State* L, t_pdlua* obj, t_pdlua_gfx *gfx, int* x
     *y2 = (y + h) * glist_getzoom(cnv);
 }
 
+static void gfx_displace(t_pdlua *x, t_glist *glist, int dx, int dy)
+{
+    sys_vgui(".x%lx.c move .x%lx %d %d\n", glist_getcanvas(x->canvas), (long)x, dx, dy);
+    canvas_fixlinesfor(glist, (t_text*)x);
+    
+    int xpos = text_xpix((t_object*)x, x->canvas);
+    int ypos = text_ypix((t_object*)x, x->canvas);
+    glist_drawiofor(glist_getcanvas(x->canvas), (t_object*)x, 0, x->gfx.object_tag, xpos, ypos, xpos + x->gfx.width, ypos + x->gfx.height);
+}
+
 static const char* register_drawing(t_pdlua *object)
 {
     t_pdlua_gfx *gfx = &object->gfx;
@@ -602,7 +630,7 @@ static int gfx_initialize(t_pdlua *obj)
     gfx->object_tag[127] = '\0';
     gfx->current_paint_tag[0] = '\0';
     
-    pdlua_gfx_repaint(obj);
+    pdlua_gfx_repaint(obj, 0);
     return 0;
 }
 
@@ -611,30 +639,57 @@ static int set_size(lua_State* L)
     t_pdlua* obj = get_current_object(L);
     obj->gfx.width = luaL_checknumber(L, 1);
     obj->gfx.height = luaL_checknumber(L, 2);
-    pdlua_gfx_repaint(obj);
+    pdlua_gfx_repaint(obj, 0);
     return 0;
 }
 
 static int start_paint(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
+    t_pdlua_gfx *gfx = &obj->gfx;
     
+    if(gfx->object_tag[0] == '\0')
+    {
+        return 0;
+    }
+
     int draw = can_draw(obj);
     lua_pushboolean(L, draw); // Return a value, which decides whether we're allowed to paint or not
 
-    // check if anything was painted before
-    if(draw && strlen(obj->gfx.current_paint_tag))
-        pdlua_gfx_clear(obj);
+    if(gfx->first_draw)
+    {
+        // Whenever the objects gets painted for the first time with a "vis" message,
+        // we add a small invisible line that won't get touched or repainted later.
+        // We can then use this line to set the correct z-index for the drawings, using the tcl/tk "lower" command
+        t_canvas *cnv = glist_getcanvas(obj->canvas);
+        snprintf(gfx->order_tag, 128, ".x%d", rand());
+        gfx->order_tag[127] = '\0';
+        
+        const char* tags[] = { gfx->order_tag };
+        pdgui_vmess(0, "crr iiii ri rS", cnv, "create", "line", 0, 0, 1, 1,
+                    "-width", 1, "-tags", 1, tags);
+    }
     
+    // check if anything was painted before
+    if(draw && strlen(gfx->current_paint_tag))
+        pdlua_gfx_clear(obj, 0);
+            
     return 1;
 }
 
 static int end_paint(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
+    t_canvas *cnv = glist_getcanvas(obj->canvas);
+    t_pdlua_gfx *gfx = &obj->gfx;
     
     // Draw iolets on top
     int xpos = text_xpix((t_object*)obj, obj->canvas);
     int ypos = text_ypix((t_object*)obj, obj->canvas);
-    glist_drawiofor(glist_getcanvas(obj->canvas), (t_object*)obj, 1, obj->gfx.object_tag, xpos, ypos, xpos + obj->gfx.width, ypos + obj->gfx.height);
+    glist_drawiofor(glist_getcanvas(obj->canvas), (t_object*)obj, 1, gfx->object_tag, xpos, ypos, xpos + gfx->width, ypos + gfx->height);
+    
+    if(!gfx->first_draw && gfx->order_tag[0] != '\0') {
+        // Move everything to below the order marker, to make sure redrawn stuff isn't always on top
+        pdgui_vmess(0, "crss", cnv, "lower", gfx->object_tag, gfx->order_tag);
+    }
     
     return 0;
 }
@@ -644,9 +699,27 @@ static int set_color(lua_State* L) {
     
     t_pdlua_gfx *gfx = &obj->gfx;
     
-    int r = luaL_checknumber(L, 1);
-    int g = luaL_checknumber(L, 2);
-    int b = luaL_checknumber(L, 3);
+    int r, g, b;
+    if (lua_gettop(L) == 3) { // Single argument: parse as color ID instead of RGB
+        int color_id = luaL_checknumber(L, 1);
+        if(color_id != 1)
+        {
+            r = 255;
+            g = 255;
+            b = 255;
+        }
+        else {
+            r = 0;
+            g = 0;
+            b = 0;
+        }
+    }
+    else {
+        r = luaL_checknumber(L, 1);
+        g = luaL_checknumber(L, 2);
+        b = luaL_checknumber(L, 3);
+    }
+
     // AFAIK, alpha is not supported in tcl/tk
 
     snprintf(gfx->current_color, 8, "#%02X%02X%02X", r, g, b);
