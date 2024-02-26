@@ -729,11 +729,17 @@ static void pdlua_reload(t_gobj* z)
 
 static void pdlua_displace(t_gobj *z, t_glist *glist, int dx, int dy){
     t_pdlua *x = (t_pdlua *)z;
-    x->pd.te_xpix += dx, x->pd.te_ypix += dy;
-    dx *= glist_getzoom(glist), dy *= glist_getzoom(glist);
     
 #if !PLUGDATA
-    gfx_displace(z, glist, dx, dy);
+    if(x->has_gui)
+    {
+        x->pd.te_xpix += dx, x->pd.te_ypix += dy;
+        dx *= glist_getzoom(glist), dy *= glist_getzoom(glist);
+        gfx_displace(z, glist, dx, dy);
+    }
+    else {
+        text_widgetbehavior.w_displacefn(z, glist, dx, dy);
+    }
 #endif
     
     canvas_fixlinesfor(glist, (t_text*)x);
@@ -855,33 +861,25 @@ static void pdlua_menu_open(t_pdlua *o)
     PDLUA_DEBUG3("pdlua_menu_open: L is %p, name is %s stack top is %d", __L(), name, lua_gettop(__L()));
     if (name)
     {
-        if (name[strlen(name)-1] == 'x')
+        lua_getglobal(__L(), "pd");
+        lua_getfield(__L(), -1, "_get_class");
+        lua_pushlightuserdata(__L(), o);
+        if (lua_pcall(__L(), 1, 1, 0))
         {
-            /* pdluax is a class, the particular file should loadable by name alone, we hope */
-            sprintf(pathname, "%s", name);
-            lua_pop(__L(), 2); /* pop name and the global "pd" */
+            pd_error(NULL, "lua: error in get_class:\n%s", lua_tostring(__L(), -1));
+            lua_pop(__L(), 4); /* pop the error string, global "pd", name, global "pd"*/
+            return;
         }
-        else
-        {
-            lua_getglobal(__L(), "pd");
-            lua_getfield(__L(), -1, "_get_class");
-            lua_pushlightuserdata(__L(), o);
-            if (lua_pcall(__L(), 1, 1, 0))
-            {
-                pd_error(NULL, "lua: error in get_class:\n%s", lua_tostring(__L(), -1));
-                lua_pop(__L(), 4); /* pop the error string, global "pd", name, global "pd"*/
-                return;
-            }
-            class = (t_class *)lua_touserdata(__L(), -1);
+        class = (t_class *)lua_touserdata(__L(), -1);
 #if PLUGDATA
-            if (!*class->c_externdir->s_name)
-                path = plugdata_datadir;
-            else
+        if (!*class->c_externdir->s_name)
+            path = plugdata_datadir;
+        else
 #endif
-            path = class->c_externdir->s_name;
-            sprintf(pathname, "%s/%s", path, name);
-            lua_pop(__L(), 4); /* pop class, global "pd", name, global "pd"*/
-        }
+        path = class->c_externdir->s_name;
+        sprintf(pathname, "%s/%s", path, name);
+        lua_pop(__L(), 4); /* pop class, global "pd", name, global "pd"*/
+        
 #if PD_MAJOR_VERSION==0 && PD_MINOR_VERSION<43
         post("Opening %s for editing", pathname);
 #else
