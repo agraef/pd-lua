@@ -982,10 +982,8 @@ static int pdlua_object_new(lua_State *L)
                
 #if !PLUGDATA
                 // Init graphics state for pd
-                o->gfx.scale_x = 1.0f;
-                o->gfx.scale_y = 1.0f;
-                o->gfx.translate_x = 0;
-                o->gfx.translate_y = 0;
+                o->gfx.num_transforms = 0;
+                o->gfx.transforms = NULL;
                 o->gfx.mouse_drag_x = 0;
                 o->gfx.mouse_drag_y = 0;
                 o->gfx.mouse_down = 0;

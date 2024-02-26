@@ -17,6 +17,14 @@
 
 #include "m_pd.h"
 
+typedef enum {SCALE, TRANSLATE} transform_type;
+
+typedef struct _gfx_transform
+{
+    transform_type type;
+    float x, y;
+} gfx_transform;
+
 typedef struct _pdlua_gfx
 {
 #if !PLUGDATA
@@ -27,9 +35,8 @@ typedef struct _pdlua_gfx
     // Variables to keep track of mouse button state and drag position
     int mouse_drag_x, mouse_drag_y, mouse_down;
     
-    // Variables for managing transforms
-    int translate_x, translate_y;
-    float scale_x, scale_y;
+    gfx_transform* transforms;
+    int num_transforms;
     
     int first_draw;
     

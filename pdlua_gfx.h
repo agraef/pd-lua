@@ -59,6 +59,7 @@ static int reset_transform(lua_State* L);
 
 static int free_path(lua_State* L);
 
+
 // pdlua_gfx_clear, pdlua_gfx_repaint and pdlua_gfx_mouse_* correspond to the various callbacks the user can assign
 
 void pdlua_gfx_clear(t_pdlua *obj, int removed); // only for pd-vanilla, to delete all tcl/tk items
@@ -567,6 +568,33 @@ static int free_path(lua_State* L)
     return 0;
 }
 
+static int transform_size(t_pdlua_gfx* gfx, int* w, int* h) {
+    for(int i = gfx->num_transforms - 1; i >= 0; i--)
+    {
+        if(gfx->transforms[i].type == SCALE)
+        {
+            *w *= gfx->transforms[i].x;
+            *h *= gfx->transforms[i].y;
+        }
+    }
+}
+
+static int transform_point(t_pdlua_gfx* gfx, int* x, int* y) {
+    for(int i = gfx->num_transforms - 1; i >= 0; i--)
+    {
+        if(gfx->transforms[i].type == SCALE)
+        {
+            *x *= gfx->transforms[i].x;
+            *y *= gfx->transforms[i].y;
+        }
+        else // translate
+        {
+            *x += gfx->transforms[i].x;
+            *y += gfx->transforms[i].y;
+        }
+    }
+}
+
 void pdlua_gfx_clear(t_pdlua *obj, int removed) {
     t_pdlua_gfx *gfx = &obj->gfx;
     t_canvas *cnv = glist_getcanvas(obj->canvas);
@@ -590,13 +618,11 @@ static void get_bounds_args(lua_State* L, t_pdlua* obj, t_pdlua_gfx *gfx, int* x
     int w = luaL_checknumber(L, 3);
     int h = luaL_checknumber(L, 4);
         
-    x *= gfx->scale_x;
-    y *= gfx->scale_y;
-    w *= gfx->scale_x;
-    h *= gfx->scale_y;
+    transform_point(gfx, &x, &y);
+    transform_size(gfx, &w, &h);
     
-    x += gfx->translate_x + (text_xpix((t_object*)obj, obj->canvas) / glist_getzoom(cnv));
-    y += gfx->translate_y + (text_ypix((t_object*)obj, obj->canvas) / glist_getzoom(cnv));
+    x += text_xpix((t_object*)obj, obj->canvas) / glist_getzoom(cnv);
+    y += text_ypix((t_object*)obj, obj->canvas) / glist_getzoom(cnv);
     
     *x1 = x * glist_getzoom(cnv);
     *y1 = y * glist_getzoom(cnv);
@@ -824,8 +850,10 @@ static int fill_rounded_rect(lua_State* L) {
     get_bounds_args(L, obj, gfx, &x1, &y1, &x2, &y2);
 
     int radius = luaL_checknumber(L, 5);  // Radius for rounded corners
-    int radius_x = radius * gfx->scale_x * glist_getzoom(cnv);
-    int radius_y = radius * gfx->scale_y * glist_getzoom(cnv);
+    int radius_x = radius * glist_getzoom(cnv);
+    int radius_y = radius * glist_getzoom(cnv);
+
+    transform_size(gfx, &radius_x, &radius_y);
         
     const char* tags[] = { gfx->object_tag, register_drawing(obj) };
 
@@ -850,8 +878,9 @@ static int stroke_rounded_rect(lua_State* L) {
     get_bounds_args(L, obj, gfx, &x1, &y1, &x2, &y2);
     
     int radius = luaL_checknumber(L, 5);       // Radius for rounded corners
-    int radius_x = radius * gfx->scale_x * glist_getzoom(cnv);
-    int radius_y = radius * gfx->scale_y * glist_getzoom(cnv);
+    int radius_x = radius * glist_getzoom(cnv);
+    int radius_y = radius * glist_getzoom(cnv);
+    transform_size(gfx, &radius_x, &radius_y);
     int line_width = luaL_checknumber(L, 6) * glist_getzoom(cnv);
     
     const char* tags[] = { gfx->object_tag, register_drawing(obj) };
@@ -891,17 +920,15 @@ static int draw_line(lua_State* L) {
     int y2 = luaL_checknumber(L, 4);
     int lineWidth = luaL_checknumber(L, 5);
     
-    x1 *= gfx->scale_x;
-    y1 *= gfx->scale_y;
-    x2 *= gfx->scale_x;
-    y2 *= gfx->scale_y;
+    transform_point(gfx, &x1, &y1);
+    transform_point(gfx, &x2, &y2);
     
     int canvas_zoom = glist_getzoom(cnv);
 
-    x1 += gfx->translate_x + (text_xpix((t_object*)obj, obj->canvas) / canvas_zoom);
-    y1 += gfx->translate_y + (text_ypix((t_object*)obj, obj->canvas) / canvas_zoom);
-    x2 += gfx->translate_x + (text_xpix((t_object*)obj, obj->canvas) / canvas_zoom);
-    y2 += gfx->translate_y + (text_ypix((t_object*)obj, obj->canvas) / canvas_zoom);
+    x1 += text_xpix((t_object*)obj, obj->canvas) / canvas_zoom;
+    y1 += text_ypix((t_object*)obj, obj->canvas) / canvas_zoom;
+    x2 += text_xpix((t_object*)obj, obj->canvas) / canvas_zoom;
+    y2 += text_ypix((t_object*)obj, obj->canvas) / canvas_zoom;
 
     x1 *= canvas_zoom;
     y1 *= canvas_zoom;
@@ -929,13 +956,12 @@ static int draw_text(lua_State* L) {
     int w = luaL_checknumber(L, 4);
     int fontHeight = luaL_checknumber(L, 5);
     
-    x *= gfx->scale_x;
-    y *= gfx->scale_y;
-    w *= gfx->scale_x;
+    transform_point(gfx, &x, &y);
+    transform_size(gfx, &w, &fontHeight);
     
     int canvas_zoom = glist_getzoom(cnv);
-    x += gfx->translate_x + (text_xpix((t_object*)obj, obj->canvas) / canvas_zoom);
-    y += gfx->translate_y + (text_ypix((t_object*)obj, obj->canvas) / canvas_zoom);
+    x += text_xpix((t_object*)obj, obj->canvas) / canvas_zoom;
+    y += text_ypix((t_object*)obj, obj->canvas) / canvas_zoom;
     
     x *= canvas_zoom;
     y *= canvas_zoom;
@@ -951,7 +977,7 @@ static int draw_text(lua_State* L) {
 
     t_atom fontatoms[3];
     SETSYMBOL(fontatoms+0, gensym(sys_font));
-    SETFLOAT (fontatoms+1, fontHeight * canvas_zoom * gfx->scale_y);
+    SETFLOAT (fontatoms+1, fontHeight * canvas_zoom);
     SETSYMBOL(fontatoms+2, gensym(sys_fontweight));
 
     pdgui_vmess(0, "crs rA rs rs", cnv, "itemconfigure", tags[1],
@@ -1072,11 +1098,7 @@ static int stroke_path(lua_State* L) {
     for (int i = 0; i < path->num_path_segments; i++) {
         int x = path->path_segments[i * 2], y = path->path_segments[i * 2 + 1];
                 
-        x *= gfx->scale_x;
-        y *= gfx->scale_y;
-        
-        x += gfx->translate_x;
-        y += gfx->translate_y;
+        transform_point(gfx, &x, &y);
         
         int canvas_zoom = glist_getzoom(cnv);
         path->path_segments[i * 2] = (x * canvas_zoom) + obj_x;
@@ -1132,11 +1154,7 @@ static int fill_path(lua_State* L) {
     for (int i = 0; i < path->num_path_segments; i++) {
         int x = path->path_segments[i * 2], y = path->path_segments[i * 2 + 1];
         
-        x *= gfx->scale_x;
-        y *= gfx->scale_y;
-        
-        x += gfx->translate_x;
-        y += gfx->translate_y;
+        transform_point(gfx, &x, &y);
         
         path->path_segments[i * 2] = x * glist_getzoom(cnv) + obj_x;
         path->path_segments[i * 2 + 1] = y * glist_getzoom(cnv) + obj_y;
@@ -1176,12 +1194,19 @@ static int fill_path(lua_State* L) {
     return 0;
 }
 
+
 static int translate(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
     
     t_pdlua_gfx *gfx = &obj->gfx;
-    gfx->translate_x = luaL_checknumber(L, 1);
-    gfx->translate_y = luaL_checknumber(L, 2);
+    
+    gfx->transforms = resizebytes(gfx->transforms, gfx->num_transforms * sizeof(gfx_transform), (gfx->num_transforms + 1) * sizeof(gfx_transform));
+    
+    gfx->transforms[gfx->num_transforms].type = TRANSLATE;
+    gfx->transforms[gfx->num_transforms].x = luaL_checknumber(L, 1);
+    gfx->transforms[gfx->num_transforms].y = luaL_checknumber(L, 2);
+    
+    gfx->num_transforms++;
     return 0;
 }
 
@@ -1189,8 +1214,14 @@ static int scale(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
     
     t_pdlua_gfx *gfx = &obj->gfx;
-    gfx->scale_x = luaL_checknumber(L, 1);
-    gfx->scale_y = luaL_checknumber(L, 2);
+    
+    gfx->transforms = resizebytes(gfx->transforms, gfx->num_transforms * sizeof(gfx_transform), (gfx->num_transforms + 1) * sizeof(gfx_transform));
+    
+    gfx->transforms[gfx->num_transforms].type = SCALE;
+    gfx->transforms[gfx->num_transforms].x = luaL_checknumber(L, 1);
+    gfx->transforms[gfx->num_transforms].y = luaL_checknumber(L, 2);
+    
+    gfx->num_transforms++;
     return 0;
 }
 
@@ -1198,10 +1229,9 @@ static int reset_transform(lua_State* L) {
     t_pdlua* obj = get_current_object(L);
     
     t_pdlua_gfx *gfx = &obj->gfx;
-    gfx->translate_x = 0;
-    gfx->translate_y = 0;
-    gfx->scale_x = 1.0f;
-    gfx->scale_y = 1.0f;
+    
+    gfx->transforms = resizebytes(gfx->transforms, gfx->num_transforms * sizeof(gfx_transform), 0);
+    gfx->num_transforms = 0;
     return 0;
 }
 #endif
