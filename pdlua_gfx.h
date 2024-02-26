@@ -568,7 +568,7 @@ static int free_path(lua_State* L)
     return 0;
 }
 
-static int transform_size(t_pdlua_gfx* gfx, int* w, int* h) {
+static void transform_size(t_pdlua_gfx* gfx, int* w, int* h) {
     for(int i = gfx->num_transforms - 1; i >= 0; i--)
     {
         if(gfx->transforms[i].type == SCALE)
@@ -579,7 +579,7 @@ static int transform_size(t_pdlua_gfx* gfx, int* w, int* h) {
     }
 }
 
-static int transform_point(t_pdlua_gfx* gfx, int* x, int* y) {
+static void transform_point(t_pdlua_gfx* gfx, int* x, int* y) {
     for(int i = gfx->num_transforms - 1; i >= 0; i--)
     {
         if(gfx->transforms[i].type == SCALE)

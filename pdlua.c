@@ -630,6 +630,17 @@ static void pdlua_free( t_pdlua *o /**< The object to destruct. */)
     }
     lua_pop(__L(), 1); /* pop the global "pd" */
     PDLUA_DEBUG("pdlua_free: end. stack top %d", lua_gettop(__L()));
+    
+    if(o->has_gui)
+    {
+#if !PLUGDATA
+        if(o->gfx.num_transforms != 0)
+        {
+            freebytes(o->gfx.transforms, o->gfx.num_transforms * sizeof(gfx_transform));
+        }
+#endif
+    }
+    
     return;
 }
 

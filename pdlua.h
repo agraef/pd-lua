@@ -17,6 +17,7 @@
 
 #include "m_pd.h"
 
+#if !PLUGDATA
 typedef enum {SCALE, TRANSLATE} transform_type;
 
 typedef struct _gfx_transform
@@ -24,6 +25,7 @@ typedef struct _gfx_transform
     transform_type type;
     float x, y;
 } gfx_transform;
+#endif
 
 typedef struct _pdlua_gfx
 {
