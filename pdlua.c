@@ -922,9 +922,7 @@ static t_int *pdlua_perform(t_int *w){
     lua_pushlightuserdata(__L(), o);     // Use a unique key for your userdata
     lua_seti(__L(), -2, PDLUA_OBJECT_REGISTRTY_ID); // Store the userdata in the registry
     lua_pop(__L(), 1);     // Pop the registry table from the stack
-    
-    //t_float *in1 = (t_float *)(w[3]);
-    //t_float *in2 = (t_float *)(w[4]);
+
     PDLUA_DEBUG("pdlua_perform: stack top %d", lua_gettop(__L()));
     lua_getglobal(__L(), "pd");
     lua_getfield (__L(), -1, "_perform_dsp");
