@@ -672,8 +672,8 @@ static void pdlua_delete(t_gobj *z, t_glist *glist){
     }
     if(glist_isvisible(glist) && gobj_shouldvis(z, glist)) {
         pdlua_vis(z, glist, 0);
-        canvas_deletelinesfor(glist, (t_text *)z);
     }
+    canvas_deletelinesfor(glist, (t_text *)z);
 }
 
 static void pdlua_motion(t_gobj *z, t_floatarg dx, t_floatarg dy,
@@ -1093,6 +1093,7 @@ static int pdlua_object_new(lua_State *L)
                 
                 o->inlets = 0;
                 o->in = NULL;
+                o->proxy_in = NULL;
                 o->outlets = 0;
                 o->out = NULL;
                 o->siginlets = 0;
@@ -1153,16 +1154,18 @@ static int pdlua_object_createinlets(lua_State *L)
             if (lua_isnumber(L, 2)) {
                 // If it's a number, it means the number of data inlets
                 o->inlets = luaL_checknumber(L, 2);
-                o->in = malloc(o->inlets * sizeof(t_pdlua_proxyinlet));
+                o->proxy_in = malloc(o->inlets * sizeof(t_pdlua_proxyinlet));
+                o->in = malloc(o->inlets * sizeof(t_inlet*));
                 for (int i = 0; i < o->inlets; ++i)
                 {
-                    pdlua_proxyinlet_init(&o->in[i], o, i);
-                    inlet_new(&o->pd, &o->in[i].pd, 0, 0);
+                    pdlua_proxyinlet_init(&o->proxy_in[i], o, i);
+                    o->in[i] = inlet_new(&o->pd, &o->proxy_in[i].pd, 0, 0);
                 }
             } else if (lua_istable(L, 2)) {
                 // If it's a table, it means a list of inlet types (data or signal)
                 o->inlets = lua_rawlen(L, 2);
-                o->in = malloc(o->inlets * sizeof(t_pdlua_proxyinlet));
+                o->proxy_in = malloc(o->inlets * sizeof(t_pdlua_proxyinlet));
+                o->in = malloc(o->inlets * sizeof(t_inlet*));
                 for (int i = 0; i < o->inlets; ++i)
                 {
                     lua_rawgeti(L, 2, i + 1); // Get element at index i+1
@@ -1170,8 +1173,8 @@ static int pdlua_object_createinlets(lua_State *L)
                         int is_signal = lua_tonumber(L, -1);
                         o->siginlets += is_signal;
                         
-                        pdlua_proxyinlet_init(&o->in[i], o, i);
-                        inlet_new(&o->pd, &o->in[i].pd, is_signal ? &s_signal : 0, is_signal ? &s_signal : 0);
+                        pdlua_proxyinlet_init(&o->proxy_in[i], o, i);
+                        o->in[i] = inlet_new(&o->pd, &o->proxy_in[i].pd, is_signal ? &s_signal : 0, is_signal ? &s_signal : 0);
                     }
                     lua_pop(L, 1); // Pop the value from the stack
                 }
@@ -1430,7 +1433,15 @@ static int pdlua_object_free(lua_State *L)
  
         if (o)
         {
-            if (o->in) free(o->in);
+            if(o->in)
+            {
+                for (i = 0; i < o->inlets; ++i) inlet_free(o->in[i]);
+                free(o->in);
+                o->in = NULL;
+            }
+            
+            if (o->proxy_in) freebytes(o->proxy_in, sizeof(struct pdlua_proxyinlet) * o->inlets);
+            
             if(o->out)
             {
                 for (i = 0; i < o->outlets; ++i) outlet_free(o->out[i]);

@@ -57,7 +57,8 @@ typedef struct pdlua
 {
     t_object                pd; /**< We are a Pd object. */
     int                     inlets; /**< Number of inlets. */
-    struct pdlua_proxyinlet *in; /**< The inlets themselves. */
+    struct pdlua_proxyinlet *proxy_in; /**< The inlets themselves. */
+    t_inlet                 **in;
     int                     outlets; /**< Number of outlets. */
     t_outlet                **out; /**< The outlets themselves. */
     int                     siginlets; /**< Number of signal inlets. */
