@@ -181,10 +181,12 @@ static const luaL_Reg path_methods[] = {
     {"cubic_to", cubic_to},
     {"close", close_path},
     {"__gc", free_path},
+    {NULL, NULL} // Sentinel to end the list
 };
 
 static const luaL_Reg path_constructor[] = {
     {"start", start_path},
+    {NULL, NULL} // Sentinel to end the list
 };
 
 // Register functions with Lua
@@ -993,7 +995,13 @@ static int draw_text(lua_State* L) {
 static void add_path_segment(path_state* path, int x, int y)
 {
     int path_segment_space =  (path->num_path_segments + 1) * 2;
-    path->path_segments = (int*)resizebytes(path->path_segments, path->num_path_segments_allocated * sizeof(int), MAX((path_segment_space + 1), path->num_path_segments_allocated) * sizeof(int));
+    if(!path->num_path_segments_allocated) {
+        path->path_segments = (int*)getbytes((path_segment_space + 1) * sizeof(int));
+    }
+    else {
+        path->path_segments = (int*)resizebytes(path->path_segments, path->num_path_segments_allocated * sizeof(int), MAX((path_segment_space + 1), path->num_path_segments_allocated) * sizeof(int));
+    }
+
     path->num_path_segments_allocated = path_segment_space;
     
     path->path_segments[path->num_path_segments * 2] = x;
@@ -1200,7 +1208,16 @@ static int translate(lua_State* L) {
     
     t_pdlua_gfx *gfx = &obj->gfx;
     
-    gfx->transforms = resizebytes(gfx->transforms, gfx->num_transforms * sizeof(gfx_transform), (gfx->num_transforms + 1) * sizeof(gfx_transform));
+    if(gfx->num_transforms == 0)
+    {
+        gfx->transforms = getbytes(sizeof(gfx_transform));
+        
+    }
+    else
+    {
+        gfx->transforms = resizebytes(gfx->transforms, gfx->num_transforms * sizeof(gfx_transform), (gfx->num_transforms + 1) * sizeof(gfx_transform));
+        
+    }
     
     gfx->transforms[gfx->num_transforms].type = TRANSLATE;
     gfx->transforms[gfx->num_transforms].x = luaL_checknumber(L, 1);
