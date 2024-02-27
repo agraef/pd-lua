@@ -1221,7 +1221,6 @@ static int pdlua_object_createoutlets(lua_State *L)
                         if (lua_isnumber(L, -1)) {
                             int is_signal = lua_tonumber(L, -1);
                             o->sigoutlets += is_signal;
-                            // Do something with the value
                             o->out[i] = outlet_new(&o->pd, is_signal ? &s_signal : 0);
                         }
                         lua_pop(L, 1); // Pop the value from the stack
