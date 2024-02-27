@@ -741,17 +741,19 @@ static void pdlua_reload(t_gobj* z)
 static void pdlua_displace(t_gobj *z, t_glist *glist, int dx, int dy){
     t_pdlua *x = (t_pdlua *)z;
     
-#if !PLUGDATA
+
     if(x->has_gui)
     {
-        x->pd.te_xpix += dx, x->pd.te_ypix += dy;
-        dx *= glist_getzoom(glist), dy *= glist_getzoom(glist);
+       x->pd.te_xpix += dx, x->pd.te_ypix += dy;
+       dx *= glist_getzoom(glist), dy *= glist_getzoom(glist);
+#if !PLUGDATA
         gfx_displace(z, glist, dx, dy);
+#endif
     }
     else {
         text_widgetbehavior.w_displacefn(z, glist, dx, dy);
     }
-#endif
+
     
     canvas_fixlinesfor(glist, (t_text*)x);
 }
