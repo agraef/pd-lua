@@ -60,9 +60,12 @@ typedef struct pdlua
     struct pdlua_proxyinlet *in; /**< The inlets themselves. */
     int                     outlets; /**< Number of outlets. */
     t_outlet                **out; /**< The outlets themselves. */
+    int                     siginlets; /**< Number of signal inlets. */
+    int                     sigoutlets; /**< Number of signal outlets. */
     t_canvas                *canvas; /**< The canvas that the object was created on. */
-    int                     has_gui;  /**< True if graphics are enabled. */
-    t_pdlua_gfx             gfx;      /**< Holds state for graphics. */
+    int                     has_gui; /**< True if graphics are enabled. */
+    t_pdlua_gfx             gfx; /**< Holds state for graphics. */
+    t_int**                 w; /**< Holds state for signals. */
 } t_pdlua;
 
 

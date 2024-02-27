@@ -79,10 +79,24 @@ pd._dispatcher = function (object, inlet, sel, atoms)
   end
 end
 
+pd._dsp = function (object, samplerate, blocksize)
+  local obj = pd._objects[object]
+  if nil ~= obj and type(obj.dsp) == "function" then
+    pd._objects[object]:dsp(samplerate, blocksize)
+  end
+end
+
+pd._perform_dsp = function (object, ...)
+  local obj = pd._objects[object]
+  if nil ~= obj and type(obj.perform) == "function" then
+    return pd._objects[object]:perform(...)
+  end
+end
+
 -- repaint method dispatcher
 pd._repaint = function (object)
   local obj = pd._objects[object]
-  if nil ~= obj then
+  if nil ~= obj and type(obj.repaint) == "function" then
     obj:repaint();
   end
 end
@@ -496,5 +510,7 @@ function luax:initialize(sel, atoms)          -- motivation: pd-list 2007-09-23
   end
 end
 
+DATA = 0
+SIGNAL = 1
 Colors = {background = "0", foreground = "1", outline = "2"}
 -- fin pd.lua

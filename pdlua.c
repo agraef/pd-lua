@@ -912,6 +912,114 @@ static void pdlua_menu_open(t_pdlua *o)
     PDLUA_DEBUG("pdlua_menu_open end. stack top is %d", lua_gettop(__L()));
 }
 
+static t_int *pdlua_perform(t_int *w){
+    t_pdlua *o = (t_pdlua *)(w[1]);
+    int nblock = (int)(w[2]);
+    
+    
+    // Write object ptr to registry to make it reliably accessible
+    lua_pushvalue(__L(), LUA_REGISTRYINDEX);
+    lua_pushlightuserdata(__L(), o);     // Use a unique key for your userdata
+    lua_seti(__L(), -2, PDLUA_OBJECT_REGISTRTY_ID); // Store the userdata in the registry
+    lua_pop(__L(), 1);     // Pop the registry table from the stack
+    
+    //t_float *in1 = (t_float *)(w[3]);
+    //t_float *in2 = (t_float *)(w[4]);
+    PDLUA_DEBUG("pdlua_perform: stack top %d", lua_gettop(__L()));
+    lua_getglobal(__L(), "pd");
+    lua_getfield (__L(), -1, "_perform_dsp");
+    lua_pushlightuserdata(__L(), o);
+    
+    for (int i = 0; i < o->siginlets; i++)
+    {
+        lua_newtable(__L());
+        t_float *in = (t_float*)w[i + 3];
+        for (int j = 0; j < nblock; j++)
+        {
+            lua_pushinteger(__L(), j + 1);
+            lua_pushnumber(__L(), in[j]);
+            lua_settable(__L(), -3);
+        }
+    }
+    
+    if (lua_pcall(__L(), 1 + o->siginlets, o->sigoutlets, 0))
+    {
+        pd_error(o, "pdlua: error in perform:\n%s", lua_tostring(__L(), -1));
+        lua_pop(__L(), 1); /* pop the error string */
+    }
+    
+    if (!lua_istable(__L(), -1))
+    {
+        const char *s = "pdlua: 'perform' function should return";
+        if (o->sigoutlets == 1)
+            pd_error(o, "%s %s", s, "a table");
+        else if (o->sigoutlets > 1)
+            pd_error(o, "%s %d %s", s, o->sigoutlets, "tables");
+        lua_pop(__L(), 1 + o->sigoutlets);
+        return w + o->siginlets + o->sigoutlets + 3;
+    }
+    
+    for (int i = o->sigoutlets - 1; i >= 0; i--)
+    {
+        t_float *out = (t_float*)w[i + 3 + o->siginlets];
+        for (int j = 0; j < nblock; j++)
+        {
+            lua_pushinteger(__L(), (lua_Integer)(j + 1));
+            lua_gettable(__L(), -2);
+            if (lua_isnumber(__L(), -1))
+                out[j] = (t_float)lua_tonumber(__L(), -1);
+            else if (lua_isboolean(__L(), -1))
+                out[j] = (t_float)lua_toboolean(__L(), -1);
+            else
+                out[j] = 0.0f;
+            lua_pop(__L(), 1);
+        }
+        lua_pop(__L(), 1);
+    }
+
+    lua_pop(__L(), 1); /* pop the global "pd" */
+    
+    PDLUA_DEBUG("pdlua_perform: end. stack top %d", lua_gettop(__L()));
+    
+    return w + o->siginlets + o->sigoutlets + 3;
+}
+
+static void pdlua_dsp(t_pdlua *x, t_signal **sp){
+    int sum = x->siginlets + x->sigoutlets;
+    if(sum == 0) return;
+    
+    PDLUA_DEBUG("pdlua_dsp: stack top %d", lua_gettop(__L()));
+    lua_getglobal(__L(), "pd");
+    lua_getfield (__L(), -1, "_dsp");
+    lua_pushlightuserdata(__L(), x);
+    lua_pushnumber(__L(), sys_getsr());
+    lua_pushnumber(__L(), sys_getblksize());
+    
+    // Write object ptr to registry to make it reliably accessible
+    lua_pushvalue(__L(), LUA_REGISTRYINDEX);
+    lua_pushlightuserdata(__L(), x);     // Use a unique key for your userdata
+    lua_seti(__L(), -2, PDLUA_OBJECT_REGISTRTY_ID); // Store the userdata in the registry
+    lua_pop(__L(), 1);     // Pop the registry table from the stack
+    
+    if (lua_pcall(__L(), 3, 0, 0))
+    {
+        pd_error(x, "pdlua: error in dsp:\n%s", lua_tostring(__L(), -1));
+        lua_pop(__L(), 1); /* pop the error string */
+    }
+    lua_pop(__L(), 1); /* pop the global "pd" */
+    
+    PDLUA_DEBUG("pdlua_dsp: end. stack top %d", lua_gettop(__L()));
+    
+    x->w = getbytes((sum + 2) * sizeof(t_int*));
+    t_int **w = x->w;
+    w[0] = (t_int*)x;
+    w[1] = (t_int*)sp[0]->s_n;
+    for (int i = 0; i < sum; i++)
+        w[i + 2] = (t_int *)sp[i]->s_vec;
+    
+    dsp_addv(pdlua_perform, sum + 2, (t_int *)(w));
+}
+
 
 t_widgetbehavior pdlua_widgetbehavior;
 
@@ -951,6 +1059,7 @@ static int pdlua_class_new(lua_State *L)
         /* a class with a "menu-open" method will have the "Open" item highlighted in the right-click menu */
         class_addmethod(c, (t_method)pdlua_menu_open, gensym("menu-open"), A_NULL);/* (mrpeach 20111025) */
         class_addmethod(c, (t_method)pdlua_reload, gensym("_reload"), A_NULL);/* (mrpeach 20111025) */
+        class_addmethod(c, (t_method)pdlua_dsp, gensym("dsp"), A_CANT, 0); /* timschoen 20240226 */
     }
 /**/
 
@@ -988,6 +1097,8 @@ static int pdlua_object_new(lua_State *L)
                 o->in = NULL;
                 o->outlets = 0;
                 o->out = NULL;
+                o->siginlets = 0;
+                o->sigoutlets = 0;
                 o->canvas = canvas_getcurrent();
                 
                 o->gfx.width = 80;
@@ -1036,22 +1147,42 @@ static int pdlua_object_createinlets(lua_State *L)
   * \li \c 2 Number of inlets.
   * */
 {
-    int i;
-
     PDLUA_DEBUG("pdlua_object_createinlets: stack top is %d", lua_gettop(L));
     if (lua_islightuserdata(L, 1))
     {
         t_pdlua *o = lua_touserdata(L, 1);
-        if (o)
-        {
-            o->inlets = luaL_checknumber(L, 2);
-            o->in = malloc(o->inlets * sizeof(t_pdlua_proxyinlet));
-            for (i = 0; i < o->inlets; ++i)
-            {
-                pdlua_proxyinlet_init(&o->in[i], o, i);
-                inlet_new(&o->pd, &o->in[i].pd, 0, 0);
+        if(o) {
+            if (lua_isnumber(L, 2)) {
+                // If it's a number, it means the number of data inlets
+                o->inlets = luaL_checknumber(L, 2);
+                o->in = malloc(o->inlets * sizeof(t_pdlua_proxyinlet));
+                for (int i = 0; i < o->inlets; ++i)
+                {
+                    pdlua_proxyinlet_init(&o->in[i], o, i);
+                    inlet_new(&o->pd, &o->in[i].pd, 0, 0);
+                }
+            } else if (lua_istable(L, 2)) {
+                // If it's a table, it means a list of inlet types (data or signal)
+                o->inlets = lua_rawlen(L, 2);
+                o->in = malloc(o->inlets * sizeof(t_pdlua_proxyinlet));
+                for (int i = 0; i < o->inlets; ++i)
+                {
+                    lua_rawgeti(L, 2, i + 1); // Get element at index i+1
+                    if (lua_isnumber(L, -1)) {
+                        int is_signal = lua_tonumber(L, -1);
+                        o->siginlets += is_signal;
+                        
+                        pdlua_proxyinlet_init(&o->in[i], o, i);
+                        inlet_new(&o->pd, &o->in[i].pd, is_signal ? &s_signal : 0, is_signal ? &s_signal : 0);
+                    }
+                    lua_pop(L, 1); // Pop the value from the stack
+                }
+            } else {
+                // Invalid argument type
+                return luaL_error(L, "inlets must be a number or a table");
             }
         }
+        
     }
     PDLUA_DEBUG("pdlua_object_createinlets: end. stack top is %d", lua_gettop(L));
     return 0;
@@ -1065,21 +1196,45 @@ static int pdlua_object_createoutlets(lua_State *L)
   * \li \c 2 Number of outlets.
   * */
 {
-    int i;
-
     PDLUA_DEBUG("pdlua_object_createoutlets: stack top is %d", lua_gettop(L));
     if (lua_islightuserdata(L, 1))
     {
         t_pdlua *o = lua_touserdata(L, 1);
         if (o)
         {
-            o->outlets = luaL_checknumber(L, 2);
-            if (o->outlets > 0)
-            {
-                o->out = malloc(o->outlets * sizeof(t_outlet *));
-                for (i = 0; i < o->outlets; ++i) o->out[i] = outlet_new(&o->pd, 0);
+            if (lua_isnumber(L, 2)) {
+                // If it's a number, it means the number of data outlets
+                o->outlets = luaL_checknumber(L, 2);
+                if (o->outlets > 0)
+                {
+                    o->out = malloc(o->outlets * sizeof(t_outlet *));
+                    for (int i = 0; i < o->outlets; ++i) o->out[i] = outlet_new(&o->pd, 0);
+                }
+                else o->out = NULL;
+            } else if (lua_istable(L, 2)) {
+                // If it's a table, it means a list of outlet types (data or signal)
+                o->outlets = lua_rawlen(L, 2);
+                if (o->outlets > 0)
+                {
+                    o->out = malloc(o->outlets * sizeof(t_outlet *));
+                    for (int i = 0; i < o->outlets; ++i)
+                    {
+                        lua_rawgeti(L, 2, i + 1); // Get element at index i+1
+                        if (lua_isnumber(L, -1)) {
+                            int is_signal = lua_tonumber(L, -1);
+                            o->sigoutlets += is_signal;
+                            // Do something with the value
+                            o->out[i] = outlet_new(&o->pd, is_signal ? &s_signal : 0);
+                        }
+                        lua_pop(L, 1); // Pop the value from the stack
+                    }
+                }
+                else o->out = NULL;
+            } else {
+                // Invalid argument type
+                return luaL_error(L, "outlets must be a number or a table");
             }
-            else o->out = NULL;
+            
         }
     }
     PDLUA_DEBUG("pdlua_object_createoutlets: end stack top is %d", lua_gettop(L));
