@@ -1126,12 +1126,8 @@ static int pdlua_object_new(lua_State *L)
 static int pdlua_object_creategui(lua_State *L)
 {
     t_pdlua *o = lua_touserdata(L, 1);
-    o->has_gui = luaL_checknumber(L, 2);
-    if(o->has_gui)
-    {
-        gfx_initialize(o);
-    }
-    
+    o->has_gui = 1;
+    gfx_initialize(o);
     return 0;
 }
 
