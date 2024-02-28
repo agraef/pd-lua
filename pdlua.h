@@ -45,7 +45,6 @@ typedef struct _pdlua_gfx
     char current_color[8]; // Keep track of current color
 #else
     void(*plugdata_draw_callback)(void*, t_symbol*, int, t_atom*); // Callback to perform drawing in plugdata
-    void* plugdata_callback_target; // Pointer to plugdata object, the target for our draw callback
 #endif
     
     // Size variables

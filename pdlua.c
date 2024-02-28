@@ -1111,7 +1111,6 @@ static int pdlua_object_new(lua_State *L)
 #else
                 // NULL until plugdata overrides them with something useful
                 o->gfx.plugdata_draw_callback = NULL;
-                o->gfx.plugdata_callback_target = NULL;
 #endif
                 
                 lua_pushlightuserdata(L, o);
