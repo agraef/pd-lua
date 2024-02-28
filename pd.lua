@@ -511,5 +511,5 @@ end
 
 DATA = 0
 SIGNAL = 1
-Colors = {background = "0", foreground = "1", outline = "2"}
+Colors = {background = 0, foreground = 1, outline = 2}
 -- fin pd.lua
