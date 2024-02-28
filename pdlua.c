@@ -724,10 +724,8 @@ static int pdlua_click(t_gobj *z, t_glist *gl, int xpos, int ypos, int shift, in
         x->gfx.mouse_down = doit;
         return 1;
     }
-    
-    return text_widgetbehavior.w_clickfn(z, gl, xpos, ypos, shift, alt, dbl, doit);
-
 #endif
+    return text_widgetbehavior.w_clickfn(z, gl, xpos, ypos, shift, alt, dbl, doit);
 }
 
 // The _reload method will tell the pdlua object to reload the original script that spawned it
