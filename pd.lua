@@ -410,7 +410,7 @@ function luax:initialize(sel, atoms)          -- motivation: pd-list 2007-09-23
     end
     self._scriptname = pathname .. '/' .. basename(atoms[1]) .. ".pd_luax" -- mrpeach 20120201
     local atomstail = { }          -- munge for better lua<->luax compatibility
-    for i,_ in ipairs(atoms) do                  
+    for i,_ in ipairs(atoms) do
       if i > 1 then
         atomstail[i-1] = atoms[i]
       end
