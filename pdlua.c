@@ -538,7 +538,7 @@ static t_pdlua *pdlua_new
             load_path_save = luaL_ref(__L(), LUA_REGISTRYINDEX);
             lua_pushstring(__L(), buf);
             lua_setfield(__L(), -2, "_loadpath");
-            
+
             PDLUA_DEBUG("pdlua_new (basename load) path is %s", buf);
             //pdlua_setpathname(o, buf);/* change the scriptname to include its path 
             pdlua_setrequirepath(__L(), buf);
@@ -795,15 +795,15 @@ static void pdlua_stack_dump (lua_State *L)
             case LUA_TSTRING:  /* strings */
                 printf("`%s'", lua_tostring(L, i));
                 break;
-    
+
             case LUA_TBOOLEAN:  /* booleans */
                 printf(lua_toboolean(L, i) ? "true" : "false");
                 break;
-    
+
             case LUA_TNUMBER:  /* numbers */
                 printf("%g", lua_tonumber(L, i));
                 break;
-    
+
             default:  /* other values */
                 printf("%s", lua_typename(L, t));
                 break;
@@ -2303,8 +2303,9 @@ static int pdlua_loader_pathwise
     const char  *path /**< The directory to search for the script */
 )
 {
-    char                dirbuf[MAXPDSTRING];
+    char                dirbuf[MAXPDSTRING], filename[MAXPDSTRING];
     char                *ptr;
+    const char          *classname;
     int                 fd;
 
     if(!path)
@@ -2312,12 +2313,28 @@ static int pdlua_loader_pathwise
       /* we already tried all paths, so skip this */
       return 0;
     }
+    if ((classname = strrchr(objectname, '/')))
+        classname++;
+    else classname = objectname;
     /* ag: Try loading <path>/<classname>.pd_lua (experimental).
        sys_trytoopenone will correctly find the file in a subdirectory if a
        path is given, and it will then return that subdir in dirbuf. */
-    fd = sys_trytoopenone(path, objectname, ".pd_lua",
-      dirbuf, &ptr, MAXPDSTRING, 1);
-    return pdlua_loader_wrappath(fd, objectname, dirbuf);
+    if ((fd = sys_trytoopenone(path, objectname, ".pd_lua",
+        dirbuf, &ptr, MAXPDSTRING, 1)) >= 0)
+        if(pdlua_loader_wrappath(fd, objectname, dirbuf))
+            return 1;
+
+    /* next try (objectname)/(classname).(sys_dllextent) ... */
+    strncpy(filename, objectname, MAXPDSTRING);
+    filename[MAXPDSTRING-2] = 0;
+    strcat(filename, "/");
+    strncat(filename, classname, MAXPDSTRING-strlen(filename));
+    filename[MAXPDSTRING-1] = 0;
+    if ((fd = sys_trytoopenone(path, filename, ".pd_lua",
+        dirbuf, &ptr, MAXPDSTRING, 1)) >= 0)
+        if(pdlua_loader_wrappath(fd, objectname, dirbuf))
+            return 1;
+    return 0;
 }
 
 #ifdef WIN32
@@ -2474,15 +2491,15 @@ void pdlua_setup(void)
         else
         {
             int maj=0,min=0,bug=0;
-	    sys_getversion(&maj,&min,&bug);
-	    if((maj==0) && (min<47))
-	      /* before Pd<0.47, the loaders had to iterate over each path themselves */
-	      sys_register_loader((loader_t)pdlua_loader_legacy);
-	    else
-	      /* since Pd>=0.47, Pd tries the loaders for each path */
-	      sys_register_loader((loader_t)pdlua_loader_pathwise);
+            sys_getversion(&maj,&min,&bug);
+            if((maj==0) && (min<47))
+                /* before Pd<0.47, the loaders had to iterate over each path themselves */
+                sys_register_loader((loader_t)pdlua_loader_legacy);
+            else
+                /* since Pd>=0.47, Pd tries the loaders for each path */
+                sys_register_loader((loader_t)pdlua_loader_pathwise);
         }
-	close(fd);
+        close(fd);
     }
     else
     {
