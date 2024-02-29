@@ -56,34 +56,51 @@
 #include "pdlua_gfx.h"
 
 #ifdef PDINSTANCE
-#define MAX_THREADS 2048
 
-lua_State* lua_threads[MAX_THREADS] = {0};
+typedef struct _lua_Instance {
+    void* pd_instance;
+    lua_State* state;
+    struct _lua_Instance* next;
+} lua_Instance;
 
-size_t hash_pointer(void *ptr) {
-    // Simple hashing function for pointers
-    size_t val = (size_t)ptr;
-    val = ((val >> 16) ^ val) * 0x45d9f3b;
-    val = ((val >> 16) ^ val) * 0x45d9f3b;
-    val = (val >> 16) ^ val;
-    return val % MAX_THREADS;
-}
+lua_Instance* lua_threads = NULL;
 
 lua_State* __L()
 {
-    size_t idx = hash_pointer(pd_this);
-    return lua_threads[idx];
+    lua_Instance* iter = lua_threads;
+    while(iter)
+    {
+        if(iter->pd_instance == pd_this)
+        {
+            return iter->state;
+        }
+        iter = iter->next;
+    }
+
+    return NULL; // should never happen
 }
 
 void initialise_lua_state()
 {
-    size_t idx = hash_pointer(pd_this);
-    if (!lua_threads[idx]) {
-        lua_threads[idx] = luaL_newstate();
+    if(!lua_threads)
+    {
+        lua_threads = t_getbytes(sizeof(lua_Instance));
+        lua_threads->pd_instance = pd_this;
+        lua_threads->state = luaL_newstate();
+        lua_threads->next = NULL;
+        return;
     }
-    else {
-        lua_threads[idx] = lua_newthread(lua_threads[idx]);
+    
+    lua_Instance* iter = lua_threads;
+    while(iter->next)
+    {
+        iter = iter->next;
     }
+    
+    iter->next = t_getbytes(sizeof(lua_Instance));
+    iter->next->pd_instance = pd_this;
+    iter->next->state = lua_newthread(lua_threads->state);
+    iter->next->next = NULL;
 }
 
 #else
