@@ -1,15 +1,10 @@
 pdlua graphics
 ===
 
-pdlua's graphics allow you to draw basic vector graphics and receive mouse events on pure-data and plugdata. Drawing functions are prefixed with 'gfx.', and should only be called from within the "paint" function
+pdlua's graphics allow you to draw basic vector graphics and receive mouse events on pure-data and plugdata. Drawing functions are prefixed with 'gfx.', and should only be called from within the "paint" function.
 
-You can enable GUI mode by setting the self.gui variable in the constructor, like this:
+NOTE: The "paint" method (see below) is required by all pdlua objects which want to utilize the graphics interface. Defining it automatically puts the object into graphics mode in which all graphics routines work as described below.
 
-function yourclass:initialize(sel, atoms)
-    self.inlets = 1
-    self.gui = 1
-    return true
-end
 
 Painting:
 --------------
@@ -85,8 +80,6 @@ function example:initialize(sel, atoms)
     self.circle_x = 10
     self.circle_y = 10
 
-     -- Enabled GUI mode
-    self.gui = 1
     return true
 end
 
