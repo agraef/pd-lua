@@ -400,6 +400,14 @@ end
 
 function pd.Class:initialize(sel, atoms) end
 
+function pd.Class:postinitialize() end
+
+function pd.Class:finalize() end
+
+function pd.Class:set_args(args)
+    pd._set_args(self._object, args)
+end
+
 function pd.Class:repaint()
   if type(self.paint) == "function" then
     local g = _gfx_internal.gfx_new()
@@ -418,10 +426,6 @@ end
 function pd.Class:set_size(width, height)
     return _gfx_internal.set_size(width, height)
 end
-
-function pd.Class:postinitialize() end
-
-function pd.Class:finalize() end
 
 function pd.Class:dofilex(file)
   -- in case of register being called, make sure
