@@ -20,11 +20,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 -- storage for Pd C<->Lua interaction
 pd._classes = { } -- take absolute paths and turn them into classes
+pd._fullpaths = { }
 pd._pathnames = { } -- look up absolute path by creation name
 pd._objects = { }
 pd._clocks = { }
 pd._receives = { }
 pd._loadpath = ""
+pd._currentpath = ""
 
 -- add a path to Lua's "require" search paths
 pd._setrequirepath = function(path)
@@ -77,6 +79,47 @@ pd._dispatcher = function (object, inlet, sel, atoms)
   end
 end
 
+pd._dsp = function (object, samplerate, blocksize)
+  local obj = pd._objects[object]
+  if nil ~= obj and type(obj.dsp) == "function" then
+    pd._objects[object]:dsp(samplerate, blocksize)
+  end
+end
+
+pd._perform_dsp = function (object, ...)
+  local obj = pd._objects[object]
+  if nil ~= obj and type(obj.perform) == "function" then
+    return pd._objects[object]:perform(...)
+  end
+end
+
+-- repaint method dispatcher
+pd._repaint = function (object)
+  local obj = pd._objects[object]
+  if nil ~= obj and type(obj.repaint) == "function" then
+    obj:repaint();
+  end
+end
+
+-- mouse event dispatcher
+pd._mouseevent = function (object, x, y, event_type)
+  if nil ~= pd._objects[object] then
+    local obj = pd._objects[object]
+    if event_type == 0 and type(obj.mouse_down) == "function" then
+      obj:mouse_down(x, y)
+    end
+    if event_type == 1 and type(obj.mouse_up) == "function" then
+      obj:mouse_up(x, y)
+    end
+    if event_type == 2 and type(obj.mouse_move) == "function" then
+      obj:mouse_move(x, y)
+    end
+    if event_type == 3 and type(obj.mouse_drag) == "function" then
+      obj:mouse_drag(x, y)
+    end
+  end
+end
+
 -- clock method dispatcher
 pd._clockdispatch = function (c)
   if nil ~= pd._clocks[c] then
@@ -90,6 +133,15 @@ pd._whoami = function (object)
   if nil ~= pd._objects[object] then
     return pd._objects[object]:whoami()
   end
+end
+
+--whereami method dispatcher
+pd._whereami = function(name)
+    if nil ~= pd._fullpaths[name] then
+      return pd._fullpaths[name]
+    end
+
+    return nil
 end
 
 --class method dispatcher
@@ -263,10 +315,19 @@ function pd.Class:register(name)
   else
     regname = name
   end
+
+  --pd._fullpaths[regname] = pd._currentpath or (fullname .. ".pd_lua")
+  if pd._currentpath == nil or pd._currentpath == '' then
+    pd._fullpaths[regname] = fullname .. ".pd_lua"
+  else
+    pd._fullpaths[regname] = pd._currentpath
+  end
+
   pd._pathnames[regname] = fullname
   pd._classes[fullname] = self       -- record registration
   self._class = pd._register(name)  -- register new class
   self._name = name
+  self._path = pd._fullpaths[regname]
   self._loadpath = fullpath
   if name == "pdlua" then
     self._scriptname = "pd.lua"
@@ -284,6 +345,9 @@ function pd.Class:construct(sel, atoms)
   if self:initialize(sel, atoms) then
     pd._createinlets(self._object, self.inlets)
     pd._createoutlets(self._object, self.outlets)
+    if type(self.paint) == "function" then
+        pd._creategui(self._object)
+    end
     self:postinitialize()
     return self
   else
@@ -336,6 +400,25 @@ end
 
 function pd.Class:initialize(sel, atoms) end
 
+function pd.Class:repaint()
+  if type(self.paint) == "function" then
+    local g = _gfx_internal.gfx_new()
+    local can_paint = _gfx_internal.start_paint();
+    if can_paint then
+        self:paint(g);
+        _gfx_internal.end_paint();
+    end
+  end
+end
+
+function pd.Class:get_size()
+    return _gfx_internal.get_size()
+end
+
+function pd.Class:set_size(width, height)
+    return _gfx_internal.set_size(width, height)
+end
+
 function pd.Class:postinitialize() end
 
 function pd.Class:finalize() end
@@ -348,6 +431,7 @@ function pd.Class:dofilex(file)
   local pathsave = pd._loadpath
   pd._loadname = nil
   pd._loadpath = self._loadpath
+  pd._currentpath = file
   local f, path = pd._dofilex(self._class, file)
   pd._loadname = namesave
   pd._loadpath = pathsave
@@ -362,6 +446,7 @@ function pd.Class:dofile(file)
   local pathsave = pd._loadpath
   pd._loadname = nil
   pd._loadpath = self._loadpath
+  pd._currentpath = file
   local f, path = pd._dofile(self._object, file)
   pd._loadname = namesave
   pd._loadpath = pathsave
@@ -374,6 +459,10 @@ end
 
 function pd.Class:whoami()
   return self._scriptname or self._name
+end
+
+function pd.Class:in_1__reload()
+  self:dofile(self._path)
 end
 
 function pd.Class:get_class() -- accessor for t_class*
@@ -391,7 +480,6 @@ end
 function lua:in_1_load(atoms)  -- execute a script
   self:dofile(atoms[1])
 end
-
 
 local luax = pd.Class:new():register("pdluax")  -- classless lua externals (like [pdluax foo])
 
@@ -421,4 +509,7 @@ function luax:initialize(sel, atoms)          -- motivation: pd-list 2007-09-23
   end
 end
 
+DATA = 0
+SIGNAL = 1
+Colors = {background = 0, foreground = 1, outline = 2}
 -- fin pd.lua
