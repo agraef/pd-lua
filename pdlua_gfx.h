@@ -21,6 +21,36 @@
  *
  */
 
+#ifdef PURR_DATA
+
+// Purr Data doesn't currently define these vanilla API routines, and the
+// graphics interface needs them, so for now we're providing dummy versions
+// here. XXXFIXME: This needs to go once the graphics interface has been
+// implemented in Purr Data. At present you'll just get a warning when the
+// graphics interface is utilized. -ag
+
+static void gfx_not_implemented(void)
+{
+  static int init = 0;
+  if (!init) {
+    post("pd-lua[gfx]: WARNING: graphics interface not yet implemented!");
+    init = 1;
+  }
+}
+
+int glist_getzoom(t_glist *x)
+{
+  gfx_not_implemented();
+  return 1;
+}
+
+void pdgui_vmess(const char* message, const char* format, ...)
+{
+  gfx_not_implemented();
+}
+
+#endif
+
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #define PDLUA_OBJECT_REGISTRTY_ID 512
 

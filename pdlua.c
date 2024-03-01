@@ -1143,8 +1143,16 @@ static int pdlua_object_new(lua_State *L)
 static int pdlua_object_creategui(lua_State *L)
 {
     t_pdlua *o = lua_touserdata(L, 1);
+#ifndef PURR_DATA
     o->has_gui = 1;
     gfx_initialize(o);
+#else
+    // We avoid the gfx initalization here, since it produces unwanted
+    // artifacts on the canvas and at present none of the graphics routines
+    // will work in Purr Data anyway. -ag
+    o->has_gui = 0;
+    gfx_not_implemented();
+#endif
     return 0;
 }
 
