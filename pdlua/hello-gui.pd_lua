@@ -15,7 +15,6 @@ function hello:initialize(sel, atoms)
     self.mouse_down_pos = {0, 0}
     self.rect_down_pos = {0, 0}
 
-    self.gui = 1
     self:set_size(630, 230)
     return true
 end
