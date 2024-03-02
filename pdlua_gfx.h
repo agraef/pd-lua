@@ -1008,10 +1008,12 @@ static int draw_text(lua_State* L) {
     int x = luaL_checknumber(L, 2);
     int y = luaL_checknumber(L, 3);
     int w = luaL_checknumber(L, 4);
-    int fontHeight = luaL_checknumber(L, 5);
+    int font_height = luaL_checknumber(L, 5);
+    font_height = sys_hostfontsize(font_height, glist_getzoom(cnv));
+    font_height *= 0.75f; // Make font size smaller to match the size in plugdata
     
     transform_point(gfx, &x, &y);
-    transform_size(gfx, &w, &fontHeight);
+    transform_size(gfx, &w, &font_height);
     
     int canvas_zoom = glist_getzoom(cnv);
     x += text_xpix((t_object*)obj, obj->canvas) / canvas_zoom;
@@ -1021,9 +1023,6 @@ static int draw_text(lua_State* L) {
     y *= canvas_zoom;
     w *= canvas_zoom;
     
-    // Font size is offset to make sure it matches the size in plugdata
-    fontHeight *= 0.8f;
-    
     const char* tags[] = { gfx->object_tag, register_drawing(obj) };
     
     pdgui_vmess(0, "crr ii rs ri rs rS", cnv, "create", "text",
@@ -1031,7 +1030,7 @@ static int draw_text(lua_State* L) {
 
     t_atom fontatoms[3];
     SETSYMBOL(fontatoms+0, gensym(sys_font));
-    SETFLOAT (fontatoms+1, font_height);
+    SETFLOAT (fontatoms+1, -font_height); // Size is wrong on hi-dpi Windows is this is not negative
     SETSYMBOL(fontatoms+2, gensym(sys_fontweight));
 
     pdgui_vmess(0, "crs rA rs rs", cnv, "itemconfigure", tags[1],
