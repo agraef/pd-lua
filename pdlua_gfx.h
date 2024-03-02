@@ -189,6 +189,34 @@ static t_pdlua* get_current_object(lua_State* L)
     return NULL;
 }
 
+unsigned long long custom_rand() {
+    static unsigned long long seed = 0;
+    const unsigned long long a = 1664525;
+    const unsigned long long c = 1013904223;
+    const unsigned long long m = 4294967296;  // 2^32
+    seed = (a * seed + c) % m;
+    if(seed == 0) seed = 1; // We cannot return 0 since we use modulo on this. Having the rhs operator of % be zero leads to div-by-zero error on Windows
+    
+    return seed;
+}
+
+void generate_random_id(char *str, size_t len) {
+    const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    size_t charset_len = strlen(charset);
+    
+    str[0] = '.';
+    str[1] = 'x';
+    
+    for (size_t i = 2; i < len - 1; ++i) {
+        int key = custom_rand() % charset_len;
+        str[i] = charset[key];
+    }
+    
+    str[len - 1] = '\0';
+}
+
+
+
 
 static int gfx_new(lua_State *L) {
     luaL_setmetatable(L, "graphics_context");
@@ -443,18 +471,9 @@ static int draw_text(lua_State* L) {
 }
 
 t_symbol* generate_path_id() {
-    int length = 32;
-    static const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    char *random_string = malloc((length + 1) * sizeof(char));
-    
-    for (int i = 0; i < length; i++) {
-        int index = rand() % (sizeof(charset) - 1);
-        random_string[i] = charset[index];
-    }
-
-    random_string[length] = '\0';
+    char random_string[64];
+    generate_random_id(random_string, 64);
     t_symbol* sym = gensym(random_string);
-    free(random_string);
     return sym;
 }
 
@@ -677,8 +696,7 @@ static void gfx_displace(t_pdlua *x, t_glist *glist, int dx, int dy)
 static const char* register_drawing(t_pdlua *object)
 {
     t_pdlua_gfx *gfx = &object->gfx;
-    snprintf(gfx->current_paint_tag, 128, ".x%d", rand());
-    gfx->current_paint_tag[127] = '\0';
+    generate_random_id(gfx->current_paint_tag, 64);
     return gfx->current_paint_tag;
 }
 
@@ -722,8 +740,7 @@ static int start_paint(lua_State* L) {
         // we add a small invisible line that won't get touched or repainted later.
         // We can then use this line to set the correct z-index for the drawings, using the tcl/tk "lower" command
         t_canvas *cnv = glist_getcanvas(obj->canvas);
-        snprintf(gfx->order_tag, 128, ".x%d", rand());
-        gfx->order_tag[127] = '\0';
+        generate_random_id(gfx->order_tag, 64);
         
         const char* tags[] = { gfx->order_tag };
         pdgui_vmess(0, "crr iiii ri rS", cnv, "create", "line", 0, 0, 1, 1,
@@ -955,7 +972,7 @@ static int draw_line(lua_State* L) {
     int y1 = luaL_checknumber(L, 2);
     int x2 = luaL_checknumber(L, 3);
     int y2 = luaL_checknumber(L, 4);
-    int lineWidth = luaL_checknumber(L, 5);
+    int line_width = luaL_checknumber(L, 5);
     
     transform_point(gfx, &x1, &y1);
     transform_point(gfx, &x2, &y2);
@@ -971,12 +988,12 @@ static int draw_line(lua_State* L) {
     y1 *= canvas_zoom;
     x2 *= canvas_zoom;
     y2 *= canvas_zoom;
-    lineWidth *= canvas_zoom;
+    line_width *= canvas_zoom;
     
     const char* tags[] = { gfx->object_tag, register_drawing(obj) };
     
     pdgui_vmess(0, "crr iiii ri rs rS", cnv, "create", "line", x1, y1, x2, y2,
-                "-width", lineWidth, "-fill", gfx->current_color, "-tags", 2, tags);
+                "-width", line_width, "-fill", gfx->current_color, "-tags", 2, tags);
 
     return 0;
 }
@@ -1014,7 +1031,7 @@ static int draw_text(lua_State* L) {
 
     t_atom fontatoms[3];
     SETSYMBOL(fontatoms+0, gensym(sys_font));
-    SETFLOAT (fontatoms+1, fontHeight * canvas_zoom);
+    SETFLOAT (fontatoms+1, font_height);
     SETSYMBOL(fontatoms+2, gensym(sys_fontweight));
 
     pdgui_vmess(0, "crs rA rs rs", cnv, "itemconfigure", tags[1],
