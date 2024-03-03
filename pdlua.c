@@ -2433,10 +2433,10 @@ void pdlua_setup(void)
     // In plugdata we're linked statically and thus c_externdir is empty.
     // Instead, we get our data directory from plugdata and expect to find the
     // external dir in <datadir>/pdlua.
-    sprintf(plugdata_datadir, "%s/pdlua", datadir);
-    sprintf(pd_lua_path, "%s/pdlua/pd.lua", datadir);
+    snprintf(plugdata_datadir, MAXPDSTRING, "%s/pdlua", datadir);
+    snprintf(pd_lua_path, MAXPDSTRING, "%s/pdlua/pd.lua", datadir);
 #else
-    sprintf(pd_lua_path, "%s/pd.lua", pdlua_proxyinlet_class->c_externdir->s_name); /* the full path to pd.lua */
+    snprintf(pd_lua_path, MAXPDSTRING, "%s/pd.lua", pdlua_proxyinlet_class->c_externdir->s_name); /* the full path to pd.lua */
 #endif
     PDLUA_DEBUG("pd_lua_path %s", pd_lua_path);
     fd = open(pd_lua_path, O_RDONLY);
