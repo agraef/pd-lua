@@ -1044,7 +1044,7 @@ static int pdlua_set_arguments(lua_State *L)
         // Retrieve the binbuf
         t_binbuf* b = o->pd.te_binbuf;
 
-        if (!b || !o->has_gui) return 0;
+        if (!b) return 0;
 
         t_atom name;
         SETSYMBOL(&name, atom_getsymbol(binbuf_getvec(b)));
