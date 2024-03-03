@@ -647,17 +647,6 @@ static void pdlua_free( t_pdlua *o /**< The object to destruct. */)
     }
     lua_pop(__L(), 1); /* pop the global "pd" */
     PDLUA_DEBUG("pdlua_free: end. stack top %d", lua_gettop(__L()));
-    
-    if(o->has_gui)
-    {
-#if !PLUGDATA
-        if(o->gfx.num_transforms != 0)
-        {
-            freebytes(o->gfx.transforms, o->gfx.num_transforms * sizeof(gfx_transform));
-        }
-#endif
-    }
-    
     return;
 }
 
@@ -762,7 +751,7 @@ static void pdlua_displace(t_gobj *z, t_glist *glist, int dx, int dy){
        x->pd.te_xpix += dx, x->pd.te_ypix += dy;
        dx *= glist_getzoom(glist), dy *= glist_getzoom(glist);
 #if !PLUGDATA
-        gfx_displace(z, glist, dx, dy);
+        gfx_displace((t_pdlua*)z, glist, dx, dy);
 #endif
     }
     else {
@@ -931,13 +920,6 @@ static t_int *pdlua_perform(t_int *w){
     t_pdlua *o = (t_pdlua *)(w[1]);
     int nblock = (int)(w[2]);
     
-    
-    // Write object ptr to registry to make it reliably accessible
-    lua_pushvalue(__L(), LUA_REGISTRYINDEX);
-    lua_pushlightuserdata(__L(), o);     // Use a unique key for your userdata
-    lua_seti(__L(), -2, PDLUA_OBJECT_REGISTRTY_ID); // Store the userdata in the registry
-    lua_pop(__L(), 1);     // Pop the registry table from the stack
-
     PDLUA_DEBUG("pdlua_perform: stack top %d", lua_gettop(__L()));
     lua_getglobal(__L(), "pd");
     lua_getfield (__L(), -1, "_perform_dsp");
@@ -1008,12 +990,6 @@ static void pdlua_dsp(t_pdlua *x, t_signal **sp){
     lua_pushnumber(__L(), sys_getsr());
     lua_pushnumber(__L(), sys_getblksize());
     
-    // Write object ptr to registry to make it reliably accessible
-    lua_pushvalue(__L(), LUA_REGISTRYINDEX);
-    lua_pushlightuserdata(__L(), x);     // Use a unique key for your userdata
-    lua_seti(__L(), -2, PDLUA_OBJECT_REGISTRTY_ID); // Store the userdata in the registry
-    lua_pop(__L(), 1);     // Pop the registry table from the stack
-    
     if (lua_pcall(__L(), 3, 0, 0))
     {
         pd_error(x, "pdlua: error in dsp:\n%s", lua_tostring(__L(), -1));
@@ -1032,7 +1008,6 @@ static void pdlua_dsp(t_pdlua *x, t_signal **sp){
     
     dsp_addv(pdlua_perform, sum + 2, (t_int *)(w));
 }
-
 
 t_widgetbehavior pdlua_widgetbehavior;
 
@@ -1100,12 +1075,6 @@ static int pdlua_object_new(lua_State *L)
             t_pdlua *o = (t_pdlua *) pd_new(c);
             if (o)
             {
-                // Write object ptr to registry to make it reliably accessible
-                lua_pushvalue(__L(), LUA_REGISTRYINDEX);
-                lua_pushlightuserdata(__L(), o);
-                lua_seti(__L(), -2, PDLUA_OBJECT_REGISTRTY_ID);
-                lua_pop(__L(), 1);
-                
                 o->inlets = 0;
                 o->in = NULL;
                 o->proxy_in = NULL;
@@ -1120,8 +1089,6 @@ static int pdlua_object_new(lua_State *L)
                
 #if !PLUGDATA
                 // Init graphics state for pd
-                o->gfx.num_transforms = 0;
-                o->gfx.transforms = NULL;
                 o->gfx.mouse_drag_x = 0;
                 o->gfx.mouse_drag_y = 0;
                 o->gfx.mouse_down = 0;
@@ -1490,12 +1457,6 @@ static void pdlua_dispatch
     lua_pushstring(__L(), s->s_name);
     pdlua_pushatomtable(argc, argv);
     
-    // Write object ptr to registry to make it reliably accessible
-    lua_pushvalue(__L(), LUA_REGISTRYINDEX);
-    lua_pushlightuserdata(__L(), o);     // Use a unique key for your userdata
-    lua_seti(__L(), -2, PDLUA_OBJECT_REGISTRTY_ID); // Store the userdata in the registry
-    lua_pop(__L(), 1);     // Pop the registry table from the stack
-    
     if (lua_pcall(__L(), 4, 0, 0))
     {
         pd_error(o, "lua: error in dispatcher:\n%s", lua_tostring(__L(), -1));
@@ -1524,13 +1485,7 @@ static void pdlua_receivedispatch
     lua_pushlightuserdata(__L(), r);
     lua_pushstring(__L(), s->s_name);
     pdlua_pushatomtable(argc, argv);
-    
-    // Write object ptr to registry to make it reliably accessible
-    lua_pushvalue(__L(), LUA_REGISTRYINDEX);
-    lua_pushlightuserdata(__L(), r->owner);
-    lua_seti(__L(), -2, PDLUA_OBJECT_REGISTRTY_ID);
-    lua_pop(__L(), 1);
-    
+        
     if (lua_pcall(__L(), 3, 0, 0))
     {
         pd_error(r->owner, "lua: error in receive dispatcher:\n%s", lua_tostring(__L(), -1));
@@ -1549,13 +1504,7 @@ static void pdlua_clockdispatch( t_pdlua_proxyclock *clock)
     lua_getglobal(__L(), "pd");
     lua_getfield (__L(), -1, "_clockdispatch");
     lua_pushlightuserdata(__L(), clock);
-    
-    // Write object ptr to registry to make it reliably accessible
-    lua_pushvalue(__L(), LUA_REGISTRYINDEX);
-    lua_pushlightuserdata(__L(), clock->owner);
-    lua_seti(__L(), -2, PDLUA_OBJECT_REGISTRTY_ID);
-    lua_pop(__L(), 1);
-    
+
     if (lua_pcall(__L(), 1, 0, 0))
     {
         pd_error(clock->owner, "lua: error in clock dispatcher:\n%s", lua_tostring(__L(), -1));
