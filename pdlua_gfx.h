@@ -819,7 +819,7 @@ static int end_paint(lua_State* L) {
 static int free_graphics_context(lua_State* L)
 {
     t_graphics_context* ctx = (t_graphics_context*)luaL_checkudata(L, 1, "t_graphics_context");
-    freebytes(ctx->transforms, ctx->num_transforms * sizeof(gfx_transform));
+    if(ctx && ctx->transforms) freebytes(ctx->transforms, ctx->num_transforms * sizeof(gfx_transform));
     return 0;
 }
 
@@ -1099,15 +1099,17 @@ static int draw_text(lua_State* L) {
 
 static void add_path_segment(t_path_state* path, int x, int y)
 {
-    int path_segment_space =  (path->num_path_segments + 1) * 2;
+    int path_segment_space = (path->num_path_segments + 1) * 2;
+    int old_size = path->num_path_segments_allocated;
+    int new_size = MAX(path_segment_space, path->num_path_segments_allocated);
     if(!path->num_path_segments_allocated) {
-        path->path_segments = (int*)getbytes((path_segment_space + 1) * sizeof(int));
+        path->path_segments = (int*)getbytes(new_size * sizeof(int));
     }
     else {
-        path->path_segments = (int*)resizebytes(path->path_segments, path->num_path_segments_allocated * sizeof(int), MAX((path_segment_space + 1), path->num_path_segments_allocated) * sizeof(int));
+        path->path_segments = (int*)resizebytes(path->path_segments, old_size * sizeof(int), new_size * sizeof(int));
     }
 
-    path->num_path_segments_allocated = path_segment_space;
+    path->num_path_segments_allocated = new_size;
     
     path->path_segments[path->num_path_segments * 2] = x;
     path->path_segments[path->num_path_segments * 2 + 1] = y;
@@ -1151,7 +1153,6 @@ static int quad_to(lua_State* L) {
     float dy = y3 - y1;
     float distance = sqrtf(dx * dx + dy * dy);
     float resolution = MAX(10.0f, distance);
-    post("Resolution: %f", resolution);
     
     // Get the last point
     float t = 0.0;
@@ -1184,7 +1185,6 @@ static int cubic_to(lua_State* L) {
     float dy = y3 - y1;
     float distance = sqrtf(dx * dx + dy * dy);
     float resolution = MAX(10.0f, distance);
-    post("Resolution: %f", resolution);
     
     // Get the last point
     float t = 0.0;
@@ -1358,7 +1358,8 @@ static int scale(lua_State* L) {
 
 static int reset_transform(lua_State* L) {
     t_graphics_context *ctx = pop_graphics_context(L);
-    ctx->transforms = resizebytes(ctx->transforms, ctx->num_transforms * sizeof(gfx_transform), 0);
+    freebytes(ctx->transforms, ctx->num_transforms * sizeof(gfx_transform));
+    ctx->transforms = NULL;
     ctx->num_transforms = 0;
     return 0;
 }
