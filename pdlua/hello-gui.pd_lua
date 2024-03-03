@@ -56,18 +56,18 @@ function hello:mouse_drag(x, y)
 end
 
 function hello:paint(g)
-    g.set_color(250, 200, 240)
-    g.fill_all()
+    g:set_color(250, 200, 240)
+    g:fill_all()
 
     -- Filled examples
-    g.set_color(66, 207, 201, 0.3)
-    g.fill_ellipse(30, 50, 30, 30)
-    g.set_color(0, 159, 147, 1)
-    g.fill_rect(120, 50, 30, 30)
-    g.set_color(250, 84, 108, 1)
-    g.fill_rounded_rect(210, 50, 30, 30, 5)
+    g:set_color(66, 207, 201, 0.3)
+    g:fill_ellipse(30, 50, 30, 30)
+    g:set_color(0, 159, 147, 1)
+    g:fill_rect(120, 50, 30, 30)
+    g:set_color(250, 84, 108, 1)
+    g:fill_rounded_rect(210, 50, 30, 30, 5)
 
-    g.set_color(252, 118, 81, 1)
+    g:set_color(252, 118, 81, 1)
 
     -- Star using line_to paths
     local starX1, starY1 = 310, 45
@@ -87,27 +87,27 @@ function hello:paint(g)
     star:line_to(starX1 - 3, starY1 + 14)
     star:close()
 
-    g.fill_path(star)
+    g:fill_path(star)
 
-    g.set_color(255, 219, 96, 1)
+    g:set_color(255, 219, 96, 1)
     -- Bezier curve example
-    g.translate(140, 20)
-    g.scale(0.5, 1.0)
+    g:translate(140, 20)
+    g:scale(0.5, 1.0)
     local curve = path.start(450, 50)
     curve:cubic_to(500, 30, 550, 70, 600, 50)
     curve:close()
-    g.stroke_path(curve, 2)
-    g.reset_transform()
+    g:stroke_path(curve, 2)
+    g:reset_transform()
 
     -- Stroked examples
-    g.set_color(66, 207, 201, 1)
-    g.stroke_ellipse(30, 150, 30, 30, 2)
-    g.set_color(0, 159, 147, 1)
-    g.stroke_rect(120, 150, 30, 30, 2)
-    g.set_color(250, 84, 108, 1)
-    g.stroke_rounded_rect(210, 150, 30, 30, 5, 2)
+    g:set_color(66, 207, 201, 1)
+    g:stroke_ellipse(30, 150, 30, 30, 2)
+    g:set_color(0, 159, 147, 1)
+    g:stroke_rect(120, 150, 30, 30, 2)
+    g:set_color(250, 84, 108, 1)
+    g:stroke_rounded_rect(210, 150, 30, 30, 5, 2)
 
-    g.set_color(252, 118, 81, 1)
+    g:set_color(252, 118, 81, 1)
 
     local starX2, starY2 = 310, 145
     local starSize = 15
@@ -124,35 +124,35 @@ function hello:paint(g)
     star2:line_to(starX2 - 18, starY2 + 14)
     star2:line_to(starX2 - 3, starY2 + 14)
     star2:close()
-    g.stroke_path(star2, 2)
+    g:stroke_path(star2, 2)
 
-    g.set_color(255, 219, 96, 1)
+    g:set_color(255, 219, 96, 1)
     -- Bezier curve example
-    g.translate(140, 20)
-    g.scale(0.5, 1.0)
+    g:translate(140, 20)
+    g:scale(0.5, 1.0)
     local curve2 = path.start(450, 150)
     curve2:cubic_to(500, 130, 550, 170, 600, 150)
-    g.fill_path(curve2)
-    g.reset_transform()
+    g:fill_path(curve2)
+    g:reset_transform()
 
     -- Draggable rectangle
-    g.set_color(66, 207, 201, 1)
-    g.fill_rounded_rect(self.draggable_rect_x, self.draggable_rect_y, self.draggable_rect_size, self.draggable_rect_size, 5)
-    g.set_color(0, 0, 0, 1)
-    g.draw_text("Drag me!", self.draggable_rect_x + 8, self.draggable_rect_y + 20, self.draggable_rect_size, 10)
+    g:set_color(66, 207, 201, 1)
+    g:fill_rounded_rect(self.draggable_rect_x, self.draggable_rect_y, self.draggable_rect_size, self.draggable_rect_size, 5)
+    g:set_color(0, 0, 0, 1)
+    g:draw_text("Drag me!", self.draggable_rect_x + 8, self.draggable_rect_y + 20, self.draggable_rect_size, 10)
 
     -- Titles
-    g.set_color(252, 118, 81, 1)
-    g.draw_text("Ellipse", 32, 190, 120, 10)
-    g.draw_text("Rectangle", 116, 190, 120, 10)
-    g.draw_text("Rounded Rectangle", 188, 190, 120, 10)
-    g.draw_text("Paths", 300, 190, 120, 10)
-    g.draw_text("Bezier Paths", 380, 190, 120, 10)
-    g.draw_text("Animation", 470, 190, 120, 10)
-    g.draw_text("Mouse Interaction", 540, 190, 120, 10)
+    g:set_color(252, 118, 81, 1)
+    g:draw_text("Ellipse", 32, 190, 120, 10)
+    g:draw_text("Rectangle", 116, 190, 120, 10)
+    g:draw_text("Rounded Rectangle", 188, 190, 120, 10)
+    g:draw_text("Paths", 300, 190, 120, 10)
+    g:draw_text("Bezier Paths", 380, 190, 120, 10)
+    g:draw_text("Animation", 470, 190, 120, 10)
+    g:draw_text("Mouse Interaction", 540, 190, 120, 10)
 
-    g.set_color(250, 84, 108, 1)
-    g.fill_ellipse(self.circle_x, self.circle_y, self.circle_radius, self.circle_radius)
+    g:set_color(250, 84, 108, 1)
+    g:fill_ellipse(self.circle_x, self.circle_y, self.circle_radius, self.circle_radius)
 end
 
 function hello:tick()

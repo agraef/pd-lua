@@ -71,15 +71,15 @@ function osci3d:perform(in1, in2, in3)
 end
 
 function osci3d:paint(g)
-  g.set_color(table.unpack(self.BACKGROUND))
-  g.fill_all()
+  g:set_color(table.unpack(self.BACKGROUND))
+  g:fill_all()
 
   -- draw ground grid
   if self.DRAW_GRID == 1 then
-    g.set_color(192, 192, 192)
+    g:set_color(192, 192, 192)
     for i = 1, #self.gridLines do
       local lineFrom, lineTo = table.unpack(self.gridLines[i])
-      
+
       -- apply rotation to grid lines
       lineFrom = self:rotateY(lineFrom, self.rotationAngleY)
       lineFrom = self:rotateX(lineFrom, self.rotationAngleX)
@@ -89,7 +89,7 @@ function osci3d:paint(g)
       local startX, startY = self:projectVertex(lineFrom, self.ZOOM)
       local   endX,   endY = self:projectVertex(  lineTo, self.ZOOM)
       if lineFrom[3] > -self.cameraDistance and lineTo[3] > -self.cameraDistance then
-        g.draw_line(startX, startY, endX, endY, 1)
+        g:draw_line(startX, startY, endX, endY, 1)
       end
     end
   end
@@ -100,12 +100,12 @@ function osci3d:paint(g)
     self.rotatedSignal[i] = self:rotateX(rotatedVertex, self.rotationAngleX)
   end
 
-  g.set_color(table.unpack(self.COLOR))
+  g:set_color(table.unpack(self.COLOR))
   local p = path.start(self:projectVertex(self.rotatedSignal[1], self.ZOOM))
   for i = 2, self.BUFFERSIZE do
     p:line_to(self:projectVertex(self.rotatedSignal[i], self.ZOOM))
   end
-  g.stroke_path(p, self.STROKE_WIDTH)
+  g:stroke_path(p, self.STROKE_WIDTH)
 end
 
 function osci3d:rotateY(vertex, angle)
@@ -137,7 +137,7 @@ function osci3d:set_buffer()
   self.signal = {}
   self.rotatedSignal = {}
   -- fill ring buffer
-  for i = 1, self.BUFFERSIZE do 
+  for i = 1, self.BUFFERSIZE do
     self.signal[i] = {0, 0, 0}
     self.rotatedSignal[i] = {0, 0, 0}
   end
