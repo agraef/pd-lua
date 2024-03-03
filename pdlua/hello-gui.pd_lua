@@ -3,7 +3,7 @@ local hello = pd.Class:new():register("hello-gui")
 function hello:initialize(sel, atoms)
     self.inlets = 1
 
-    self.circle_x = 480
+    self.circle_x = 485
     self.circle_y = 15
     self.circle_radius = 15
     self.animation_speed = 2
@@ -56,7 +56,7 @@ function hello:mouse_drag(x, y)
 end
 
 function hello:paint(g)
-    g:set_color(250, 200, 240)
+    g:set_color(50, 50, 50)
     g:fill_all()
 
     -- Filled examples
@@ -139,17 +139,17 @@ function hello:paint(g)
     g:set_color(66, 207, 201, 1)
     g:fill_rounded_rect(self.draggable_rect_x, self.draggable_rect_y, self.draggable_rect_size, self.draggable_rect_size, 5)
     g:set_color(0, 0, 0, 1)
-    g:draw_text("Drag me!", self.draggable_rect_x + 8, self.draggable_rect_y + 20, self.draggable_rect_size, 10)
+    g:draw_text("Drag\n me!", self.draggable_rect_x + 8, self.draggable_rect_y + 10, self.draggable_rect_size, 12)
 
     -- Titles
     g:set_color(252, 118, 81, 1)
-    g:draw_text("Ellipse", 32, 190, 120, 10)
-    g:draw_text("Rectangle", 116, 190, 120, 10)
-    g:draw_text("Rounded Rectangle", 188, 190, 120, 10)
-    g:draw_text("Paths", 300, 190, 120, 10)
-    g:draw_text("Bezier Paths", 380, 190, 120, 10)
-    g:draw_text("Animation", 470, 190, 120, 10)
-    g:draw_text("Mouse Interaction", 540, 190, 120, 10)
+    g:draw_text("Ellipse", 25, 190, 120, 12)
+    g:draw_text("Rectangle", 100, 190, 120, 12)
+    g:draw_text("Rounded Rect", 188, 190, 120, 12)
+    g:draw_text("Paths", 295, 190, 120, 12)
+    g:draw_text("Bezier Paths", 360, 190, 120, 12)
+    g:draw_text("Animation", 460, 190, 120, 12)
+    g:draw_text("   Mouse\nInteraction", 540, 190, 120, 12)
 
     g:set_color(250, 84, 108, 1)
     g:fill_ellipse(self.circle_x, self.circle_y, self.circle_radius, self.circle_radius)

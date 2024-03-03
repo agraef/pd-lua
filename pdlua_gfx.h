@@ -1059,7 +1059,12 @@ static int draw_text(lua_State* L) {
     int w = luaL_checknumber(L, 4);
     int font_height = luaL_checknumber(L, 5);
     font_height = sys_hostfontsize(font_height, glist_getzoom(cnv));
+#if 0
+    // XXXFIXME: This needs to be reviewed, in order to match font sizes
+    // between vanilla and plugdata. Commented out for now, since it makes
+    // font sizes much too small in vanilla. -ag
     font_height *= 0.75f; // Make font size smaller to match the size in plugdata
+#endif
     
     transform_point(ctx, &x, &y);
     transform_size(ctx, &w, &font_height);
