@@ -182,41 +182,13 @@ typedef struct _graphics_context
 #endif
 } t_graphics_context;
 
+// Pops the graphics context off the argument list and returns it
 static t_graphics_context *pop_graphics_context(lua_State* L)
 {
     t_graphics_context* ctx = (t_graphics_context*)luaL_checkudata(L, 1, "t_graphics_context");
     lua_remove(L, 1);
     return ctx;
 }
-
-unsigned long long custom_rand() {
-    static unsigned long long seed = 0;
-    const unsigned long long a = 1664525;
-    const unsigned long long c = 1013904223;
-    const unsigned long long m = 4294967296;  // 2^32
-    seed = (a * seed + c) % m;
-    if(seed == 0) seed = 1; // We cannot return 0 since we use modulo on this. Having the rhs operator of % be zero leads to div-by-zero error on Windows
-    
-    return seed;
-}
-
-void generate_random_id(char *str, size_t len) {
-    const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    size_t charset_len = strlen(charset);
-    
-    str[0] = '.';
-    str[1] = 'x';
-    
-    for (size_t i = 2; i < len - 1; ++i) {
-        int key = custom_rand() % charset_len;
-        str[i] = charset[key];
-    }
-    
-    str[len - 1] = '\0';
-}
-
-
-
 
 // Register functions with Lua
 static const luaL_Reg gfx_lib[] = {
@@ -628,6 +600,34 @@ static int reset_transform(lua_State* L) {
     return 0;
 }
 #else
+
+unsigned long long custom_rand() {
+    // We use a custom random function to ensure proper randomness across all OS
+    static unsigned long long seed = 0;
+    const unsigned long long a = 1664525;
+    const unsigned long long c = 1013904223;
+    const unsigned long long m = 4294967296;  // 2^32
+    seed = (a * seed + c) % m;
+    if(seed == 0) seed = 1; // We cannot return 0 since we use modulo on this. Having the rhs operator of % be zero leads to div-by-zero error on Windows
+    
+    return seed;
+}
+
+// Generate a new random alphanumeric string to be used as a ID for a tcl/tk drawing
+void generate_random_id(char *str, size_t len) {
+    const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    size_t charset_len = strlen(charset);
+    
+    str[0] = '.';
+    str[1] = 'x';
+    
+    for (size_t i = 2; i < len - 1; ++i) {
+        int key = custom_rand() % charset_len;
+        str[i] = charset[key];
+    }
+    
+    str[len - 1] = '\0';
+}
 
 static int free_path(lua_State* L)
 {
