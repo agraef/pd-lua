@@ -73,7 +73,7 @@ function hello:paint(g)
     local starX1, starY1 = 310, 45
     local starSize = 15
 
-    local star = path.start(starX1, starY1)
+    local star = Path(starX1, starY1)
 
     -- Star using line_to paths
     star:line_to(starX1 + 5, starY1 + 14)
@@ -93,7 +93,7 @@ function hello:paint(g)
     -- Bezier curve example
     g:translate(140, 20)
     g:scale(0.5, 1.0)
-    local curve = path.start(450, 50)
+    local curve = Path(450, 50)
     curve:cubic_to(500, 30, 550, 70, 600, 50)
     curve:close()
     g:stroke_path(curve, 2)
@@ -113,7 +113,7 @@ function hello:paint(g)
     local starSize = 15
 
     -- Star using line_to paths
-    local star2 = path.start(starX2, starY2)
+    local star2 = Path(starX2, starY2)
     star2:line_to(starX2 + 5, starY2 + 14)
     star2:line_to(starX2 + 20, starY2 + 14)
     star2:line_to(starX2 + 8, starY2 + 22)
@@ -130,7 +130,7 @@ function hello:paint(g)
     -- Bezier curve example
     g:translate(140, 20)
     g:scale(0.5, 1.0)
-    local curve2 = path.start(450, 150)
+    local curve2 = Path(450, 150)
     curve2:cubic_to(500, 130, 550, 170, 600, 150)
     g:fill_path(curve2)
     g:reset_transform()

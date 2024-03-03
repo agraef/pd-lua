@@ -38,7 +38,8 @@ pd:Class:mouse_drag(x, y)                                           -- Mouse dra
 -- Functions you can call
 pd:Class:repaint()                                                -- Request a repaint, after this the "paint" callback will occur
 pd:Class:paint(g)                                                 -- Paint callback, returns a graphics_context object (commonly called g) that you can call these drawing functions on:
-g:set_size(w, h)                                                  -- Sets the size of the drawing object.
+g:set_size(w, h)                                                  -- Sets the size of the object.
+width, height = g:get_size(w, h)                                  -- Gets the size of the object.
 
 g:set_color(r, g, b, a=1.0)                                       -- Sets the color for the next drawing operation.
 
@@ -60,7 +61,7 @@ g:translate(tx, ty)                                               -- Translates 
 g:scale(sx, sy)                                                   -- Scales the coordinate system by the specified factors. This will always happen after the translation
 g:reset_transform()                                               -- Resets current scale and translation
 
-p = path.start_path(x, y)                                         -- Initiates a new path at the specified point, returns a path object
+p = Path(x, y)                                                    -- Initiates a new path at the specified point
 p:line_to(x, y)                                                   -- Adds a line segment to the path.
 p:quad_to(x1, y1, x2, y2)                                         -- Adds a quadratic Bezier curve to the path.
 p:cubic_to(x1, y1, x2, y2, x3, y)                                 -- Adds a cubic Bezier curve to the path.

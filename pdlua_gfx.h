@@ -185,7 +185,7 @@ typedef struct _graphics_context
 // Pops the graphics context off the argument list and returns it
 static t_graphics_context *pop_graphics_context(lua_State* L)
 {
-    t_graphics_context* ctx = (t_graphics_context*)luaL_checkudata(L, 1, "t_graphics_context");
+    t_graphics_context* ctx = (t_graphics_context*)luaL_checkudata(L, 1, "GraphicsContext");
     lua_remove(L, 1);
     return ctx;
 }
@@ -205,11 +205,6 @@ static const luaL_Reg path_methods[] = {
     {"cubic_to", cubic_to},
     {"close", close_path},
     {"__gc", free_path},
-    {NULL, NULL} // Sentinel to end the list
-};
-
-static const luaL_Reg path_constructor[] = {
-    {"start", start_path},
     {NULL, NULL} // Sentinel to end the list
 };
 
@@ -235,23 +230,24 @@ static const luaL_Reg gfx_methods[] = {
 };
 
 int pdlua_gfx_setup(lua_State* L) {
-    // Register functions with Lua
-    luaL_newlib(L, gfx_lib);
-    lua_setglobal(L, "_gfx_internal");
+    // for Path(x, y) constructor
+    lua_pushcfunction(L, start_path);
+    lua_setglobal(L, "Path");
     
-    luaL_newlib(L, path_constructor);
-    lua_setglobal(L, "path");
-    
-    luaL_newmetatable(L, "t_path_state");
+    luaL_newmetatable(L, "Path");
     lua_pushvalue(L, -1);
     lua_setfield(L, -2, "__index");
     luaL_setfuncs(L, path_methods, 0);
-    
-    luaL_newmetatable(L, "t_graphics_context");
+
+    luaL_newmetatable(L, "GraphicsContext");
     lua_pushvalue(L, -1);
     lua_setfield(L, -2, "__index");
     luaL_setfuncs(L, gfx_methods, 0);
     
+    // Register functions with Lua
+    luaL_newlib(L, gfx_lib);
+    lua_setglobal(L, "_gfx_internal");
+        
     return 1; // Number of values pushed onto the stack
 }
 
@@ -324,7 +320,7 @@ static int start_paint(lua_State* L) {
     t_graphics_context *ctx = (t_graphics_context *)lua_newuserdata(L, sizeof(t_graphics_context));
     ctx->object = obj;
     
-    luaL_setmetatable(L, "t_graphics_context");
+    luaL_setmetatable(L, "GraphicsContext");
     
     plugdata_draw_callback = obj->gfx.plugdata_draw_callback;
     plugdata_draw(obj, gensym("lua_start_paint"), 0, NULL);
@@ -476,7 +472,7 @@ static int draw_text(lua_State* L) {
 
 static int start_path(lua_State* L) {
     t_path_state *path = (t_path_state *)lua_newuserdata(L, sizeof(t_path_state));
-    luaL_setmetatable(L, "t_path_state");
+    luaL_setmetatable(L, "Path");
     
     path->path_id = (t_gpointer*)path;
     
@@ -489,7 +485,7 @@ static int start_path(lua_State* L) {
 }
 
 static int line_to(lua_State* L) {
-    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "t_path_state");
+    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "Path");
     
     t_atom args[3];
     SETPOINTER(args, path->path_id); // path id
@@ -500,7 +496,7 @@ static int line_to(lua_State* L) {
 }
 
 static int quad_to(lua_State* L) {
-    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "t_path_state");
+    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "Path");
     
     t_atom args[5]; // Assuming quad_to takes 3 arguments
     SETPOINTER(args, path->path_id); // path id
@@ -515,7 +511,7 @@ static int quad_to(lua_State* L) {
 }
 
 static int cubic_to(lua_State* L) {
-    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "t_path_state");
+    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "Path");
     
     t_atom args[7]; // Assuming cubic_to takes 4 arguments
     
@@ -533,7 +529,7 @@ static int cubic_to(lua_State* L) {
 }
 
 static int close_path(lua_State* L) {
-    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "t_path_state");
+    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "Path");
     
     t_atom args;
     SETPOINTER(&args, path->path_id); // path id
@@ -543,7 +539,7 @@ static int close_path(lua_State* L) {
 }
 
 static int free_path(lua_State* L) {
-    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "t_path_state");
+    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "Path");
     
     t_atom args;
     SETPOINTER(&args, path->path_id); // path id
@@ -553,7 +549,7 @@ static int free_path(lua_State* L) {
 
 static int stroke_path(lua_State* L) {
     t_graphics_context *ctx = pop_graphics_context(L);
-    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "t_path_state");
+    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "Path");
     
     t_atom args[2];
     SETPOINTER(args, path->path_id); //  path id
@@ -564,7 +560,7 @@ static int stroke_path(lua_State* L) {
 
 static int fill_path(lua_State* L) {
     t_graphics_context *ctx = pop_graphics_context(L);
-    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "t_path_state");
+    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "Path");
     
     t_atom args;
     SETPOINTER(&args, path->path_id); // path id
@@ -631,7 +627,7 @@ static void generate_random_id(char *str, size_t len) {
 
 static int free_path(lua_State* L)
 {
-    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "t_path_state");
+    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "Path");
     freebytes(path->path_segments, path->num_path_segments_allocated * sizeof(int));
     return 0;
 }
@@ -764,7 +760,7 @@ static int start_paint(lua_State* L) {
     if(can_draw)
     {
         t_graphics_context *ctx = (t_graphics_context *)lua_newuserdata(L, sizeof(t_graphics_context));
-        luaL_setmetatable(L, "t_graphics_context");
+        luaL_setmetatable(L, "GraphicsContext");
         
         ctx->object = obj;
         ctx->object_tag = &gfx->object_tag[0];
@@ -818,7 +814,7 @@ static int end_paint(lua_State* L) {
 
 static int free_graphics_context(lua_State* L)
 {
-    t_graphics_context* ctx = (t_graphics_context*)luaL_checkudata(L, 1, "t_graphics_context");
+    t_graphics_context* ctx = (t_graphics_context*)luaL_checkudata(L, 1, "GraphicsContext");
     if(ctx && ctx->transforms) freebytes(ctx->transforms, ctx->num_transforms * sizeof(gfx_transform));
     return 0;
 }
@@ -1112,7 +1108,7 @@ static void add_path_segment(t_path_state* path, int x, int y)
 
 static int start_path(lua_State* L) {
     t_path_state *path = (t_path_state *)lua_newuserdata(L, sizeof(t_path_state));
-    luaL_setmetatable(L, "t_path_state");
+    luaL_setmetatable(L, "Path");
 
     path->num_path_segments = 0;
     path->num_path_segments_allocated = 0;
@@ -1125,7 +1121,7 @@ static int start_path(lua_State* L) {
 
 // Function to add a line to the current path
 static int line_to(lua_State* L) {
-    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "t_path_state");
+    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "Path");
     int x = luaL_checknumber(L, 2);
     int y = luaL_checknumber(L, 3);
     add_path_segment(path, x, y);
@@ -1133,7 +1129,7 @@ static int line_to(lua_State* L) {
 }
 
 static int quad_to(lua_State* L) {
-    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "t_path_state");
+    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "Path");
     int x2 = luaL_checknumber(L, 2);
     int y2 = luaL_checknumber(L, 3);
     int x3 = luaL_checknumber(L, 4);
@@ -1163,7 +1159,7 @@ static int quad_to(lua_State* L) {
 }
 
 static int cubic_to(lua_State* L) {
-    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "t_path_state");
+    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "Path");
     int x2 = luaL_checknumber(L, 2);
     int y2 = luaL_checknumber(L, 3);
     int x3 = luaL_checknumber(L, 4);
@@ -1197,7 +1193,7 @@ static int cubic_to(lua_State* L) {
 
 // Function to close the current path
 static int close_path(lua_State* L) {
-    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "t_path_state");
+    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "Path");
     add_path_segment(path, path->path_start_x, path->path_start_y);
     return 0;
 }
@@ -1208,7 +1204,7 @@ static int stroke_path(lua_State* L) {
     
     t_canvas *cnv = glist_getcanvas(obj->canvas);
     
-    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "t_path_state");
+    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "Path");
     int stroke_width = luaL_checknumber(L, 2) * glist_getzoom(cnv);
     
     // Apply transformations to all coordinates
@@ -1266,7 +1262,7 @@ static int fill_path(lua_State* L) {
     
     t_canvas *cnv = glist_getcanvas(obj->canvas);
     
-    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "t_path_state");
+    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "Path");
 
     // Apply transformations to all coordinates
     int obj_x = text_xpix((t_object*)obj, obj->canvas);
