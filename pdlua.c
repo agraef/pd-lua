@@ -648,6 +648,11 @@ static void pdlua_free( t_pdlua *o /**< The object to destruct. */)
     }
     lua_pop(__L(), 1); /* pop the global "pd" */
     PDLUA_DEBUG("pdlua_free: end. stack top %d", lua_gettop(__L()));
+    
+    // Collect garbage
+    // If we don't do this here, it could potentially leak if no other pdlua objects are used afterwards
+    lua_gc(__L(), LUA_GCCOLLECT);
+    
     return;
 }
 
@@ -680,6 +685,7 @@ static void pdlua_delete(t_gobj *z, t_glist *glist){
     if(glist_isvisible(glist) && gobj_shouldvis(z, glist)) {
         pdlua_vis(z, glist, 0);
     }
+    
     canvas_deletelinesfor(glist, (t_text *)z);
 }
 
