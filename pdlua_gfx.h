@@ -601,7 +601,7 @@ static int reset_transform(lua_State* L) {
 }
 #else
 
-unsigned long long custom_rand() {
+static unsigned long long custom_rand() {
     // We use a custom random function to ensure proper randomness across all OS
     static unsigned long long seed = 0;
     const unsigned long long a = 1664525;
@@ -614,7 +614,7 @@ unsigned long long custom_rand() {
 }
 
 // Generate a new random alphanumeric string to be used as a ID for a tcl/tk drawing
-void generate_random_id(char *str, size_t len) {
+static void generate_random_id(char *str, size_t len) {
     const char charset[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     size_t charset_len = strlen(charset);
     
