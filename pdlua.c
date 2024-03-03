@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include <sys/types.h> // for open
 #include <sys/stat.h> // for open
 #ifdef _MSC_VER
@@ -999,14 +1000,17 @@ static void pdlua_dsp(t_pdlua *x, t_signal **sp){
     
     PDLUA_DEBUG("pdlua_dsp: end. stack top %d", lua_gettop(__L()));
     
-    x->w = getbytes((sum + 2) * sizeof(t_int*));
-    t_int **w = x->w;
-    w[0] = (t_int*)x;
-    w[1] = (t_int*)sp[0]->s_n;
-    for (int i = 0; i < sum; i++)
-        w[i + 2] = (t_int *)sp[i]->s_vec;
+    int sigvecsize = sum + 2;
+    t_int* sigvec = getbytes(sigvecsize * sizeof(t_int));
     
-    dsp_addv(pdlua_perform, sum + 2, (t_int *)(w));
+    sigvec[0] = (t_int)x;
+    sigvec[1] = (t_int)sp[0]->s_n;
+    
+    for (int i = 0; i < sum; i++)
+        sigvec[i + 2] = (t_int)sp[i]->s_vec;
+    
+    dsp_addv(pdlua_perform, sigvecsize, sigvec);
+    freebytes(sigvec, sigvecsize * sizeof(t_int));
 }
 
 t_widgetbehavior pdlua_widgetbehavior;

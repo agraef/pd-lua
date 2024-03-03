@@ -151,6 +151,9 @@ void pdlua_gfx_mouse_drag(t_pdlua *o, int x, int y) {
     pdlua_gfx_mouse_event(o, x, y, 3);
 }
 
+// Represents a path object, created with path.new(x, y)
+// for pd-vanilla, this contains all the points that the path contains. bezier curves are flattened out to points before being added
+// for plugdata, it only contains a unique ID to the juce::Path that this is mapped to
 typedef struct _path_state
 {
 #if PLUGDATA
@@ -164,6 +167,9 @@ typedef struct _path_state
 #endif
 } t_path_state;
 
+
+// Represents the graphics context object "g" that is passed to the user by the paint function
+// This holds the object it is associated with, and for pd-vanilla also some of the current graphics state
 typedef struct _graphics_context
 {
     t_pdlua *object;
