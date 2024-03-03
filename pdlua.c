@@ -895,7 +895,7 @@ static void pdlua_menu_open(t_pdlua *o)
         else
 #endif
         path = class->c_externdir->s_name;
-        sprintf(pathname, "%s/%s", path, name);
+        snprintf(pathname, FILENAME_MAX-1, "%s/%s", path, name);
         lua_pop(__L(), 4); /* pop class, global "pd", name, global "pd"*/
         
 #if PD_MAJOR_VERSION==0 && PD_MINOR_VERSION<43
@@ -2433,10 +2433,10 @@ void pdlua_setup(void)
     // In plugdata we're linked statically and thus c_externdir is empty.
     // Instead, we get our data directory from plugdata and expect to find the
     // external dir in <datadir>/pdlua.
-    snprintf(plugdata_datadir, MAXPDSTRING, "%s/pdlua", datadir);
-    snprintf(pd_lua_path, MAXPDSTRING, "%s/pdlua/pd.lua", datadir);
+    snprintf(plugdata_datadir, MAXPDSTRING-1, "%s/pdlua", datadir);
+    snprintf(pd_lua_path, MAXPDSTRING-1, "%s/pdlua/pd.lua", datadir);
 #else
-    snprintf(pd_lua_path, MAXPDSTRING, "%s/pd.lua", pdlua_proxyinlet_class->c_externdir->s_name); /* the full path to pd.lua */
+    snprintf(pd_lua_path, MAXPDSTRING-1, "%s/pd.lua", pdlua_proxyinlet_class->c_externdir->s_name); /* the full path to pd.lua */
 #endif
     PDLUA_DEBUG("pd_lua_path %s", pd_lua_path);
     fd = open(pd_lua_path, O_RDONLY);
