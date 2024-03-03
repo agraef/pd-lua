@@ -1135,9 +1135,15 @@ static int quad_to(lua_State* L) {
     int x1 = path->num_path_segments > 0 ? path->path_segments[(path->num_path_segments - 1) * 2] : x2;
     int y1 = path->num_path_segments > 0 ? path->path_segments[(path->num_path_segments - 1) * 2 + 1] : y2;
     
+    // heuristic for deciding the number of lines in our bezier curve
+    float dx = x3 - x1;
+    float dy = y3 - y1;
+    float distance = sqrtf(dx * dx + dy * dy);
+    float resolution = MAX(10.0f, distance);
+    post("Resolution: %f", resolution);
+    
     // Get the last point
     float t = 0.0;
-    const float resolution = 100;
     while (t <= 1.0) {
         t += 1.0 / resolution;
         
@@ -1149,6 +1155,7 @@ static int quad_to(lua_State* L) {
     
     return 0;
 }
+
 static int cubic_to(lua_State* L) {
     t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "t_path_state");
     int x2 = luaL_checknumber(L, 2);
@@ -1161,9 +1168,15 @@ static int cubic_to(lua_State* L) {
     int x1 = path->num_path_segments > 0 ? path->path_segments[(path->num_path_segments - 1) * 2] : x2;
     int y1 = path->num_path_segments > 0 ? path->path_segments[(path->num_path_segments - 1) * 2 + 1] : y2;
    
+    // heuristic for deciding the number of lines in our bezier curve
+    float dx = x3 - x1;
+    float dy = y3 - y1;
+    float distance = sqrtf(dx * dx + dy * dy);
+    float resolution = MAX(10.0f, distance);
+    post("Resolution: %f", resolution);
+    
     // Get the last point
     float t = 0.0;
-    const float resolution = 100;
     while (t <= 1.0) {
         t += 1.0 / resolution;
 
