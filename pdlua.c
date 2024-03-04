@@ -1019,6 +1019,61 @@ static void pdlua_dsp(t_pdlua *x, t_signal **sp){
     freebytes(sigvec, sigvecsize * sizeof(t_int));
 }
 
+static int pdlua_set_arguments(lua_State *L)
+{
+    // Check if the first argument is a valid user data pointer
+    if (lua_islightuserdata(L, 1))
+    {
+        // Retrieve the userdata pointer
+        t_pdlua *o = lua_touserdata(L, 1);
+
+        // Retrieve the binbuf
+        t_binbuf* b = o->pd.te_binbuf;
+
+        if (!b) return 0;
+
+        t_atom name;
+        SETSYMBOL(&name, atom_getsymbol(binbuf_getvec(b)));
+        binbuf_clear(b);
+        binbuf_add(b, 1, &name);
+
+        // Check if the second argument is a table
+        if (lua_istable(L, 2)) {
+
+            // Get the number of elements in the table
+            int argc = lua_rawlen(L, 2);
+
+            // Iterate through the table elements
+            for (int i = 1; i <= argc; i++) {
+                // Push the i-th element of the table onto the stack
+                lua_rawgeti(L, 2, i);
+
+                // Check the type of the element
+                if (lua_isnumber(L, -1)) {
+                    // If it's a number, add it to binbuf as a float
+                    double num = lua_tonumber(L, -1);
+                    t_atom atom;
+                    SETFLOAT(&atom, num);
+                    binbuf_add(b, 1, &atom);
+                }
+                else if (lua_isstring(L, -1)) {
+                    // If it's a string, convert it to a symbol and add to binbuf
+                    const char* str = lua_tostring(L, -1);
+                    t_atom atom;
+                    SETSYMBOL(&atom, gensym(str));
+                    binbuf_add(b, 1, &atom);
+                }
+
+                // Pop the value from the stack
+                lua_pop(L, 1);
+            }
+        }
+    }
+
+    return 0;
+}
+
+
 t_widgetbehavior pdlua_widgetbehavior;
 
 /** Lua class registration. This is equivalent to the "setup" method for an ordinary Pd class */
@@ -2183,6 +2238,9 @@ static void pdlua_init(lua_State *L)
     lua_settable(L, -3);
     lua_pushstring(L, "post");
     lua_pushcfunction(L, pdlua_post);
+    lua_settable(L, -3);
+    lua_pushstring(L, "_set_args");
+    lua_pushcfunction(L, pdlua_set_arguments);
     lua_settable(L, -3);
     lua_pushstring(L, "_error");
     lua_pushcfunction(L, pdlua_error);
