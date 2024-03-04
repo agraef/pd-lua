@@ -366,7 +366,7 @@ static void pdlua_proxyinlet_anything
 static void pdlua_proxyinlet_fwd
 (
     t_pdlua_proxyinlet  *p, /**< The proxy inlet that received the message. */
-    t_symbol            *s, /**< The message selector, which is always "fwd" */
+    t_symbol            *UNUSED(s), /**< The message selector, which is always "fwd" */
     int                 argc, /**< The message length. */
     t_atom              *argv /**< The atoms in the message. The first atom is the actual selector */
 )
@@ -394,7 +394,7 @@ static void pdlua_proxyinlet_setup(void)
     pdlua_proxyinlet_class = class_new(gensym("pdlua proxy inlet"), 0, 0, sizeof(t_pdlua_proxyinlet), 0, 0);
     if (pdlua_proxyinlet_class) {
         class_addanything(pdlua_proxyinlet_class, pdlua_proxyinlet_anything);
-        class_addmethod(pdlua_proxyinlet_class, pdlua_proxyinlet_fwd, gensym("fwd"), A_GIMME, 0);
+        class_addmethod(pdlua_proxyinlet_class, (t_method)pdlua_proxyinlet_fwd, gensym("fwd"), A_GIMME, 0);
     }
 }
 
