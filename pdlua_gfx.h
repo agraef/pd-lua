@@ -49,6 +49,15 @@ void pdgui_vmess(const char* message, const char* format, ...)
   gfx_not_implemented();
 }
 
+// this has an extra argument in vanilla
+
+int wrap_hostfontsize(int fontsize, int zoom)
+{
+  return sys_hostfontsize(fontsize);
+}
+
+#define sys_hostfontsize wrap_hostfontsize
+
 #endif
 
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
