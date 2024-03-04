@@ -400,28 +400,31 @@ end
 
 function pd.Class:initialize(sel, atoms) end
 
+function pd.Class:postinitialize() end
+
+function pd.Class:finalize() end
+
+function pd.Class:set_args(args)
+    pd._set_args(self._object, args)
+end
+
 function pd.Class:repaint()
   if type(self.paint) == "function" then
-    local g = _gfx_internal.gfx_new()
-    local can_paint = _gfx_internal.start_paint();
-    if can_paint then
+    local g = _gfx_internal.start_paint(self._object);
+    if g ~= nil then
         self:paint(g);
-        _gfx_internal.end_paint();
+        _gfx_internal.end_paint(g);
     end
   end
 end
 
 function pd.Class:get_size()
-    return _gfx_internal.get_size()
+    return _gfx_internal.get_size(self._object)
 end
 
 function pd.Class:set_size(width, height)
-    return _gfx_internal.set_size(width, height)
+    return _gfx_internal.set_size(self._object, width, height)
 end
-
-function pd.Class:postinitialize() end
-
-function pd.Class:finalize() end
 
 function pd.Class:dofilex(file)
   -- in case of register being called, make sure
