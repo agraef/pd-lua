@@ -1097,7 +1097,13 @@ static int pdlua_class_new(lua_State *L)
 #if PLUGDATA
     plugdata_register_class(name);
 #endif
-    
+
+#ifndef PURR_DATA
+    /* Vanilla Pd and plugdata require this for the gfx routines, but this
+       interferes with Purr Data's handling of canvas events and is thus
+       disabled there. XXXTODO: When we add the gfx API in Purr Data, we'll
+       have to figure out how to tie into Purr Data's JavaScript GUI in order
+       to implement these callbacks. -ag */
     // Set custom widgetbehaviour for GUIs
     pdlua_widgetbehavior.w_getrectfn  = pdlua_getrect;
     pdlua_widgetbehavior.w_displacefn = pdlua_displace;
@@ -1107,6 +1113,7 @@ static int pdlua_class_new(lua_State *L)
     pdlua_widgetbehavior.w_visfn      = pdlua_vis;
     pdlua_widgetbehavior.w_activatefn = pdlua_activate;
     class_setwidget(c, &pdlua_widgetbehavior);
+#endif
 
     if (c) {
         /* a class with a "menu-open" method will have the "Open" item highlighted in the right-click menu */
