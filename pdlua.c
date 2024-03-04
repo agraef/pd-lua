@@ -961,7 +961,8 @@ static t_int *pdlua_perform(t_int *w){
     if (lua_pcall(__L(), 1 + o->siginlets, o->sigoutlets, 0))
     {
         pd_error(o, "pdlua: error in perform:\n%s", lua_tostring(__L(), -1));
-        lua_pop(__L(), 1); /* pop the error string */
+        lua_pop(__L(), 2); /* pop the error string and global pd */
+        return w + o->siginlets + o->sigoutlets + 3;
     }
     
     if (!lua_istable(__L(), -1))
