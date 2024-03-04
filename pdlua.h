@@ -31,14 +31,20 @@ typedef struct _pdlua_gfx
 {
     // Size variables
     int width, height;
+    void *object;
     
 #if !PLUGDATA
     char object_tag[128]; // Tcl/tk tag that is attached to all drawings
     char order_tag[64]; // Tag for invisible line, used to preserve correct object ordering
+    char current_item_tag[64]; // Tcl/tk tag that is only attached to the current drawing in progress
+    gfx_transform* transforms;
+    int num_transforms;
+    char current_color[8]; // Keep track of current color
     
     // Variables to keep track of mouse button state and drag position
     int mouse_drag_x, mouse_drag_y, mouse_down;
     int first_draw;
+    
 #else
     void(*plugdata_draw_callback)(void*, t_symbol*, int, t_atom*); // Callback to perform drawing in plugdata
 #endif
