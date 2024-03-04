@@ -363,6 +363,18 @@ static void pdlua_proxyinlet_anything
     pdlua_dispatch(p->owner, p->id, s, argc, argv);
 }
 
+static void pdlua_proxyinlet_fwd
+(
+    t_pdlua_proxyinlet  *p, /**< The proxy inlet that received the message. */
+    t_symbol            *s, /**< The message selector, which is always "fwd" */
+    int                 argc, /**< The message length. */
+    t_atom              *argv /**< The atoms in the message. The first atom is the actual selector */
+)
+{
+    if(!argc) return;
+    pdlua_dispatch(p->owner, p->id, atom_getsymbol(argv), argc-1, argv+1);
+}
+
 /** Proxy inlet initialization. */
 static void pdlua_proxyinlet_init
 (
@@ -380,8 +392,10 @@ static void pdlua_proxyinlet_init
 static void pdlua_proxyinlet_setup(void)
 {
     pdlua_proxyinlet_class = class_new(gensym("pdlua proxy inlet"), 0, 0, sizeof(t_pdlua_proxyinlet), 0, 0);
-    if (pdlua_proxyinlet_class)
+    if (pdlua_proxyinlet_class) {
         class_addanything(pdlua_proxyinlet_class, pdlua_proxyinlet_anything);
+        class_addmethod(pdlua_proxyinlet_class, pdlua_proxyinlet_fwd, gensym("fwd"), A_GIMME, 0);
+    }
 }
 
 /** Proxy receive 'anything' method. */
@@ -1141,6 +1155,7 @@ static int pdlua_object_createinlets(lua_State *L)
   * \li \c 2 Number of inlets.
   * */
 {
+
     PDLUA_DEBUG("pdlua_object_createinlets: stack top is %d", lua_gettop(L));
     if (lua_islightuserdata(L, 1))
     {
