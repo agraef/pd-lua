@@ -747,7 +747,6 @@ static int start_paint(lua_State* L) {
     int can_draw = (glist_isvisible(obj->canvas) && gobj_shouldvis(&obj->pd.te_g, obj->canvas)) || obj->gfx.first_draw;
     if(can_draw)
     {
-        
         if(gfx->transforms) freebytes(gfx->transforms, gfx->num_transforms * sizeof(gfx_transform));
         gfx->num_transforms = 0;
         gfx->transforms = NULL;
@@ -767,7 +766,7 @@ static int start_paint(lua_State* L) {
             generate_random_id(gfx->order_tag, 64);
             
             const char* tags[] = { gfx->order_tag };
-            pdgui_vmess(0, "crr iiii ri rS", cnv, "create", "line", 0, 0, 1, 1,
+            pdgui_vmess(0, "crr iiii ri rS", cnv, "create", "line", 0, 0, 0, 0,
                         "-width", 1, "-tags", 1, tags);
         }
         
