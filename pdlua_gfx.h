@@ -164,15 +164,11 @@ void pdlua_gfx_mouse_drag(t_pdlua *o, int x, int y) {
 // for plugdata, it only contains a unique ID to the juce::Path that this is mapped to
 typedef struct _path_state
 {
-#if PLUGDATA
-    t_gpointer* path_id;
-#else
     // Variables for managing vector paths
     int* path_segments;
     int num_path_segments;
     int num_path_segments_allocated;
     int path_start_x, path_start_y;
-#endif
 } t_path_state;
 
 
@@ -455,104 +451,73 @@ static int draw_text(lua_State* L) {
     return 0;
 }
 
-static int start_path(lua_State* L) {
-    t_path_state *path = (t_path_state *)lua_newuserdata(L, sizeof(t_path_state));
-    luaL_setmetatable(L, "Path");
-    
-    path->path_id = (t_gpointer*)path;
-    
-    t_atom args[3];
-    SETPOINTER(args, path->path_id); // path id
-    SETFLOAT(args + 1, luaL_checknumber(L, 1)); // x
-    SETFLOAT(args + 2, luaL_checknumber(L, 2)); // y
-    plugdata_draw_path(gensym("lua_start_path"), 3, args);
-    return 1;
-}
-
-static int line_to(lua_State* L) {
-    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "Path");
-    
-    t_atom args[3];
-    SETPOINTER(args, path->path_id); // path id
-    SETFLOAT(args + 1, luaL_checknumber(L, 2)); // x
-    SETFLOAT(args + 2, luaL_checknumber(L, 3)); // y
-    plugdata_draw_path(gensym("lua_line_to"), 3, args);
-    return 0;
-}
-
-static int quad_to(lua_State* L) {
-    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "Path");
-    
-    t_atom args[5]; // Assuming quad_to takes 3 arguments
-    SETPOINTER(args, path->path_id); // path id
-    SETFLOAT(args + 1, luaL_checknumber(L, 1)); // x1
-    SETFLOAT(args + 2, luaL_checknumber(L, 2)); // y1
-    SETFLOAT(args + 3, luaL_checknumber(L, 3)); // x2
-    SETFLOAT(args + 4, luaL_checknumber(L, 4)); // y2
-    
-    // Forward the message to the appropriate function
-    plugdata_draw_path(gensym("lua_quad_to"), 5, args);
-    return 0;
-}
-
-static int cubic_to(lua_State* L) {
-    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "Path");
-    
-    t_atom args[7]; // Assuming cubic_to takes 4 arguments
-    
-    SETPOINTER(args, path->path_id); // path id
-    SETFLOAT(args + 1, luaL_checknumber(L, 2)); // x1
-    SETFLOAT(args + 2, luaL_checknumber(L, 3)); // y1
-    SETFLOAT(args + 3, luaL_checknumber(L, 4)); // x2
-    SETFLOAT(args + 4, luaL_checknumber(L, 5)); // y2
-    SETFLOAT(args + 5, luaL_checknumber(L, 6)); // x3
-    SETFLOAT(args + 6, luaL_checknumber(L, 7)); // y3
-    
-    // Forward the message to the appropriate function
-    plugdata_draw_path(gensym("lua_cubic_to"), 7, args);
-    return 0;
-}
-
-static int close_path(lua_State* L) {
-    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "Path");
-    
-    t_atom args;
-    SETPOINTER(&args, path->path_id); // path id
-    
-    plugdata_draw_path(gensym("lua_close_path"), 1, &args);
-    return 0;
-}
-
-static int free_path(lua_State* L) {
-    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "Path");
-    
-    t_atom args;
-    SETPOINTER(&args, path->path_id); // path id
-    plugdata_draw_path(gensym("lua_free_path"), 1, &args);
-    return 0;
-}
-
 static int stroke_path(lua_State* L) {
     t_pdlua_gfx *gfx = pop_graphics_context(L);
-    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "Path");
+    t_pdlua *obj = gfx->object;
     
-    t_atom args[2];
-    SETPOINTER(args, path->path_id); //  path id
-    SETFLOAT(args + 1, luaL_checknumber(L, 2)); // line thickness
-    plugdata_draw(gfx->object, gensym("lua_stroke_path"), 2, args);
+    t_canvas *cnv = glist_getcanvas(obj->canvas);
+    
+    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "Path");
+    int stroke_width = luaL_checknumber(L, 2) * glist_getzoom(cnv);
+    
+    int last_x = 0;
+    int last_y = 0;
+    
+    t_atom* coordinates = malloc(2 * path->num_path_segments * sizeof(t_atom) + 1);
+    SETFLOAT(coordinates, stroke_width);
+    
+    int num_real_segments = 0;
+
+    for (int i = 0; i < path->num_path_segments; i++) {
+        int x = path->path_segments[i * 2], y = path->path_segments[i * 2 + 1];
+        if(i != 0 && x == last_x && y == last_y) continue; // In case integer rounding causes the same point twice
+
+        SETFLOAT(coordinates + (num_real_segments * 2) + 1, x);
+        SETFLOAT(coordinates + (num_real_segments * 2) + 2, y);
+        num_real_segments++;
+        
+        last_x = x;
+        last_y = y;
+    }
+    
+    plugdata_draw(gfx->object, gensym("lua_stroke_path"), num_real_segments * 2 + 1, coordinates);
+    free(coordinates);
+    
     return 0;
 }
 
 static int fill_path(lua_State* L) {
     t_pdlua_gfx *gfx = pop_graphics_context(L);
+    t_pdlua *obj = gfx->object;
+    
+    t_canvas *cnv = glist_getcanvas(obj->canvas);
+    
     t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "Path");
+
+    int last_x = 0;
+    int last_y = 0;
     
-    t_atom args;
-    SETPOINTER(&args, path->path_id); // path id
+    t_atom* coordinates = malloc(2 * path->num_path_segments * sizeof(t_atom));
+    int num_real_segments = 0;
+
+    for (int i = 0; i < path->num_path_segments; i++) {
+        int x = path->path_segments[i * 2], y = path->path_segments[i * 2 + 1];
+        if(i != 0 && x == last_x && y == last_y) continue; // In case integer rounding causes the same point twice
+
+        SETFLOAT(coordinates + (num_real_segments * 2), x);
+        SETFLOAT(coordinates + (num_real_segments * 2) + 1, y);
+        num_real_segments++;
+        
+        last_x = x;
+        last_y = y;
+    }
     
-    plugdata_draw(gfx->object, gensym("lua_fill_path"), 1, &args);
+    plugdata_draw(gfx->object, gensym("lua_fill_path"), num_real_segments * 2, coordinates);
+    free(coordinates);
+    
     return 0;
 }
+
 
 static int translate(lua_State* L) {
     t_pdlua_gfx *gfx = pop_graphics_context(L);
@@ -608,13 +573,6 @@ static void generate_random_id(char *str, size_t len) {
     }
     
     str[len - 1] = '\0';
-}
-
-static int free_path(lua_State* L)
-{
-    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "Path");
-    freebytes(path->path_segments, path->num_path_segments_allocated * sizeof(int));
-    return 0;
 }
 
 static void transform_size(t_pdlua_gfx *gfx, int* w, int* h) {
@@ -1063,6 +1021,118 @@ static int draw_text(lua_State* L) {
     return 0;
 }
 
+static int stroke_path(lua_State* L) {
+    t_pdlua_gfx *gfx = pop_graphics_context(L);
+    t_pdlua *obj = gfx->object;
+    
+    t_canvas *cnv = glist_getcanvas(obj->canvas);
+    
+    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "Path");
+    int stroke_width = luaL_checknumber(L, 2) * glist_getzoom(cnv);
+    
+    int obj_x = text_xpix((t_object*)obj, obj->canvas);
+    int obj_y = text_ypix((t_object*)obj, obj->canvas);
+    int canvas_zoom = glist_getzoom(cnv);
+    
+    const char* tags[] = { gfx->object_tag, register_drawing(gfx) };
+
+    pdgui_vmess(0, "crr iiii ri rs rS", cnv, "create", "line", 0, 0, 0, 0, "-width", stroke_width, "-fill", gfx->current_color, "-tags", 2, tags);
+    
+    int last_x, last_y;
+    
+    sys_vgui(".x%lx.c coords %s", cnv, tags[1]);
+    for (int i = 0; i < path->num_path_segments; i++) {
+        int x = path->path_segments[i * 2], y = path->path_segments[i * 2 + 1];
+        if(i != 0 && x == last_x && y == last_y) continue; // In case integer rounding causes the same point twice
+        last_x = x;
+        last_y = y;
+        
+        transform_point(gfx, &x, &y);
+        sys_vgui(" %d %d", (x * canvas_zoom) + obj_x, (y * canvas_zoom) + obj_y);
+    }
+    sys_vgui("\n");
+    
+    return 0;
+}
+
+static int fill_path(lua_State* L) {
+    t_pdlua_gfx *gfx = pop_graphics_context(L);
+    t_pdlua *obj = gfx->object;
+    
+    t_canvas *cnv = glist_getcanvas(obj->canvas);
+    
+    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "Path");
+
+    // Apply transformations to all coordinates
+    int obj_x = text_xpix((t_object*)obj, obj->canvas);
+    int obj_y = text_ypix((t_object*)obj, obj->canvas);
+    int canvas_zoom = glist_getzoom(cnv);
+        
+    const char* tags[] = { gfx->object_tag, register_drawing(gfx) };
+
+    pdgui_vmess(0, "crr iiii ri rs rS", cnv, "create", "polygon", 0, 0, 0, 0, "-width", 0, "-fill", gfx->current_color, "-tags", 2, tags);
+    
+    int last_x, last_y;
+    
+    sys_vgui(".x%lx.c coords %s", cnv, tags[1]);
+    for (int i = 0; i < path->num_path_segments; i++) {
+        int x = path->path_segments[i * 2], y = path->path_segments[i * 2 + 1];
+        if(i != 0 && x == last_x && y == last_y) continue; // In case integer rounding causes the same point twice
+        last_x = x;
+        last_y = y;
+        
+        transform_point(gfx, &x, &y);
+        sys_vgui(" %d %d", (x * canvas_zoom) + obj_x, (y * canvas_zoom) + obj_y);
+    }
+    sys_vgui("\n");
+    
+    return 0;
+}
+
+
+static int translate(lua_State* L) {
+    t_pdlua_gfx *gfx = pop_graphics_context(L);
+
+    if(gfx->num_transforms == 0)
+    {
+        gfx->transforms = getbytes(sizeof(gfx_transform));
+        
+    }
+    else
+    {
+        gfx->transforms = resizebytes(gfx->transforms, gfx->num_transforms * sizeof(gfx_transform), (gfx->num_transforms + 1) * sizeof(gfx_transform));
+        
+    }
+    
+    gfx->transforms[gfx->num_transforms].type = TRANSLATE;
+    gfx->transforms[gfx->num_transforms].x = luaL_checknumber(L, 1);
+    gfx->transforms[gfx->num_transforms].y = luaL_checknumber(L, 2);
+    
+    gfx->num_transforms++;
+    return 0;
+}
+
+static int scale(lua_State* L) {
+    t_pdlua_gfx *gfx = pop_graphics_context(L);
+   
+    gfx->transforms = resizebytes(gfx->transforms, gfx->num_transforms * sizeof(gfx_transform), (gfx->num_transforms + 1) * sizeof(gfx_transform));
+    
+    gfx->transforms[gfx->num_transforms].type = SCALE;
+    gfx->transforms[gfx->num_transforms].x = luaL_checknumber(L, 1);
+    gfx->transforms[gfx->num_transforms].y = luaL_checknumber(L, 2);
+    
+    gfx->num_transforms++;
+    return 0;
+}
+
+static int reset_transform(lua_State* L) {
+    t_pdlua_gfx *gfx = pop_graphics_context(L);
+    freebytes(gfx->transforms, gfx->num_transforms * sizeof(gfx_transform));
+    gfx->transforms = NULL;
+    gfx->num_transforms = 0;
+    return 0;
+}
+#endif
 static void add_path_segment(t_path_state* path, int x, int y)
 {
     int path_segment_space = (path->num_path_segments + 1) * 2;
@@ -1174,115 +1244,9 @@ static int close_path(lua_State* L) {
     return 0;
 }
 
-static int stroke_path(lua_State* L) {
-    t_pdlua_gfx *gfx = pop_graphics_context(L);
-    t_pdlua *obj = gfx->object;
-    
-    t_canvas *cnv = glist_getcanvas(obj->canvas);
-    
+static int free_path(lua_State* L)
+{
     t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "Path");
-    int stroke_width = luaL_checknumber(L, 2) * glist_getzoom(cnv);
-    
-    int obj_x = text_xpix((t_object*)obj, obj->canvas);
-    int obj_y = text_ypix((t_object*)obj, obj->canvas);
-    int canvas_zoom = glist_getzoom(cnv);
-    
-    const char* tags[] = { gfx->object_tag, register_drawing(gfx) };
-
-    pdgui_vmess(0, "crr iiii ri rs rS", cnv, "create", "line", 0, 0, 0, 0, "-width", stroke_width, "-fill", gfx->current_color, "-tags", 2, tags);
-    
-    int last_x, last_y;
-    
-    sys_vgui(".x%lx.c coords %s", cnv, tags[1]);
-    for (int i = 0; i < path->num_path_segments; i++) {
-        int x = path->path_segments[i * 2], y = path->path_segments[i * 2 + 1];
-        if(i > 1 && x == last_x && y == last_y) continue; // In case integer rounding causes the same point twice
-        last_x = x;
-        last_y = y;
-        
-        transform_point(gfx, &x, &y);
-        sys_vgui(" %d %d", (x * canvas_zoom) + obj_x, (y * canvas_zoom) + obj_y);
-    }
-    sys_vgui("\n");
-    
+    freebytes(path->path_segments, path->num_path_segments_allocated * sizeof(int));
     return 0;
 }
-
-static int fill_path(lua_State* L) {
-    t_pdlua_gfx *gfx = pop_graphics_context(L);
-    t_pdlua *obj = gfx->object;
-    
-    t_canvas *cnv = glist_getcanvas(obj->canvas);
-    
-    t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "Path");
-
-    // Apply transformations to all coordinates
-    int obj_x = text_xpix((t_object*)obj, obj->canvas);
-    int obj_y = text_ypix((t_object*)obj, obj->canvas);
-    int canvas_zoom = glist_getzoom(cnv);
-        
-    const char* tags[] = { gfx->object_tag, register_drawing(gfx) };
-
-    pdgui_vmess(0, "crr iiii ri rs rS", cnv, "create", "polygon", 0, 0, 0, 0, "-width", 0, "-fill", gfx->current_color, "-tags", 2, tags);
-    
-    int last_x, last_y;
-    
-    sys_vgui(".x%lx.c coords %s", cnv, tags[1]);
-    for (int i = 0; i < path->num_path_segments; i++) {
-        int x = path->path_segments[i * 2], y = path->path_segments[i * 2 + 1];
-        if(i > 1  && x == last_x && y == last_y) continue; // In case integer rounding causes the same point twice
-        last_x = x;
-        last_y = y;
-        
-        transform_point(gfx, &x, &y);
-        sys_vgui(" %d %d", (x * canvas_zoom) + obj_x, (y * canvas_zoom) + obj_y);
-    }
-    sys_vgui("\n");
-    
-    return 0;
-}
-
-
-static int translate(lua_State* L) {
-    t_pdlua_gfx *gfx = pop_graphics_context(L);
-
-    if(gfx->num_transforms == 0)
-    {
-        gfx->transforms = getbytes(sizeof(gfx_transform));
-        
-    }
-    else
-    {
-        gfx->transforms = resizebytes(gfx->transforms, gfx->num_transforms * sizeof(gfx_transform), (gfx->num_transforms + 1) * sizeof(gfx_transform));
-        
-    }
-    
-    gfx->transforms[gfx->num_transforms].type = TRANSLATE;
-    gfx->transforms[gfx->num_transforms].x = luaL_checknumber(L, 1);
-    gfx->transforms[gfx->num_transforms].y = luaL_checknumber(L, 2);
-    
-    gfx->num_transforms++;
-    return 0;
-}
-
-static int scale(lua_State* L) {
-    t_pdlua_gfx *gfx = pop_graphics_context(L);
-   
-    gfx->transforms = resizebytes(gfx->transforms, gfx->num_transforms * sizeof(gfx_transform), (gfx->num_transforms + 1) * sizeof(gfx_transform));
-    
-    gfx->transforms[gfx->num_transforms].type = SCALE;
-    gfx->transforms[gfx->num_transforms].x = luaL_checknumber(L, 1);
-    gfx->transforms[gfx->num_transforms].y = luaL_checknumber(L, 2);
-    
-    gfx->num_transforms++;
-    return 0;
-}
-
-static int reset_transform(lua_State* L) {
-    t_pdlua_gfx *gfx = pop_graphics_context(L);
-    freebytes(gfx->transforms, gfx->num_transforms * sizeof(gfx_transform));
-    gfx->transforms = NULL;
-    gfx->num_transforms = 0;
-    return 0;
-}
-#endif
