@@ -1058,15 +1058,10 @@ static int stroke_path(lua_State* L) {
     const char* tags[] = { gfx->object_tag, register_drawing(gfx) };
 
     pdgui_vmess(0, "crr iiii ri rs rS", cnv, "create", "line", 0, 0, 0, 0, "-width", stroke_width, "-fill", gfx->current_color, "-tags", 2, tags);
-
-    float last_x, last_y;
-
+    
     sys_vgui(".x%lx.c coords %s", cnv, tags[1]);
     for (int i = 0; i < path->num_path_segments; i++) {
         float x = path->path_segments[i * 2], y = path->path_segments[i * 2 + 1];
-        last_x = x;
-        last_y = y;
-
         transform_point_float(gfx, &x, &y);
         sys_vgui(" %f %f", (x * canvas_zoom) + obj_x, (y * canvas_zoom) + obj_y);
     }
@@ -1096,14 +1091,9 @@ static int fill_path(lua_State* L) {
 
     pdgui_vmess(0, "crr iiii ri rs rS", cnv, "create", "polygon", 0, 0, 0, 0, "-width", 0, "-fill", gfx->current_color, "-tags", 2, tags);
 
-    float last_x, last_y;
-
     sys_vgui(".x%lx.c coords %s", cnv, tags[1]);
     for (int i = 0; i < path->num_path_segments; i++) {
         float x = path->path_segments[i * 2], y = path->path_segments[i * 2 + 1];
-        last_x = x;
-        last_y = y;
-
         transform_point_float(gfx, &x, &y);
         sys_vgui(" %f %f", (x * canvas_zoom) + obj_x, (y * canvas_zoom) + obj_y);
     }
