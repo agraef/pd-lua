@@ -460,27 +460,16 @@ static int stroke_path(lua_State* L) {
     t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "Path");
     int stroke_width = luaL_checknumber(L, 2) * glist_getzoom(cnv);
 
-    float last_x = 0;
-    float last_y = 0;
-
     t_atom* coordinates = malloc(2 * path->num_path_segments * sizeof(t_atom) + 1);
     SETFLOAT(coordinates, stroke_width);
 
-    int num_real_segments = 0;
-
     for (int i = 0; i < path->num_path_segments; i++) {
         float x = path->path_segments[i * 2], y = path->path_segments[i * 2 + 1];
-        if(i != 0 && x == last_x && y == last_y) continue; // In case integer rounding causes the same point twice
-
-        SETFLOAT(coordinates + (num_real_segments * 2) + 1, x);
-        SETFLOAT(coordinates + (num_real_segments * 2) + 2, y);
-        num_real_segments++;
-
-        last_x = x;
-        last_y = y;
+        SETFLOAT(coordinates + (path->num_path_segments * 2) + 1, x);
+        SETFLOAT(coordinates + (path->num_path_segments * 2) + 2, y);
     }
 
-    plugdata_draw(gfx->object, gensym("lua_stroke_path"), num_real_segments * 2 + 1, coordinates);
+    plugdata_draw(gfx->object, gensym("lua_stroke_path"), path->num_path_segments * 2 + 1, coordinates);
     free(coordinates);
 
     return 0;
@@ -494,25 +483,15 @@ static int fill_path(lua_State* L) {
 
     t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "Path");
 
-    float last_x = 0;
-    float last_y = 0;
-
     t_atom* coordinates = malloc(2 * path->num_path_segments * sizeof(t_atom));
-    int num_real_segments = 0;
-
+    
     for (int i = 0; i < path->num_path_segments; i++) {
-        float x = path->path_segments[i * 2], y = path->path_segments[i * 2 + 1];
-        if(i != 0 && x == last_x && y == last_y) continue; // In case integer rounding causes the same point twice
-
-        SETFLOAT(coordinates + (num_real_segments * 2), x);
-        SETFLOAT(coordinates + (num_real_segments * 2) + 1, y);
-        num_real_segments++;
-
-        last_x = x;
-        last_y = y;
+        float x = path->path_segments[i * 2], y = path->path_segments[i * 2 + 1];        
+        SETFLOAT(coordinates + (path->num_path_segments * 2), x);
+        SETFLOAT(coordinates + (path->num_path_segments * 2) + 1, y);
     }
 
-    plugdata_draw(gfx->object, gensym("lua_fill_path"), num_real_segments * 2, coordinates);
+    plugdata_draw(gfx->object, gensym("lua_fill_path"), path->num_path_segments * 2, coordinates);
     free(coordinates);
 
     return 0;
