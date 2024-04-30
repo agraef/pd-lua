@@ -465,8 +465,8 @@ static int stroke_path(lua_State* L) {
 
     for (int i = 0; i < path->num_path_segments; i++) {
         float x = path->path_segments[i * 2], y = path->path_segments[i * 2 + 1];
-        SETFLOAT(coordinates + (path->num_path_segments * 2) + 1, x);
-        SETFLOAT(coordinates + (path->num_path_segments * 2) + 2, y);
+        SETFLOAT(coordinates + (i * 2) + 1, x);
+        SETFLOAT(coordinates + (i * 2) + 2, y);
     }
 
     plugdata_draw(gfx->object, gensym("lua_stroke_path"), path->num_path_segments * 2 + 1, coordinates);
@@ -487,8 +487,8 @@ static int fill_path(lua_State* L) {
     
     for (int i = 0; i < path->num_path_segments; i++) {
         float x = path->path_segments[i * 2], y = path->path_segments[i * 2 + 1];        
-        SETFLOAT(coordinates + (path->num_path_segments * 2), x);
-        SETFLOAT(coordinates + (path->num_path_segments * 2) + 1, y);
+        SETFLOAT(coordinates + (i * 2), x);
+        SETFLOAT(coordinates + (i * 2) + 1, y);
     }
 
     plugdata_draw(gfx->object, gensym("lua_fill_path"), path->num_path_segments * 2, coordinates);
