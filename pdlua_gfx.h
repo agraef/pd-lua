@@ -460,7 +460,7 @@ static int stroke_path(lua_State* L) {
     t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "Path");
     int stroke_width = luaL_checknumber(L, 2) * glist_getzoom(cnv);
 
-    t_atom* coordinates = malloc(2 * path->num_path_segments * sizeof(t_atom) + 1);
+    t_atom* coordinates = malloc((2 * path->num_path_segments + 2) * sizeof(t_atom));
     SETFLOAT(coordinates, stroke_width);
 
     for (int i = 0; i < path->num_path_segments; i++) {
