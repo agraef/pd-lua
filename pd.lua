@@ -184,14 +184,16 @@ function pd.Clock:destruct()
 end
 
 function pd.Clock:dispatch()
-  local m = self._target[self._method]
-  if type(m) == "function" then
-    return m(self._target)
-  else
-    self._target:error(
-      "no method for `" .. self._method ..
-      "' at clock of Lua object `" .. self._name .. "'"
-    )
+  if pd._objects[self._target] then
+    local m = self._target[self._method]
+    if type(m) == "function" then
+        return m(self._target)
+    else
+        self._target:error(
+        "no method for `" .. self._method ..
+        "' at clock of Lua object `" .. self._name .. "'"
+        )
+    end
   end
 end
 
