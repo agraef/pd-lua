@@ -72,10 +72,11 @@ official Debian packages are built. This in turn is apparently based on the
 
 The current version (0.8 and later) is actively maintained by Albert Gräf
 <aggraef@gmail.com>, with contributions by Claude Heiland-Allen (Lua 5.4
-update, bugfixes), Alexandre Porres (documentation updates), sebshader
-(relative path loading), and Timothy Schoen (plugdata compatibility). This is
-also the version included in Purr Data (https://github.com/agraef/purr-data)
-and Timothy Schoen's plugdata (https://github.com/plugdata-team/plugdata).
+update, bugfixes), Alexandre Porres (documentation updates, Deken package),
+sebshader (relative path loading), and Timothy Schoen (plugdata compatibility,
+signal and graphics support). This is also the version included in Purr Data
+(https://github.com/agraef/purr-data) and Timothy Schoen's plugdata
+(https://github.com/plugdata-team/plugdata).
 
 Please file bugs and requests at https://github.com/agraef/pd-lua. I maintain
 a lot of packages and thus it may take a while at times, but I look at all the
@@ -86,10 +87,11 @@ Ready-Made Packages:
 
 The latest vanilla binaries for Ubuntu, Mac and Windows can always be found on
 https://github.com/agraef/pd-lua. The same version is also in the Arch
-community repository (maintained by dvzrv, thanks David!). On other Linux
-systems you'll have to compile pdlua yourself from source, which isn't hard to
-do (see below). Also, both Purr Data and plugdata ship with pdlua, so no 3rd
-party package is needed.
+community repository (maintained by dvzrv, thanks David!). Deken (vanilla Pd's
+package manager) provides a fairly recent pd-lua package maintained by
+Alexandre Porres. If you prefer, you can also compile pdlua yourself from
+source, which isn't hard to do (see below). Also, both Purr Data and plugdata
+ship with pdlua, so no 3rd party package is needed in those environments.
 
 To enable the pdlua loader in Pd after installation, just add `pdlua` to your
 startup libraries (after adding its parent directory to Pd's search path if
