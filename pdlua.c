@@ -703,11 +703,17 @@ static void pdlua_delete(t_gobj *z, t_glist *glist){
     canvas_deletelinesfor(glist, (t_text *)z);
 }
 
+#ifdef PURR_DATA // Purr Data uses an older version of this API
+static void pdlua_motion(t_gobj *z, t_floatarg dx, t_floatarg dy)
+#else
 static void pdlua_motion(t_gobj *z, t_floatarg dx, t_floatarg dy,
     t_floatarg up)
+#endif
 {
 #if !PLUGDATA
+#ifndef PURR_DATA
     if (!up)
+#endif
     {
         t_pdlua *x = (t_pdlua *)z;
         x->gfx.mouse_drag_x = x->gfx.mouse_drag_x + dx;
@@ -783,6 +789,25 @@ static void pdlua_displace(t_gobj *z, t_glist *glist, int dx, int dy){
     canvas_fixlinesfor(glist, (t_text*)x);
 }
 
+#ifdef PURR_DATA
+static void pdlua_displace_wtag(t_gobj *z, t_glist *glist, int dx, int dy){
+    t_pdlua *x = (t_pdlua *)z;
+
+
+    if(x->has_gui)
+    {
+       x->pd.te_xpix += dx, x->pd.te_ypix += dy;
+       //gfx_displace((t_pdlua*)z, glist, dx, dy);
+    }
+    else {
+        text_widgetbehavior.w_displacefnwtag(z, glist, dx, dy);
+    }
+
+
+    canvas_fixlinesfor(glist, (t_text*)x);
+}
+#endif
+
 static void pdlua_activate(t_gobj *z, t_glist *glist, int state)
 {
     if(!((t_pdlua *)z)->has_gui)
@@ -796,11 +821,16 @@ static void pdlua_getrect(t_gobj *z, t_glist *glist, int *xp1, int *yp1, int *xp
 {
     t_pdlua *x = (t_pdlua *)z;
     if(x->has_gui) {
+#ifndef PURR_DATA
+        int zoom = glist->gl_zoom;
+#else
+        int zoom = 1;
+#endif
         float x1 = text_xpix((t_text *)x, glist), y1 = text_ypix((t_text *)x, glist);
         *xp1 = x1;
         *yp1 = y1;
-        *xp2 = x1 + x->gfx.width * glist->gl_zoom;
-        *yp2 = y1 + x->gfx.height * glist->gl_zoom;
+        *xp2 = x1 + x->gfx.width * zoom;
+        *yp2 = y1 + x->gfx.height * zoom;
     }
     else {
         // Bypass to text widgetbehaviour if we're not a GUI
@@ -1113,12 +1143,6 @@ static int pdlua_class_new(lua_State *L)
     plugdata_register_class(name);
 #endif
 
-#ifndef PURR_DATA
-    /* Vanilla Pd and plugdata require this for the gfx routines, but this
-       interferes with Purr Data's handling of canvas events and is thus
-       disabled there. XXXTODO: When we add the gfx API in Purr Data, we'll
-       have to figure out how to tie into Purr Data's JavaScript GUI in order
-       to implement these callbacks. -ag */
     // Set custom widgetbehaviour for GUIs
     pdlua_widgetbehavior.w_getrectfn  = pdlua_getrect;
     pdlua_widgetbehavior.w_displacefn = pdlua_displace;
@@ -1127,8 +1151,12 @@ static int pdlua_class_new(lua_State *L)
     pdlua_widgetbehavior.w_clickfn    = pdlua_click;
     pdlua_widgetbehavior.w_visfn      = pdlua_vis;
     pdlua_widgetbehavior.w_activatefn = pdlua_activate;
-    class_setwidget(c, &pdlua_widgetbehavior);
+#ifdef PURR_DATA
+    // Purr Data only, this seems to be preferred over w_displacefn and is
+    // actually needed to make text_widgetbehavior.w_selectfn happy.
+    pdlua_widgetbehavior.w_displacefnwtag = pdlua_displace_wtag;
 #endif
+    class_setwidget(c, &pdlua_widgetbehavior);
 
     if (c) {
         /* a class with a "menu-open" method will have the "Open" item highlighted in the right-click menu */
@@ -1197,16 +1225,8 @@ static int pdlua_object_new(lua_State *L)
 static int pdlua_object_creategui(lua_State *L)
 {
     t_pdlua *o = lua_touserdata(L, 1);
-#ifndef PURR_DATA
     o->has_gui = 1;
     gfx_initialize(o);
-#else
-    // We avoid the gfx initalization here, since it produces unwanted
-    // artifacts on the canvas and at present none of the graphics routines
-    // will work in Purr Data anyway. -ag
-    o->has_gui = 0;
-    gfx_not_implemented();
-#endif
     return 0;
 }
 
