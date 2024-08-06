@@ -697,13 +697,10 @@ static void pdlua_gfx_clear(t_pdlua *obj, int removed) {
 #else // PURR_DATA
     if (removed) {
       // nuke the gobj container, this gets rid of everything
-      gui_vmess("gui_gobj_erase", "xs", cnv, gfx->object_tag);
+      gui_vmess("gui_luagfx_erase", "xs", cnv, gfx->object_tag);
     } else {
       // this just clears the gobj container
-      gui_vmess("gui_luagfx_clear_contents", "xs", cnv, gfx->object_tag);
-      // redraw the border rectangle
-      gui_vmess("gui_luagfx_draw_border", "xsii", cnv, gfx->object_tag,
-                gfx->width, gfx->height);
+      gui_vmess("gui_luagfx_clear", "xsii", cnv, gfx->object_tag, gfx->width, gfx->height);
     }
 #endif
 
@@ -854,12 +851,10 @@ static int start_paint(lua_State* L) {
           t_canvas *cnv = glist_getcanvas(obj->canvas);
           int xpos = text_xpix((t_object*)obj, obj->canvas);
           int ypos = text_ypix((t_object*)obj, obj->canvas);
-          // create a gobj container in the GUI
-          gui_vmess("gui_gobj_new", "xssiii", cnv, gfx->object_tag, "obj", xpos, ypos,
+          // create a gobj graphics container in the GUI
+          gui_vmess("gui_luagfx_new", "xsiiiii", cnv, gfx->object_tag,
+                    xpos, ypos, gfx->width, gfx->height,
                     glist_istoplevel(obj->canvas));
-          // draw a border rectangle
-          gui_vmess("gui_luagfx_draw_border", "xsii", cnv, gfx->object_tag,
-                    gfx->width, gfx->height);
         } else if (strlen(gfx->object_tag))
           pdlua_gfx_clear(obj, 0);
 #endif
