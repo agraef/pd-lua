@@ -703,7 +703,7 @@ static void pdlua_gfx_clear(t_pdlua *obj, int removed) {
       gui_vmess("gui_luagfx_erase", "xs", cnv, gfx->object_tag);
     } else {
       // this just clears the gobj container
-      gui_vmess("gui_luagfx_clear", "xsii", cnv, gfx->object_tag, gfx->width, gfx->height);
+      gui_vmess("gui_luagfx_clear", "xsii", cnv, gfx->object_tag);
     }
 #endif
 
@@ -856,8 +856,7 @@ static int start_paint(lua_State* L) {
           int ypos = text_ypix((t_object*)obj, obj->canvas);
           // create a gobj graphics container in the GUI
           gui_vmess("gui_luagfx_new", "xsiiiii", cnv, gfx->object_tag,
-                    xpos, ypos, gfx->width, gfx->height,
-                    glist_istoplevel(obj->canvas));
+                    xpos, ypos, glist_istoplevel(obj->canvas));
         } else if (strlen(gfx->object_tag))
           pdlua_gfx_clear(obj, 0);
 #endif
