@@ -597,6 +597,8 @@ void glist_drawiofor(t_glist *glist, t_object *ob, int firsttime,
   int n = obj_noutlets(ob), nplus = (n == 1 ? 1 : n-1), i;
   int width = x2 - x1;
   int issignal;
+  // in purr-data, we don't draw draw iolets on the gop area
+  if (canvas != glist) return;
   for (i = 0; i < n; i++) {
     int onset = x1 + (width - IOWIDTH) * i / nplus;
     if (firsttime) {
@@ -670,6 +672,7 @@ void glist_eraseiofor(t_glist *glist, t_object *ob, char *tag)
   char tagbuf[MAXPDSTRING];
   t_canvas *canvas = glist_getcanvas(glist);
   int i, n;
+  if (canvas != glist) return;
   n = obj_noutlets(ob);
   for (i = 0; i < n; i++) {
     sprintf(tagbuf, "%so%d", tag, i);
@@ -704,7 +707,7 @@ static void pdlua_gfx_clear(t_pdlua *obj, int removed) {
     }
 #endif
 
-    glist_eraseiofor(glist_getcanvas(cnv), &obj->pd, gfx->object_tag);
+    glist_eraseiofor(obj->canvas, &obj->pd, gfx->object_tag);
 }
 
 static void get_bounds_args(lua_State* L, t_pdlua *obj, int* x1, int* y1, int* x2, int* y2) {
@@ -877,7 +880,7 @@ static int end_paint(lua_State* L) {
     int xpos = text_xpix((t_object*)obj, obj->canvas);
     int ypos = text_ypix((t_object*)obj, obj->canvas);
 
-    glist_drawiofor(glist_getcanvas(obj->canvas), (t_object*)obj, 1, gfx->object_tag, xpos, ypos, xpos + (gfx->width * scale), ypos + (gfx->height * scale));
+    glist_drawiofor(obj->canvas, (t_object*)obj, 1, gfx->object_tag, xpos, ypos, xpos + (gfx->width * scale), ypos + (gfx->height * scale));
 
 #ifndef PURR_DATA
     if(!gfx->first_draw && gfx->order_tag[0] != '\0') {
