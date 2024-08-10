@@ -74,11 +74,11 @@ jobs:
 
     - name: install dependencies
       run: |
-        C:\msys64\usr\bin\wget.exe http://msp.ucsd.edu/Software/pd-0.53-1.msw.zip
-        unzip pd-0.53-1.msw.zip
+        C:\msys64\usr\bin\wget.exe http://msp.ucsd.edu/Software/pd-0.55-0.msw.zip
+        unzip pd-0.55-0.msw.zip
 
     - name: make
-      run: make PDDIR=./pd-0.53-1
+      run: make PDDIR=./pd-0.55-0
 
     - name: make install
       run: make install objectsdir=./build
