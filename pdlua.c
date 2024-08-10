@@ -793,7 +793,6 @@ static void pdlua_displace(t_gobj *z, t_glist *glist, int dx, int dy){
 static void pdlua_displace_wtag(t_gobj *z, t_glist *glist, int dx, int dy){
     t_pdlua *x = (t_pdlua *)z;
 
-
     if(x->has_gui)
     {
        x->pd.te_xpix += dx, x->pd.te_ypix += dy;
@@ -805,6 +804,21 @@ static void pdlua_displace_wtag(t_gobj *z, t_glist *glist, int dx, int dy){
 
 
     canvas_fixlinesfor(glist, (t_text*)x);
+}
+
+static void pdlua_select(t_gobj *z, t_glist *glist, int state)
+{
+  t_pdlua *x = (t_pdlua *)z;
+  t_pdlua_gfx *gfx = &x->gfx;
+  t_canvas *cnv = glist_getcanvas(glist);
+
+  if (gobj_shouldvis(&x->pd.te_g, glist)) {
+    if (state) {
+      gui_vmess("gui_gobj_select", "xs", cnv, gfx->object_tag);
+    } else {
+      gui_vmess("gui_gobj_deselect", "xs", cnv, gfx->object_tag);
+    }
+  }
 }
 #endif
 
@@ -1146,16 +1160,21 @@ static int pdlua_class_new(lua_State *L)
     // Set custom widgetbehaviour for GUIs
     pdlua_widgetbehavior.w_getrectfn  = pdlua_getrect;
     pdlua_widgetbehavior.w_displacefn = pdlua_displace;
+#ifndef PURR_DATA
     pdlua_widgetbehavior.w_selectfn   = text_widgetbehavior.w_selectfn;
+#else
+    // Purr Data only, this seems to be preferred over w_displacefn and is
+    // actually needed to make text_widgetbehavior.w_selectfn happy.
+    pdlua_widgetbehavior.w_displacefnwtag = pdlua_displace_wtag;
+    // We also do our own variant of text_widgetbehavior.w_selectfn, as the
+    // text_widgetbehavior won't give the right object tag with a freshly
+    // created gop for some reason.
+    pdlua_widgetbehavior.w_selectfn   = pdlua_select;
+#endif
     pdlua_widgetbehavior.w_deletefn   = pdlua_delete;
     pdlua_widgetbehavior.w_clickfn    = pdlua_click;
     pdlua_widgetbehavior.w_visfn      = pdlua_vis;
     pdlua_widgetbehavior.w_activatefn = pdlua_activate;
-#ifdef PURR_DATA
-    // Purr Data only, this seems to be preferred over w_displacefn and is
-    // actually needed to make text_widgetbehavior.w_selectfn happy.
-    pdlua_widgetbehavior.w_displacefnwtag = pdlua_displace_wtag;
-#endif
     class_setwidget(c, &pdlua_widgetbehavior);
 
     if (c) {
