@@ -808,17 +808,21 @@ static void pdlua_displace_wtag(t_gobj *z, t_glist *glist, int dx, int dy){
 
 static void pdlua_select(t_gobj *z, t_glist *glist, int state)
 {
-  t_pdlua *x = (t_pdlua *)z;
-  t_pdlua_gfx *gfx = &x->gfx;
-  t_canvas *cnv = glist_getcanvas(glist);
+    t_pdlua *x = (t_pdlua *)z;
+    t_pdlua_gfx *gfx = &x->gfx;
+    t_canvas *cnv = glist_getcanvas(glist);
 
-  if (gobj_shouldvis(&x->pd.te_g, glist)) {
-    if (state) {
-      gui_vmess("gui_gobj_select", "xs", cnv, gfx->object_tag);
+    if(x->has_gui) {
+        if (gobj_shouldvis(&x->pd.te_g, glist)) {
+            if (state) {
+                gui_vmess("gui_gobj_select", "xs", cnv, gfx->object_tag);
+            } else {
+                gui_vmess("gui_gobj_deselect", "xs", cnv, gfx->object_tag);
+            }
+        }
     } else {
-      gui_vmess("gui_gobj_deselect", "xs", cnv, gfx->object_tag);
+        text_widgetbehavior.w_selectfn(z, glist, state);
     }
-  }
 }
 #endif
 
