@@ -173,10 +173,11 @@ void initialise_lua_state()
 #endif
 
 // In plugdata we're linked statically and thus c_externdir is empty.
-// So we pass a data directory to the setup function instead and store it here
+// So we pass a data directory to the setup function instead and store it here.
+// ag: Renamed to pdlua_datadir since we also need this in vanilla when
+// setting up the Lua search path when loading a pd_lua file.
+char pdlua_datadir[MAXPDSTRING];
 #if PLUGDATA
-    char plugdata_datadir[MAXPDSTRING];
-
     // Hook to inform plugdata which class names are lua objects
     void(*plugdata_register_class)(const char*);
 #endif
@@ -959,7 +960,7 @@ static void pdlua_menu_open(t_pdlua *o)
         class = (t_class *)lua_touserdata(__L(), -1);
 #if PLUGDATA
         if (!*class->c_externdir->s_name)
-            path = plugdata_datadir;
+            path = pdlua_datadir;
         else
 #endif
         path = class->c_externdir->s_name;
@@ -2047,7 +2048,8 @@ static void pdlua_setrequirepath
     lua_pushstring(L, "_setrequirepath");
     lua_gettable(L, -2);
     lua_pushstring(L, path);
-    if (lua_pcall(L, 1, 0, 0) != 0)
+    lua_pushstring(L, pdlua_datadir);
+    if (lua_pcall(L, 2, 0, 0) != 0)
     {
         pd_error(NULL, "lua: internal error in `pd._setrequirepath': %s", lua_tostring(L, -1));
         lua_pop(L, 1);
@@ -2563,11 +2565,11 @@ void pdlua_setup(void)
     // In plugdata we're linked statically and thus c_externdir is empty.
     // Instead, we get our data directory from plugdata and expect to find the
     // external dir in <datadir>/pdlua.
-    snprintf(plugdata_datadir, MAXPDSTRING-1, "%s/pdlua", datadir);
-    snprintf(pd_lua_path, MAXPDSTRING-1, "%s/pdlua/pd.lua", datadir);
+    snprintf(pdlua_datadir, MAXPDSTRING-1, "%s/pdlua", datadir);
 #else
-    snprintf(pd_lua_path, MAXPDSTRING-1, "%s/pd.lua", pdlua_proxyinlet_class->c_externdir->s_name); /* the full path to pd.lua */
+    snprintf(pdlua_datadir, MAXPDSTRING-1, "%s", pdlua_proxyinlet_class->c_externdir->s_name);
 #endif
+    snprintf(pd_lua_path, MAXPDSTRING-1, "%s/pd.lua", pdlua_datadir); /* the full path to pd.lua */
     PDLUA_DEBUG("pd_lua_path %s", pd_lua_path);
     fd = open(pd_lua_path, O_RDONLY);
 /*    fd = canvas_open(canvas_getcurrent(), "pd", ".lua", buf, &ptr, MAXPDSTRING, 1);  looks all over and rarely succeeds */
