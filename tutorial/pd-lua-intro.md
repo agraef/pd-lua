@@ -4,7 +4,7 @@
 Albert Gräf \<<aggraef@gmail.com>\>  
 Computer Music Dept., Institute of Art History and Musicology  
 Johannes Gutenberg University (JGU) Mainz, Germany  
-July 2024
+August 2024
 
 This document is licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). Other formats: [Markdown](https://github.com/agraef/pd-lua/blob/master/tutorial/pd-lua-intro.md) source, [PDF](https://github.com/agraef/pd-lua/blob/master/pdlua/tutorial/pd-lua-intro.pdf)  
 Permanent link: <https://agraef.github.io/pd-lua/tutorial/pd-lua-intro.html>
@@ -15,7 +15,7 @@ Pd's facilities for data structures, iteration, and recursion are somewhat limit
 
 Enter Pd-Lua, the Pd programmer's secret weapon, which lets you develop your externals in the [Lua](https://www.lua.org/) scripting language. Pd-Lua was originally written by Claude Heiland-Allen and has since been maintained by a number of other people in the Pd community. Lua, from [PUC Rio](http://www.puc-rio.br/), is open-source (under the MIT license), mature, very popular, and supported by a large developer community. It is a small programming language, but very capable, and is generally considered to be relatively easy to learn. For programming Pd externals, you'll also need to learn a few bits and pieces which let you interface your Lua functions to Pd, as explained in this tutorial, but programming externals in Lua is still quite easy and a lot of fun.
 
-Using Pd-Lua, you can program your own externals ranging from little helper objects to full-blown sequencers and algorithmic composition tools. Pd-Lua is primarily aimed at control objects at this time (for doing dsp, you might consider using [Faust](https://faust.grame.fr/) instead), but thanks to contributions by Timothy Schoen, the most recent version also provides some support for signal processing and even graphics. It also gives you access to Pd arrays and tables, as well as a number of other useful facilities such as clocks and receivers, which we'll explain in some detail. Pd-Lua also ships with a large collection of instructive examples which you'll find helpful when exploring its possibilities.
+Using Pd-Lua, you can program your own externals ranging from little helper objects to full-blown sequencers and algorithmic composition tools. Pd-Lua is primarily aimed at control objects at this time (for doing dsp, you might consider using [Faust](https://faust.grame.fr/) instead), but thanks to contributions by Timothy Schoen, the most recent version also provides support for signal processing and even graphics. It also gives you access to Pd arrays and tables, as well as a number of other useful facilities such as clocks and receivers, which we'll explain in some detail. Pd-Lua also ships with a large collection of instructive examples which you'll find helpful when exploring its possibilities.
 
 Note that we can't possibly cover Pd or the Lua language themselves here, so you'll have to refer to other online resources to learn about those. In particular, check out the Lua website, which has extensive [documentation](https://www.lua.org/docs.html) available, and maybe have a look at Derek Banas' [video tutorial](https://www.youtube.com/watch?v=iMacxZQMPXs) for a quick overview of Lua. For Pd, we recommend the Pd FLOSS Manual at https://flossmanuals.net/ to get started.
 
@@ -28,8 +28,8 @@ With vanilla Pd, you can install the pdlua package from Deken. There's also an o
 If all is well, you should see a message like the following in the Pd console (note that for vanilla Pd you'll have to switch the log level to 2 or more to see that message):
 
 ~~~
-pdlua 0.11.3 (GPL) 2008 Claude Heiland-Allen, 2014 Martin Peach et al.
-pdlua: compiled for pd-0.53 on Jan 16 2023 23:36:09
+pdlua 0.12.4 (GPL) 2008 Claude Heiland-Allen, 2014 Martin Peach et al.
+pdlua: compiled for pd-0.55 on Aug 24 2024 00:51:01
 Using lua version 5.4
 ~~~
 
@@ -747,6 +747,450 @@ The obligatory test patch:
 
 ![Receive example](10-receive.png)
 
+## Signals and graphics
+
+So far all of our examples only did control processing, which is what Pd-Lua was originally designed for. But thanks to the work of Timothy Schoen (the creator and main developer of [plugdata](https://plugdata.org/)), as of version 0.12.0 Pd-Lua also provides facilities for audio signal processing and graphics. It goes without saying that these capabilities vastly extend the scope of Pd-Lua applications, as you can now program pretty much any kind of Pd object in Lua, covering both signal and control processing, as well as custom GUI objects. We'll first discuss how to write a signal processing (a.k.a. dsp) object in Pd-Lua, and then go on to show the implementation of a simple GUI object using the graphics API.
+
+---
+
+**NOTE:** As these features are still fairly new, some details of the implementation may still be subject to change in future Pd-Lua versions. Also, we can't cover all the details here, so we recommend having a look at the examples included in the Pd-Lua distribution. You can find these under pdlua/examples in the source or in the help browser. Specifically, check the sig-example folder for another example illustrating the use of signal inlets and outlets, and Benjamin Wesch's [osci3d~](https://github.com/ben-wes/scope3d-) which shows how to implement a 3d oscilloscope employing both signal processing and graphics.
+
+---
+
+### Signals
+
+Enabling signal processing in a Pd-Lua object involves three ingredients:
+
+1. **Adding signal inlets and outlets:** As before, this is done by setting the `inlets` and `outlets` member variables in the `initialize` method. But instead of setting these variables to just the numbers of inlets and outlets, you set them to a table which indicates the signal and control in- and outlets with the special `SIGNAL` and `DATA` values. The number of in- and outlets is then given by the size of these tables. Thus, e.g., you'd use `self.inlets = { SIGNAL, SIGNAL, DATA }` if you need two signal and one control data inlet, in that order.
+2. **Adding a dsp method:** This step is optional. The `dsp` method gets invoked whenever signal processing is turned on in Pd, passing two parameters: `samplerate` and `blocksize`. The former tells you about the sample rate (number of audio samples per second) Pd runs at, which will be useful if your object needs to translate time and frequency values from physical units (i.e., seconds, milliseconds, and Hz) to sample-based time and frequency values, so usually you want to store the given value in a member variable of your object. The latter specifies the block size, i.e., the number of samples Pd expects to be processed during each call of the `perform` method (see below). You only need to store that number if your object doesn't have any signal inlets, so that you know how many samples need to be generated. Otherwise the block size can also be inferred from the size of the `in` tables passed to the `perform` method. Adding the `dsp` method is optional. You only have to define it if the signal and control data processing in your object requires the `samplerate` and `blocksize` values, or if you need to be notified when dsp processing gets turned on for some other reason.
+3. **Adding a perform method:** This method is where the actual signal processing happens. If your object outputs any signal data, the `perform` method needs to be implemented, otherwise you'll get lots of errors in the Pd console as soon as you turn on dsp processing. The object receives blocks of signal data from the inlets as (numeric) Lua table arguments, and needs to return a tuple with the blocks of signal data for each outlet, again as Lua tables.
+
+In addition to the `dsp` and `perform` methods, your object may contain any number of methods doing the usual control data processing on the `DATA` inlets. It is also possible to receive control data on the `SIGNAL` inlets; however, you won't be able to receive  `float` messages on those inlets, because Pd interprets float data on signal inlets as constant signals, so they get passed as blocks of signal data to the `perform` method instead.
+
+#### Example 1: Mixing signals
+
+Let's take a look at a few simple examples illustrating the kind of processing the `perform` method might do. First, let's mix two signals (stereo input) down to a single (mono) output by computing the average of corresponding samples. We need two signal inlets and one signal outlet, so our `initialize` method looks like this:
+
+~~~lua
+local foo = pd.Class:new():register("foo")
+
+function foo:initialize(sel, atoms)
+   self.inlets = {SIGNAL,SIGNAL}
+   self.outlets = {SIGNAL}
+   return true
+end
+~~~
+
+And here's the `perform` method (in this simple example we don't need `foo:dsp()`):
+
+~~~lua
+function foo:perform(in1, in2)
+   for i = 1, #in1 do
+      in1[i] = (in1[i]+in2[i])/2
+   end
+   return in1
+end
+~~~
+
+Note that here we replaced the signal data in the `in1` table with the result, so we simply return the modified `in1` signal; no need to create a third `out` table. (This is safe because it won't actually modify any signal data outside the Lua method.)
+
+Easy enough. And this is how this object works in a little test patch:
+
+![17-signal1](17-signal1.png)
+
+#### Example 2: Analyzing a signal
+
+A dsp object can also have no signal outlets at all if you just want to process the incoming signal data in some way and output the result through a normal control outlet. E.g., here's one (rather simplistic) way to compute the rms ([root mean square](https://en.wikipedia.org/wiki/Root_mean_square)) envelope of a signal as control data:
+
+~~~lua
+function foo:initialize(sel, atoms)
+   self.inlets = {SIGNAL}
+   self.outlets = {DATA}
+   return true
+end
+
+function foo:perform(in1)
+   local rms = 0
+   for i = 1, #in1 do
+      rms = rms + in1[i]*in1[i]
+   end
+   rms = math.sqrt(rms/#in1)
+   self:outlet(1, "float", {rms})
+end
+~~~
+
+A little test patch:
+
+![17-signal2](17-signal2.png)
+
+#### Example 3: Generating a signal
+
+Conversely, we can also have an object which converts control inputs into signal data, such as this little oscillator object which produces a sine wave:
+
+~~~lua
+function foo:initialize(sel, atoms)
+   self.inlets = {DATA}
+   self.outlets = {SIGNAL}
+   self.phase = 0
+   self.freq = 220
+   self.amp = 0.5
+   return true
+end
+
+-- message to set frequency...
+function foo:in_1_freq(atoms)
+   self.freq = atoms[1]
+end
+
+-- ... and amplitude.
+function foo:in_1_amp(atoms)
+   self.amp = atoms[1]
+end
+
+function foo:perform()
+   local freq = self.freq  -- frequency of the sine wave in Hz
+   local amp = self.amp    -- amplitude of the sine wave (0 to 1)
+
+   -- calculate the angular frequency (in radians per sample)
+   local angular_freq = 2 * math.pi * freq / self.samplerate
+
+   local out = {} -- result table
+   for i = 1, self.blocksize do
+      out[i] = amp * math.sin(self.phase)
+      self.phase = self.phase + angular_freq
+      if self.phase >= 2 * math.pi then
+         self.phase = self.phase - 2 * math.pi
+      end
+   end
+
+   return out
+end
+~~~
+
+The obligatory test patch:
+
+![17-signal3](17-signal3.png)
+
+#### Real-world example: Cross-fades
+
+Ok, the previous example got a bit more complicated, but it's still rather straightforward if you know how to compute a sine wave as blocks of signal data. But the above are really just toy examples for illustration purposes. Let's finally take a look at a somewhat more realistic and useful example which performs cross-fades on two incoming signals by doing linear interpolation between the input signals. A customary design for this kind of dsp object is to have a target cross-fade value (xfade argument) ranging from 0 (all left signal) to 1 (all right signal). We also want to be able to smoothly ramp from one cross-fade value to the next in order to avoid clicks (time argument), and have an initial delay until moving to the new xfade value (delay argument). Here is the definition of a `luaxfade` object which does all this, including the checking of all argument values, so that we don't run into any Lua exceptions because of bad values. The example also illustrates how to receive control messages on a signal inlet (cf. the `fade` message on the left signal inlet). You can find this as luaxfade.pd_lua in the tutorial examples.
+
+~~~lua
+local luaxfade = pd.Class:new():register("luaxfade")
+
+function luaxfade:initialize(sel, atoms)
+   self.inlets = {SIGNAL,SIGNAL}
+   self.outlets = {SIGNAL}
+   self.xfade = 0
+   self.xfade_to = 0
+   self.xfade_time = 0
+   self.xfade_delay = 0
+   self.time = 0
+   self.ramp = 0
+   return true
+end
+
+function luaxfade:dsp(samplerate, blocksize)
+   self.samplerate = samplerate
+end
+
+function luaxfade:in_1_fade(atoms)
+   -- If self.samplerate is not initialized, because the dsp method has not
+   -- been run yet, then we cannot compute the sample delay and ramp times
+   -- below, so we bail out, telling the user to enable dsp first.
+   if not self.samplerate then
+      self:error("luaxfade: unknown sample rate, please enable dsp first")
+      return
+   end
+   local fade, time, delay = table.unpack(atoms)
+   if type(delay) == "number" then
+      -- delay time (msec -> samples)
+      self.xfade_delay = math.floor(self.samplerate*delay/1000)
+   end
+   if type(time) == "number" then
+      -- xfade time (msec -> samples)
+      self.xfade_time = math.floor(self.samplerate*time/1000)
+   end
+   if type(fade) == "number" then
+      -- new xfade value (clamp to 0-1)
+      self.xfade_to = math.max(0, math.min(1, fade))
+   end
+   if self.xfade_to ~= self.xfade then
+      -- start a new cycle
+      if self.xfade_delay > 0 then
+         self.time, self.ramp = self.xfade_delay, 0
+      elseif self.xfade_time > 0 then
+         self.time, self.ramp = self.xfade_time,
+           (self.xfade_to-self.xfade)/self.xfade_time
+      else
+         self.xfade = self.xfade_to
+         self.time, self.ramp = 0, 0
+      end
+   end
+end
+
+function luaxfade:perform(in1, in2)
+   local xfade, xfade_to = self.xfade, self.xfade_to
+   local xfade_time = self.xfade_time
+   local time, ramp = self.time, self.ramp
+
+   -- loop through each sample index
+   for i = 1, #in1 do
+      -- mix (we do this in-place, using in1 for output)
+      in1[i] = in1[i]*(1-xfade) + in2[i]*xfade
+      -- update the mix if time > 0 (sample countdown)
+      if time > 0 then
+         -- update cycle is still in ptogress
+         if ramp ~= 0 then
+            xfade = xfade + ramp
+         end
+         time = time - 1
+      elseif xfade_to ~= xfade then
+         if xfade_time > 0 then
+            -- start the ramp up or down
+            time, ramp = xfade_time, (xfade_to-xfade)/xfade_time
+         else
+            -- no xfade_time, jump to the new value immediately
+            xfade = xfade_to
+         end
+      end
+   end
+
+   -- update internal state
+   self.xfade, self.time, self.ramp = xfade, time, ramp
+
+   -- return the mixed down sample data
+   return in1
+end
+~~~
+
+And here's the luaxfade.pd patch which takes a sine wave on the left and a noise signal on the right inlet and performs cross fades with a ramp time of 500 msec and an initial delay of 200 msec. To adjust these values, just edit the `fade` message accordingly.
+
+![17-signal4](17-signal4.png)
+
+### Graphics
+
+Timothy Schoen's Pd-Lua graphics API provides you with a way to equip an object with a static or animated graphical display inside its object box on the Pd canvas. Typical examples would be various kinds of wave displays, or custom GUI objects consisting of text and simple geometric shapes. To these ends, you can adjust the size of the object box to any width and height you specify. Inside the box rectangle you can then draw text and basic geometric shapes such as lines, rectangles, circles, and arbitrary paths, through stroke and fill operations using any rgb color.
+
+In order to enable graphics in a Pd-Lua object, you have to provide a `paint` method. This receives a graphics context `g` as its argument, which lets you set the current color, and draw text and the various different geometric shapes using that color. In addition, you can provide methods to be called in response to mouse down, up, move, and drag actions on the object, which is useful to equip your custom GUI objects with mouse-based interaction.
+
+Last but not least, Pd-Lua also provides the `set_args` method which lets you store internal object state in the object's creation arguments, which is useful if you need to keep track of persistent state when storing an object on disk (via saving the patch) or when duplicating or copying objects. This can also be used with ordinary Pd-Lua objects which don't utilize the graphics API, but it is most useful in the context of custom GUI objects.
+
+We use a custom GUI object, a simple kind of dial, as a running example to illustrate most of these elements in the following subsections. To keep things simple, we will not discuss the graphics API in much detail here, so you may want to check the graphics subpatch in the main pdlua-help patch, which contains a detailed listing of all available methods for reference.
+
+#### Getting started: A basic dial object
+
+Let's begin with a basic clock-like dial: just a circular *face* and a border around it, on which we draw a *center point* and the *hand* (a line) starting at the center point and pointing in any direction which indicates the current *phase* angle. So this is what we are aiming for:
+
+![18-graphics1](18-graphics1.png)
+
+Following the clock paradigm, we assume that a zero phase angle means pointing upwards (towards the 12 o'clock position), while +1 or -1 indicates the 6 o'clock position, pointing downwards. Phase angles less than -1 or greater than +1 wrap around. Positive phase differences denote clockwise, negative differences counter-clockwise rotation. And since we'd like to change the phase angle displayed on the dial, we add an inlet taking float values.
+
+Here's the code implementing the object initialization and the float inlet:
+
+~~~lua
+local dial = pd.Class:new():register("dial")
+
+function dial:initialize(sel, atoms)
+   self.inlets = 1
+   self.outlets = 0
+   self.phase = 0
+   self:set_size(127, 127)
+   return true
+end
+
+function dial:in_1_float(x)
+   self.phase = x
+   self:repaint()
+end
+~~~
+
+The `self:set_size()` call in the `initialize` method sets the pixel size of the object rectangle on the canvas (in this case it's a square with a width and height of 127 pixels). Also note the call to `self:repaint()` in the float handler for the inlet, which will redraw the graphical representation after updating the phase value.
+
+We still have to add the `dial:paint()` method to do all the actual drawing:
+
+~~~lua
+function dial:paint(g)
+   local width, height = self:get_size()
+   local x, y = self:tip()
+
+   -- standard object border, fill with bg color
+   g:set_color(0)
+   g:fill_all()
+
+   -- dial face
+   g:fill_ellipse(2, 2, width - 4, height - 4)
+   g:set_color(1)
+   -- dial border
+   g:stroke_ellipse(2, 2, width - 4, height - 4, 4)
+   -- center point
+   g:fill_ellipse(width/2 - 3.5, height/2 - 3.5, 7, 7)
+   -- dial hand
+   g:draw_line(x, y, width/2, height/2, 2)
+end
+~~~
+
+The existence of the  `paint` method tells Pd-Lua that this is a graphical object. As mentioned before, this method receives a graphics context `g` as argument. The graphics context is an internal data structure keeping track of the the graphics state of the object, which is used to invoke all the graphics operations. The `set_color` method of the graphics context is used to set the color for all drawing operations; in the case of `fill` operations it fills the graphical element with the color, while in the case of `stroke` operations it draws its border. There's just one color value, so we need to set the desired fill color in case of `fill`, and the desired stroke color in case of `stroke` operations. The color values 0 and 1 we use in this example are predefined, and indicate the default background color (usually white) and default foreground color (usually black), respectively. It is possible to choose other colors by calling `g:set_color(r, g, b)` with rgb color values instead, with each r, g, b value ranging from 0 to 255 (i.e., a byte value). For instance, the color "teal" would be specified as 0, 128, 128, the color "orange" as 255, 165, 0, "black" as 0, 0, 0, and "white" as 255, 255, 255. (The API also lets you specify rgba values, including an alpha a.k.a. opacity value a, but the alpha component will only work in plugdata right now, and even that I'm not really sure of. Thus it is best ignored for now.)
+
+Let's now take a closer look at the drawing operations themselves. We start out by filling the entire object rectangle, which is our drawing surface, with the default background color 0, using `g:fill_all()`. This operation is special in that it not only fills the entire object rectangle, but also creates a standard border rectangle around it. If you skip this, you'll get an object without border, which may be useful at times.
+
+We then go on to fill a circle with the background color, the dial's face. The graphics API has no operation to draw a circle, so we just draw an ellipse instead. The coordinates given to `g:fill_ellipse()` are the coordinates of the rectangle surrounding the ellipse. In this case the width and height values are what we specified with `self:set_size(127, 127)` in the `initialize` method, so they are identical, and thus our ellipse is in fact a circle. Also note that we make the ellipse a little smaller and put it at a small offset from the upper left corner, so the actual width and height are reduced by 4 and the shape is centered in the object rectangle (or square, in this case).
+
+Note that we could have skipped drawing the face entirely at this point, since it just draws a white circle on white background. But we could make the face a different color later, so it's good to include it anyway.
+
+After the face we draw its border, drawing the same ellipse again, but this time in the default foreground color and with a stroke width of 4. We then go on to draw the remaining parts, a small disk in the center which mimics the shaft on which the single hand of the dial is mounted, and the hand itself, which is just a simple line pointing in a certain direction.
+
+Which direction? I'm glad you asked. The line representing the hand goes from the center point width/2, height/2 to the point given by the x, y coordinates. Both width, height and x, y are calculated and assigned to local variables at the beginning of the `paint` method:
+
+~~~lua
+   local width, height = self:get_size()
+   local x, y = self:tip()
+~~~
+
+The `get_size()`  call employs a built-in method which returns the current dimensions of the object rectangle; this is part of the graphics API. We could have used the constant 127 from the `initialize` method there, but we could change the size of the object rectangle later, so it's better not to hard-code the size in the `paint` method.
+
+The `tip()` method we have to define ourselves. It is supposed to calculate the coordinates of the tip of the hand. I have factored this out into its own routine right away, so that we can reuse it later when we add the mouse actions. Here it is:
+
+~~~lua
+function dial:tip()
+   local width, height = self:get_size()
+   local x, y = math.sin(self.phase*math.pi), -math.cos(self.phase*math.pi)
+   x, y = (x/2*0.8+0.5)*width, (y/2*0.8+0.5)*height
+   return x, y
+end
+~~~
+
+This basically just converts the position of the tip from polar coordinates (1, phase) to rectangular coordinates (x, y) and then translates and scales the normalized coordinates to pixel coordinates in the object rectangle which has its center at (width/2, height/2). We also put the tip at a normalized radius of 0.8 so that it is well within the face of the dial. Moreover, the formula computing the x, y pair accounts for the fact that the y coordinates of the object rectangle are upside-down (0 is at the top), and that we want the center-up (a.k.a. 12 o'clock) position to correspond to a zero phase angle. Hence the sin and cos terms have been swapped and the cos term adorned with a minus sign compared to the standard polar - rectangular conversion formula.
+
+So now that we hopefully understand all the bits and pieces, here's the Lua code of the object in its entirety again:
+
+~~~lua
+local dial = pd.Class:new():register("dial")
+
+function dial:initialize(sel, atoms)
+   self.inlets = 1
+   self.outlets = 0
+   self.phase = 0
+   self:set_size(127, 127)
+   return true
+end
+
+function dial:in_1_float(x)
+   self.phase = x
+   self:repaint()
+end
+
+-- calculate the x, y position of the tip of the hand
+function dial:tip()
+   local width, height = self:get_size()
+   local x, y = math.sin(self.phase*math.pi), -math.cos(self.phase*math.pi)
+   x, y = (x/2*0.8+0.5)*width, (y/2*0.8+0.5)*height
+   return x, y
+end
+
+function dial:paint(g)
+   local width, height = self:get_size()
+   local x, y = self:tip()
+
+   -- standard object border, fill with bg color
+   g:set_color(0)
+   g:fill_all()
+
+   -- dial face
+   g:fill_ellipse(2, 2, width - 4, height - 4)
+   g:set_color(1)
+   -- dial border
+   g:stroke_ellipse(2, 2, width - 4, height - 4, 4)
+   -- center point
+   g:fill_ellipse(width/2 - 3.5, height/2 - 3.5, 7, 7)
+   -- dial hand
+   g:draw_line(x, y, width/2, height/2, 2)
+end
+~~~
+
+#### Adding an outlet
+
+We can already send phase values into our dial object, but there's no way to get them out again. So let's add an outlet which lets us do that. Now that the grunt work is already done, this is rather straightforward. First we need to add the outlet in the `initialize` method:
+
+~~~lua
+   self.outlets = 1
+~~~
+
+And then we just add a message handler for `bang` which outputs the value on the outlet:
+
+~~~lua
+function dial:in_1_bang()
+   self:outlet(1, "float", {self.phase})
+end
+~~~
+
+Easy as pie. Here's how our patch looks like now:
+
+![18-graphics2](18-graphics2.png)
+
+#### Mouse actions
+
+Our dial now has all the basic ingredients, but it still lacks one important piece: Interacting with the graphical representation itself using the mouse. The graphics API makes this reasonably easy since it provides us with four callback methods that we can implement. Each of these gets invoked with the current mouse coordinates relative to the object rectangle:
+
+- `mouse_down(x, y)`: called when the mouse is clicked
+- `mouse_up(x, y)`: called when the mouse button is released
+- `mouse_move(x, y)`: called when the mouse changes position while the mouse button is *not* pressed
+- `mouse_drag(x, y)`: called when the mouse changes position while the mouse button *is* pressed
+
+Here we only need the `mouse_down` and `mouse_drag` methods which let us keep track of mouse drags in the object rectangle in order to update the phase value and recalculate the tip of the hand (I told you that the `tip()` method would come in handy again!). Here's the Lua code. Note that the `mouse_down` callback is used to initialize the `tip_x` and `tip_y` member variables, which we keep track of during the drag operation, so that we can detect in `mouse_drag` when it's time to output the phase value and repaint the object:
+
+~~~lua
+function dial:mouse_down(x, y)
+   self.tip_x, self.tip_y = self:tip()
+end
+
+function dial:mouse_drag(x, y)
+   local width, height = self:get_size()
+
+   local x1, y1 = x/width-0.5, y/height-0.5
+   -- calculate the normalized phase, shifted by 0.5, since we want zero to be
+   -- the center up position
+   local phase = math.atan(y1, x1)/math.pi + 0.5
+   -- renormalize if we get an angle > 1, to account for the phase shift
+   if phase > 1 then
+      phase = phase - 2
+   end
+
+   self.phase = phase
+
+   local tip_x, tip_y = self:tip();
+
+   if tip_x ~= self.tip_x or tip_y ~= self.tip_y then
+      self.tip_x = tip_x
+      self.tip_y = tip_y
+      self:in_1_bang()
+      self:repaint()
+   end
+end
+~~~
+
+And here's the same patch again, which now lets us drag the hand to change the phase value:
+
+![18-graphics3](18-graphics3.png)
+
+#### More dial action: clocks and speedometers
+
+Now that our dial object is basically finished, let's do something interesting with it. The most obvious thing is to just turn it into a clock (albeit one with just a seconds dial) counting off the seconds. For that we just need to add a metro object which increments the phase angle and sends the value to the dial each second:
+
+![18-graphics4](18-graphics4.png)
+
+In the patch, we store the current phase angle in the `phase` variable, so that it can be updated easily using the `expr` object by just assigning to the variable. Note that we also update the variable whenever the dial outputs a new value, so you can also drag around the hand to determine its starting phase.
+
+Here's another little example, rather useless but fun, simulating a speedometer which just randomly moves the needle left and right:
+
+![18-graphics5](18-graphics5.png)
+
+I'm sure you can imagine many more creative uses for this simple but surprisingly versatile little GUI object, which we did in just a few lines of fairly simple Lua code. Have fun with it! An extended version of this object, which covers some more features of the graphics API that we didn't discuss here to keep things simple, can be found as dial.pd and dial.pd_lua in the tutorial examples:
+
+![18-graphics6](18-graphics6.png)
+
+The extended example adds messages for resizing the object and setting colors, and also shows how to save and restore object state in the creation arguments using the `set_args()` method mentioned at the beginning of this section. The accompanying patch covers all the examples we discussed here, and adds a third example showing how to utilize our dial object as a dB meter.
+
 ## Live coding
 
 I've been telling you all along that in order to make Pd-Lua pick up changes you made to your .pd_lua files, you have to relaunch Pd and reload your patches. Well, in this section we are going to discuss Pd-Lua's *live coding* features, which let you modify your sources and have Pd-Lua reload them on the fly, without ever exiting the Pd environment. This rapid incremental style of development is one of the hallmark features of dynamic programming environments like Pd and Lua. Musicians also like to employ it to modify their algorithmic composition programs live on stage, which is where the term "live coding" comes from. You'll probably be using live coding a lot while developing your Pd-Lua externals, but I've kept this topic for the final section of this guide, because it requires a good understanding of Pd-Lua's basic features. So without any further ado, let's dive right into it now.
@@ -993,7 +1437,5 @@ So there you have it: three (or rather four) different ways to live-code with Pd
 Congratulations! If you made it this far, you should have learned more than enough to start using Pd-Lua successfully for your own projects. You should also be able to read and understand the many examples in the Pd-Lua distribution, which illustrate all the various features in much more detail than we could muster in this introduction. You can find these in the examples folder, both in the Pd-Lua sources and the pdlua folder of your Pd installation.
 
 The examples accompanying this tutorial (including the pdx.lua, pdlua-remote.el and pdlua-remote.pd files mentioned at the end of the previous section) are also available for your perusal in the examples subdirectory of the folder where you found this document.
-
-But wait, there's more! As briefly mentioned in the introduction, the most recent Pd-Lua version also provides new facilities for audio signal processing and graphics. As these features are still fairly new, they are not yet covered in this tutorial. But you can find corresponding examples under pdlua/examples in the source or in the help browser. Specifically, check the sig-example folder for a simple example illustrating the use of signal inlets and outlets, and gui-example as well as osci3d for some GUI and graphics examples.
 
 Finally, I'd like to thank Claude Heiland-Allen for creating such an amazing tool, it makes programming Pd externals really easy and fun. Kudos also to Roberto Ierusalimschy for Lua, which for me is one of the best-designed, easiest to learn, and most capable multi-paradigm scripting languages there are today, while also being fast, simple, and light-weight.
