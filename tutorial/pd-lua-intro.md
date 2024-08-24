@@ -1195,7 +1195,7 @@ The extended example adds messages for resizing the object and setting colors, a
 
 I've been telling you all along that in order to make Pd-Lua pick up changes you made to your .pd_lua files, you have to relaunch Pd and reload your patches. Well, in this section we are going to discuss Pd-Lua's *live coding* features, which let you modify your sources and have Pd-Lua reload them on the fly, without ever exiting the Pd environment. This rapid incremental style of development is one of the hallmark features of dynamic programming environments like Pd and Lua. Musicians also like to employ it to modify their algorithmic composition programs live on stage, which is where the term "live coding" comes from. You'll probably be using live coding a lot while developing your Pd-Lua externals, but I've kept this topic for the final section of this guide, because it requires a good understanding of Pd-Lua's basic features. So without any further ado, let's dive right into it now.
 
-First, we need to describe the predefined Pd-Lua object classes `pdlua` and `pdluax`, so that you know what's readily available. But we'll also discuss how to add a `reload` message to your existing object definitions. This is quite easy to do by directly employing Pd-Lua's `dofile` method, which is also what both `pdlua` and `pdluax` use internally.
+First, we need to describe the predefined Pd-Lua object classes `pdlua` and `pdluax`, so that you know what's readily available. We'll also discuss how to add a `reload` message to your existing object definitions. This is quite easy to do by directly employing Pd-Lua's `dofile` method, which is also what both `pdlua` and `pdluax` use internally. These methods all work with older Pd-Lua versions, but they require a lot of manual fiddling with the Lua source and are are thus arduous and error-prone. That's why we also provide the special pdx.lua module which automatizes the entire process and is much less work than all the other approaches (basically, you just add two lines to your script and be done with it). Hence this is the method we recommend for all modern Pd-Lua versions. We describe it last so that you can also gather a good understanding of the "legacy" live coding methods on offer. But if you want something that just works with minimal effort, feel free to skip ahead to the [pdx.lua](#pdx.lua) section below which should be readable without any prior knowledge of the other approaches.
 
 ### pdlua
 
@@ -1266,7 +1266,7 @@ Now change that `+` operator to `-`:
 
 Don't forget to save your edits, then go back to the patch and recreate the `pdluax foo` object on the left. The quickest way to do that is to just delete the object, then use Pd's "Undo" operation, Ctrl+Z. Et voilà: the new object now decrements the counter rather than incrementing it. Also note that the other object on the right still runs the old code which increments the counter; thus you will have to give that object the same treatment if you want to update it, too.
 
-While `pdluax` is considered Pd-Lua's main workhorse for live coding, it also has its quirks. Most notably, the syntax is different from regular object definitions, so you have to change the code if you want to turn it into a .pd_lua file. Also, having to recreate an object to reload the script file is quite disruptive (it resets the internal state of the object), and may leave objects in an inconsistent state (different objects may use various different versions of the same script file). Sometimes this may be what you want, but it makes `pdluax` somewhat difficult to use. It's not really tailored for interactive development, but it shines if you need a specialized tool for changing your objects on a whim in a live situation.
+While `pdluax` was considered Pd-Lua's main workhorse for live coding, it has its quirks. Most notably, the syntax is different from regular object definitions, so you have to change the code if you want to turn it into a .pd_lua file. Also, having to recreate an object to reload the script file is quite disruptive (it resets the internal state of the object), and may leave objects in an inconsistent state (different objects may use various different versions of the same script file). Sometimes this may be what you want, but it makes `pdluax` somewhat difficult to use. It's not really tailored for interactive development, but it shines if you need a specialized tool for changing your objects on a whim in a live situation.
 
 Fortunately, if you're not content with Pd-Lua's built-in facilities for live coding, it's easy to roll your own using the internal `dofile` method, which is discussed in the next subsection.
 
@@ -1328,13 +1328,11 @@ Return to the patch, click the `reload` message, and finally reenter the frequen
 
 ![Livecoding example 2](14-livecoding2.png)
 
-### Remote control
+### pdx.lua
 
 The method sketched out in the preceding subsection works well enough for simple patches. However, having to manually wire up the `reload` message to one object of each class that you're editing is still quite cumbersome. In a big patch, which is being changed all the time, this quickly becomes unwieldy. Wouldn't it be nice if we could equip each object with a special receiver, so that we can just click a message somewhere in the patch to reload a given class, or even all Pd-Lua objects at once? And maybe even do that remotely from the editor, using the `pdsend` program?
 
-Well, all this is in fact possible, but the implementation is a bit too involved to fully present it here. So we have provided this in a separate pdx.lua module, which you can find in the sources accompanying this tutorial.
-
-Setting up an object for this kind of remote control is easy, though. First, you need to import the `pdx` module into your script, using Lua's `require`:
+Well, all this is in fact possible, but the implementation is a bit too involved to fully present it here. So we have provided this in a separate pdx.lua module, which you can find in the sources accompanying this tutorial. Setting up an object for this kind of remote control is easy, though. First, you need to import the `pdx` module into your script, using Lua's `require`:
 
 ~~~lua
 local pdx = require 'pdx'
@@ -1362,11 +1360,15 @@ You get the idea. Getting set up for remote control via `pdsend` isn't much hard
 
 ![Remote control 1](15-remote-control1.png)
 
-You can then use `pdsend 4711 localhost udp` to transmit the `reload` message to Pd when needed. You probably don't want to run those commands yourself, but a decent code editor will let you bind a keyboard command which does this for you. Myself, I'm a die-hard Emacs fan, so I've included a little elisp module pd-remote.el in the accompanying examples which shows how to do this. Once you've added this to your .emacs, you can just type Ctrl+C Ctrl+K in Emacs to make Pd reload your Lua script after saving it. It doesn't get much easier than that. Moreover, for your convenience I've added a little abstraction named pd-remote.pd which takes care of the `netreceive` and messaging bits and will look much tidier in your patches.
+You can then use `pdsend 4711 localhost udp` to transmit the `reload` message to Pd when needed. You probably don't want to run those commands yourself, but a decent code editor will let you bind a keyboard command which does this for you. Myself, I'm a die-hard Emacs fan, so I've included a little elisp module pd-remote.el which shows how to do this. Once you've added this to your .emacs, you can just type Ctrl+C Ctrl+K in Emacs to make Pd reload your Lua script after saving it. It doesn't get much easier than that.
+
+Moreover, for your convenience I've also added a little abstraction named pd-remote.pd which takes care of the `netreceive` and messaging bits and will look much tidier in your patches. Using the abstraction is easy: Insert `pd-remote` into the patch you're working on, and connect a `pdluax reload` message (without the `;` prefix) to the inlet of the abstraction. Now you can just click on that message to reload your script files. In fact any of the variations of reload messages discussed above will work, if you remove the `;` prefix, and the abstraction will also respond to such messages on port 4711 by default (the port number can be changed in the abstraction if needed).
 
 ---
 
-**NOTE:** To use these facilities in your own patches, you'll have to copy pdx.lua and pd-remote.pd to your project directory or some other place where Pd finds them. The pd-remote.el file can be installed in your Emacs site-lisp directory if needed. Please also check the [pd-remote](https://github.com/agraef/pd-remote) repository on GitHub for the latest pd-remote version and further details. This also includes a pointer to a Visual Studio Code extension written by Baris Altun which can be used as a replacement for pd-remote.el if you're not familiar with Emacs, or just prefer to use VS Code as an editor.
+**NOTE:** As of Pd-Lua 0.12.5, using pdx.lua has become much easier, since pdx.lua, pd-remote.el, and pd-remote.pd get installed in your pdlua external directory, and this directory now also gets searched for Lua imports. Thus `require 'pdx'` will just work in all your Pd-Lua scripts without any further ado. To make Pd find the pd-remote.pd abstraction, you'll still have to copy it to your project directory. Or you can add the pdlua directory to your Pd library path. (Depending on how Pd-Lua was installed, you may want to do that anyway so that the pdlua directory shows up in Pd's help browser.)
+
+The pd-remote.el file can be installed in your Emacs site-lisp directory if needed. Please also check the [pd-remote](https://github.com/agraef/pd-remote) repository on GitHub for the latest pd-remote version and further details. This also includes a pointer to a Visual Studio Code extension written by Baris Altun which can be used as a replacement for pd-remote.el if you're not familiar with Emacs, or just prefer to use VS Code as an editor.
 
 ---
 
@@ -1430,7 +1432,7 @@ And here's a little gif showing the above patch in action. You may want to watch
 
 ![Remote control 2](16-remote-control2.gif)
 
-So there you have it: three (or rather four) different ways to live-code with Pd-Lua. Choose whatever best fits your purpose and is the most convenient for you.
+So there you have it: four different ways to live-code with Pd-Lua. Choose whatever best fits your purpose and is the most convenient for you.
 
 ## Conclusion
 
