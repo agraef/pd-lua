@@ -21,7 +21,7 @@ Enter pd-lua which lets you develop your externals in the Lua scripting language
 
 pd-lua was originally written by Claude Heiland-Allen, with contributions by Frank Barknecht and Martin Peach, according to the original source. Please check Claude's website at <https://mathr.co.uk/>, and <https://mathr.co.uk/blog/lua.html> for Lua-related content on his blog (including pd-lua's original announcement).
 
-Martin Peach took over maintenance of pd-lua in 2011, you can find that part of the history in Pd's old [svn repository](https://sourceforge.net/p/pure-data/svn/HEAD/tree/trunk/externals/loaders/pdlua/) at SourceForge, including IOhannes Zmölnig's loader update for Pd 0.47. The present source started as a fork of the 0.7.3 version at IOhannes' [Debian package](https://anonscm.debian.org/git/pkg-multimedia/pd-lua.git). It is actively maintained by Albert Gräf, with contributions by Claude Heiland-Allen (Lua 5.4 update, bugfixes), Alexandre Porres (documentation updates, Deken package), sebshader (relative path loading), and Timothy Schoen (plugdata compatibility, signal and graphics support).
+Martin Peach took over maintenance of pd-lua in 2011, you can find that part of the history in Pd's old [svn repository](https://sourceforge.net/p/pure-data/svn/HEAD/tree/trunk/externals/loaders/pdlua/) at SourceForge, including IOhannes Zmölnig's loader update for Pd 0.47. The present source started as a fork of the 0.7.3 version at IOhannes' [Debian package](https://anonscm.debian.org/git/pkg-multimedia/pd-lua.git). It is actively maintained by Albert Gräf, with contributions by Claude Heiland-Allen (Lua 5.4 update, bugfixes), Alexandre Porres (documentation updates), sebshader (relative path loading), Timothy Schoen (plugdata compatibility, signal and graphics support), and Ben Wesch (Deken tests and uploads on GitHub).
 
 ## Installation
 
@@ -31,11 +31,12 @@ Building and installing from source is quite easy, once you have the requisite d
 
 [Purr Data][] and [plugdata][] include pd-lua and have it enabled by default, so no extra software is needed.
 
-Other ready-made packages are available from Deken and various Linux distributions, here are the ones I know of:
+For vanilla, we recommend installing the [Deken package](http://deken.puredata.info/library/pdlua). This was originally maintained by Alexandre Porres, but Ben Wesch recently added Deken tests and upload to our GitHub workflow, so that the Deken releases are now automatized and always in sync with the GitHub releases. Thanks, Ben!
+
+Other ready-made packages from various Linux distributions I know of:
 
 - pd-lua is available in the official [Arch extra repositories](https://www.archlinux.org/packages/extra/x86_64/pd-lua/) (maintained by David Runge), and also from the [AUR](https://aur.archlinux.org/packages/pd-lua-git/); the latter builds pd-lua straight from the current git sources.
 - The official [Debian package](https://salsa.debian.org/multimedia-team/pd/pd-lua) is maintained by IOhannes Zmölnig.
-- The [Deken package](http://deken.puredata.info/library/pdlua) is maintained by Alexandre Porres.
 
 [Lua]: https://www.lua.org/
 [Pd]: http://msp.ucsd.edu/software.html
