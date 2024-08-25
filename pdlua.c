@@ -173,10 +173,11 @@ void initialise_lua_state()
 #endif
 
 // In plugdata we're linked statically and thus c_externdir is empty.
-// So we pass a data directory to the setup function instead and store it here
+// So we pass a data directory to the setup function instead and store it here.
+// ag: Renamed to pdlua_datadir since we also need this in vanilla when
+// setting up the Lua search path when loading a pd_lua file.
+char pdlua_datadir[MAXPDSTRING];
 #if PLUGDATA
-    char plugdata_datadir[MAXPDSTRING];
-
     // Hook to inform plugdata which class names are lua objects
     void(*plugdata_register_class)(const char*);
 #endif
@@ -703,11 +704,17 @@ static void pdlua_delete(t_gobj *z, t_glist *glist){
     canvas_deletelinesfor(glist, (t_text *)z);
 }
 
+#ifdef PURR_DATA // Purr Data uses an older version of this API
+static void pdlua_motion(t_gobj *z, t_floatarg dx, t_floatarg dy)
+#else
 static void pdlua_motion(t_gobj *z, t_floatarg dx, t_floatarg dy,
     t_floatarg up)
+#endif
 {
 #if !PLUGDATA
+#ifndef PURR_DATA
     if (!up)
+#endif
     {
         t_pdlua *x = (t_pdlua *)z;
         x->gfx.mouse_drag_x = x->gfx.mouse_drag_x + dx;
@@ -783,6 +790,43 @@ static void pdlua_displace(t_gobj *z, t_glist *glist, int dx, int dy){
     canvas_fixlinesfor(glist, (t_text*)x);
 }
 
+#ifdef PURR_DATA
+static void pdlua_displace_wtag(t_gobj *z, t_glist *glist, int dx, int dy){
+    t_pdlua *x = (t_pdlua *)z;
+
+    if(x->has_gui)
+    {
+       x->pd.te_xpix += dx, x->pd.te_ypix += dy;
+       //gfx_displace((t_pdlua*)z, glist, dx, dy);
+    }
+    else {
+        text_widgetbehavior.w_displacefnwtag(z, glist, dx, dy);
+    }
+
+
+    canvas_fixlinesfor(glist, (t_text*)x);
+}
+
+static void pdlua_select(t_gobj *z, t_glist *glist, int state)
+{
+    t_pdlua *x = (t_pdlua *)z;
+    t_pdlua_gfx *gfx = &x->gfx;
+    t_canvas *cnv = glist_getcanvas(glist);
+
+    if(x->has_gui) {
+        if (gobj_shouldvis(&x->pd.te_g, glist)) {
+            if (state) {
+                gui_vmess("gui_gobj_select", "xs", cnv, gfx->object_tag);
+            } else {
+                gui_vmess("gui_gobj_deselect", "xs", cnv, gfx->object_tag);
+            }
+        }
+    } else {
+        text_widgetbehavior.w_selectfn(z, glist, state);
+    }
+}
+#endif
+
 static void pdlua_activate(t_gobj *z, t_glist *glist, int state)
 {
     if(!((t_pdlua *)z)->has_gui)
@@ -796,11 +840,16 @@ static void pdlua_getrect(t_gobj *z, t_glist *glist, int *xp1, int *yp1, int *xp
 {
     t_pdlua *x = (t_pdlua *)z;
     if(x->has_gui) {
+#ifndef PURR_DATA
+        int zoom = glist->gl_zoom;
+#else
+        int zoom = 1;
+#endif
         float x1 = text_xpix((t_text *)x, glist), y1 = text_ypix((t_text *)x, glist);
         *xp1 = x1;
         *yp1 = y1;
-        *xp2 = x1 + x->gfx.width * glist->gl_zoom;
-        *yp2 = y1 + x->gfx.height * glist->gl_zoom;
+        *xp2 = x1 + x->gfx.width * zoom;
+        *yp2 = y1 + x->gfx.height * zoom;
     }
     else {
         // Bypass to text widgetbehaviour if we're not a GUI
@@ -911,7 +960,7 @@ static void pdlua_menu_open(t_pdlua *o)
         class = (t_class *)lua_touserdata(__L(), -1);
 #if PLUGDATA
         if (!*class->c_externdir->s_name)
-            path = plugdata_datadir;
+            path = pdlua_datadir;
         else
 #endif
         path = class->c_externdir->s_name;
@@ -1113,22 +1162,25 @@ static int pdlua_class_new(lua_State *L)
     plugdata_register_class(name);
 #endif
 
-#ifndef PURR_DATA
-    /* Vanilla Pd and plugdata require this for the gfx routines, but this
-       interferes with Purr Data's handling of canvas events and is thus
-       disabled there. XXXTODO: When we add the gfx API in Purr Data, we'll
-       have to figure out how to tie into Purr Data's JavaScript GUI in order
-       to implement these callbacks. -ag */
     // Set custom widgetbehaviour for GUIs
     pdlua_widgetbehavior.w_getrectfn  = pdlua_getrect;
     pdlua_widgetbehavior.w_displacefn = pdlua_displace;
+#ifndef PURR_DATA
     pdlua_widgetbehavior.w_selectfn   = text_widgetbehavior.w_selectfn;
+#else
+    // Purr Data only, this seems to be preferred over w_displacefn and is
+    // actually needed to make text_widgetbehavior.w_selectfn happy.
+    pdlua_widgetbehavior.w_displacefnwtag = pdlua_displace_wtag;
+    // We also do our own variant of text_widgetbehavior.w_selectfn, as the
+    // text_widgetbehavior won't give the right object tag with a freshly
+    // created gop for some reason.
+    pdlua_widgetbehavior.w_selectfn   = pdlua_select;
+#endif
     pdlua_widgetbehavior.w_deletefn   = pdlua_delete;
     pdlua_widgetbehavior.w_clickfn    = pdlua_click;
     pdlua_widgetbehavior.w_visfn      = pdlua_vis;
     pdlua_widgetbehavior.w_activatefn = pdlua_activate;
     class_setwidget(c, &pdlua_widgetbehavior);
-#endif
 
     if (c) {
         /* a class with a "menu-open" method will have the "Open" item highlighted in the right-click menu */
@@ -1197,16 +1249,8 @@ static int pdlua_object_new(lua_State *L)
 static int pdlua_object_creategui(lua_State *L)
 {
     t_pdlua *o = lua_touserdata(L, 1);
-#ifndef PURR_DATA
     o->has_gui = 1;
     gfx_initialize(o);
-#else
-    // We avoid the gfx initalization here, since it produces unwanted
-    // artifacts on the canvas and at present none of the graphics routines
-    // will work in Purr Data anyway. -ag
-    o->has_gui = 0;
-    gfx_not_implemented();
-#endif
     return 0;
 }
 
@@ -2004,7 +2048,8 @@ static void pdlua_setrequirepath
     lua_pushstring(L, "_setrequirepath");
     lua_gettable(L, -2);
     lua_pushstring(L, path);
-    if (lua_pcall(L, 1, 0, 0) != 0)
+    lua_pushstring(L, pdlua_datadir);
+    if (lua_pcall(L, 2, 0, 0) != 0)
     {
         pd_error(NULL, "lua: internal error in `pd._setrequirepath': %s", lua_tostring(L, -1));
         lua_pop(L, 1);
@@ -2461,7 +2506,7 @@ void pdlua_setup(void)
 #endif
     if (strlen(pdlua_version) == 0) {
       // NOTE: This should be set from the Makefile, otherwise we fall back to:
-      pdlua_version = "0.12.0";
+      pdlua_version = "0.12.6";
     }
     snprintf(pdluaver, MAXPDSTRING-1, "pdlua %s (GPL) 2008 Claude Heiland-Allen, 2014 Martin Peach et al.", pdlua_version);
     snprintf(compiled, MAXPDSTRING-1, "pdlua: compiled for pd-%d.%d on %s",
@@ -2520,11 +2565,11 @@ void pdlua_setup(void)
     // In plugdata we're linked statically and thus c_externdir is empty.
     // Instead, we get our data directory from plugdata and expect to find the
     // external dir in <datadir>/pdlua.
-    snprintf(plugdata_datadir, MAXPDSTRING-1, "%s/pdlua", datadir);
-    snprintf(pd_lua_path, MAXPDSTRING-1, "%s/pdlua/pd.lua", datadir);
+    snprintf(pdlua_datadir, MAXPDSTRING-1, "%s/pdlua", datadir);
 #else
-    snprintf(pd_lua_path, MAXPDSTRING-1, "%s/pd.lua", pdlua_proxyinlet_class->c_externdir->s_name); /* the full path to pd.lua */
+    snprintf(pdlua_datadir, MAXPDSTRING-1, "%s", pdlua_proxyinlet_class->c_externdir->s_name);
 #endif
+    snprintf(pd_lua_path, MAXPDSTRING-1, "%s/pd.lua", pdlua_datadir); /* the full path to pd.lua */
     PDLUA_DEBUG("pd_lua_path %s", pd_lua_path);
     fd = open(pd_lua_path, O_RDONLY);
 /*    fd = canvas_open(canvas_getcurrent(), "pd", ".lua", buf, &ptr, MAXPDSTRING, 1);  looks all over and rarely succeeds */

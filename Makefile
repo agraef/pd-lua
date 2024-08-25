@@ -51,6 +51,9 @@ include $(PDLIBBUILDER_DIR)/Makefile.pdlibbuilder
 
 install: installplus
 
+pdx_files = $(addprefix ./pdlua/tutorial/examples/, pdx.lua pd-remote.el pd-remote.pd)
+
 installplus:
 	$(INSTALL_DIR) -v "$(installpath)"
 	cp -r ./pdlua/ "${installpath}"/pdlua
+	cp $(pdx_files) "${installpath}"

@@ -29,15 +29,15 @@ pd._loadpath = ""
 pd._currentpath = ""
 
 -- add a path to Lua's "require" search paths
-pd._setrequirepath = function(path)
+pd._setrequirepath = function(path, pdlua_path)
   pd._packagepath = package.path
   pd._packagecpath = package.cpath
   if (pd._iswindows) then
-    package.path = path .. "\\?;" .. path .. "\\?.lua;" .. package.path
-    package.cpath = path .. "\\?.dll;" .. package.cpath
+    package.path = path .. "\\?;" .. path .. "\\?.lua;" .. pdlua_path .. "\\?;" .. pdlua_path .. "\\?.lua;" .. package.path
+    package.cpath = path .. "\\?.dll;" .. pdlua_path .. "\\?.dll;" .. package.cpath
   else
-    package.path = path .. "/?;" .. path .. "/?.lua;" .. package.path
-    package.cpath = path .. "/?.so;" .. package.cpath
+    package.path = path .. "/?;" .. path .. "/?.lua;" .. pdlua_path .. "/?;" .. pdlua_path .. "/?.lua;" .. package.path
+    package.cpath = path .. "/?.so;" .. pdlua_path .. "/?.so;" .. package.cpath
   end
 end
 

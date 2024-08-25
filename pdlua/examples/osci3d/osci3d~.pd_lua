@@ -1,5 +1,13 @@
 local osci3d = pd.Class:new():register("osci3d~")
 
+-- rendering speed (slows down rendering by the given factor)
+-- In most cases it should be fine to just set this to 1 to run at full speed,
+-- if you have a modern high-speed CPU and GPU. But we use a larger value as
+-- default here to deal with low frame rates on some systems (Purr Data on Mac
+-- being the main culprit). You may have to increase the value even further
+-- when running on low-spec systems like the Raspberry Pi.
+local R = 3
+
 function osci3d:initialize(sel, atoms)
   self.SIZE = type(atoms[1]) == "number" and atoms[1] or 480
   self.inlets = {SIGNAL, SIGNAL, SIGNAL, DATA}
@@ -7,6 +15,7 @@ function osci3d:initialize(sel, atoms)
   self.signalIndex = 1
   self.cameraDistance = 6
   self.gridLines = self:createGrid(-2, 2, 0.5)
+  self.delay_time = 20*R
 
   self:set_size(self.SIZE, self.SIZE)
   return true
@@ -28,7 +37,7 @@ end
 
 function osci3d:postinitialize()
   self.clock = pd.Clock:new():register(self, "tick")
-  self.clock:delay(20)
+  self.clock:delay(self.delay_time)
 end
 
 function osci3d:finalize()
@@ -37,7 +46,7 @@ end
 
 function osci3d:tick()
   self:repaint()
-  self.clock:delay(20)
+  self.clock:delay(self.delay_time)
 end
 
 function osci3d:createGrid(minVal, maxVal, step)
