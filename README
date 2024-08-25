@@ -42,9 +42,10 @@ https://agraef.github.io/pd-lua/tutorial/pd-lua-intro.html
 
 This contains a fairly gentle introduction to pdlua, walks you through the
 creation of a basic example, and then goes on to cover most major features of
-pdlua, including the special facilities for tables, clocks, receivers, and
-live-coding, in quite some detail. This will be helpful when embarking on your
-own projects, or trying to make sense of the included examples.
+pdlua, including the special facilities for tables, clocks, receivers, signal
+processing, graphics, and live-coding, in quite some detail. This will be
+helpful when embarking on your own projects, or trying to make sense of the
+included examples.
 
 
 History and Credits:
@@ -66,11 +67,11 @@ in turn was based on the 0.7.3 version of pdlua in Pd's svn repository.
 
 The current version (0.8 and later) is actively maintained by Albert Gräf,
 with contributions by Claude Heiland-Allen (Lua 5.4 update, bugfixes),
-Alexandre Porres (documentation updates, Deken package), sebshader (relative
-path loading), and Timothy Schoen (plugdata compatibility, signal and graphics
-support). This is also the version included in Purr Data
-(https://github.com/agraef/purr-data) and Timothy Schoen's plugdata
-(https://github.com/plugdata-team/plugdata).
+Alexandre Porres (documentation updates), sebshader (relative path loading),
+Timothy Schoen (plugdata compatibility, signal and graphics support), and Ben
+Wesch (Deken tests and uploads on GitHub). This is also the version included
+in Purr Data (https://github.com/agraef/purr-data) and Timothy Schoen's
+plugdata (https://github.com/plugdata-team/plugdata).
 
 Please file bugs and requests at https://github.com/agraef/pd-lua. I maintain
 a lot of packages and thus it may take a while at times, but I look at all the
@@ -79,13 +80,20 @@ bug reports and pull requests, and try to respond to them eventually. :)
 
 Ready-Made Packages:
 
-The latest vanilla binaries for Ubuntu, Mac and Windows can always be found on
-https://github.com/agraef/pd-lua. The same version is also in the Arch
-community repository (maintained by dvzrv, thanks David!). Other packages are
-available in Debian (maintained by IOhannes Zmölnig) and Deken (maintained by
-Alexandre Porres). You can also compile pdlua yourself from source, which
-isn't hard to do (see below). Also, both Purr Data and plugdata ship with
-pdlua, so no 3rd party package is needed in those environments.
+The latest vanilla binaries for Ubuntu, Mac, and Windows can always be found
+on https://github.com/agraef/pd-lua (but see below for the Deken package).
+Also, both Purr Data and plugdata ship with pdlua, and have it enabled by
+default, so no 3rd party package is needed in those environments.
+
+For vanilla, we recommend installing the Deken package (named `pdlua`),
+readily available using Pd's `Find externals` menu option. This package was
+originally uploaded by Alexandre Porres, but Ben Wesch recently added Deken
+tests and uploads to our GitHub workflow, so that the Deken releases are now
+automatized and always in sync with the GitHub releases. Thanks, Ben!
+
+The latest release is also in the Arch repositories (maintained by dvzrv,
+thanks David!), and in the Debian repositories (maintained by IOhannes
+Zmölnig, thanks umlaeute!).
 
 To enable the pdlua loader in Pd after installation, just add `pdlua` to your
 startup libraries (after adding its parent directory to Pd's search path if
@@ -99,6 +107,8 @@ Gatekeeper for details.
 
 
 Compilation Instructions:
+
+You can also compile pdlua yourself from source, which isn't hard to do.
 
 The source should compile out of the box on (at least) Linux, macOS and
 Windows, just make sure that you have Lua and Pd installed and run
