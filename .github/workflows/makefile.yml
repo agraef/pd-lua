@@ -178,15 +178,25 @@ jobs:
     if: ${{ !contains(github.ref, 'test') }} # upload if not a "test" tag (maybe should be more restrictive?)
     runs-on: ubuntu-latest
     needs: [merge-for-deken]
-    strategy:
-      matrix:
-        os: [windows, macos, ubuntu]
-
     steps:
+    - uses: actions/checkout@v4
+      with:
+        path: pdlua-src
+
     - uses: actions/download-artifact@v4
       with:
-        name: pdlua-${{ matrix.os }}
-        path: pdlua-${{ matrix.os }}
+        name: pdlua-windows
+        path: pdlua-windows
+
+    - uses: actions/download-artifact@v4
+      with:
+        name: pdlua-macos
+        path: pdlua-macos
+
+    - uses: actions/download-artifact@v4
+      with:
+        name: pdlua-ubuntu
+        path: pdlua-ubuntu
 
     - name: upload deken package
       shell: bash
