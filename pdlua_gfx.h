@@ -894,7 +894,7 @@ static int end_paint(lua_State* L) {
 static int set_color(lua_State* L) {
     t_pdlua_gfx *gfx = pop_graphics_context(L);
 
-    int r, g, b;
+    int r, g, b, a;
     if (lua_gettop(L) == 1) { // Single argument: parse as color ID instead of RGB
         int color_id = luaL_checknumber(L, 1);
         if(color_id != 1)
@@ -915,9 +915,19 @@ static int set_color(lua_State* L) {
         b = luaL_checknumber(L, 3);
     }
 
+#ifndef PURR_DATA
     // AFAIK, alpha is not supported in tcl/tk
     snprintf(gfx->current_color, 8, "#%02X%02X%02X", r, g, b);
     gfx->current_color[7] = '\0';
+#else
+    // ... but it is in Purr Data (nw.js gui)
+    a = 255;
+    if (lua_gettop(L) >= 4) {
+        a = luaL_checknumber(L, 4)*255;
+    }
+    snprintf(gfx->current_color, 10, "#%02X%02X%02X%02X", r, g, b, a);
+    gfx->current_color[9] = '\0';
+#endif
 
     return 0;
 }

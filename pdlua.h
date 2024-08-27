@@ -37,7 +37,7 @@ typedef struct _pdlua_gfx
     char current_item_tag[64]; // Tcl/tk tag that is only attached to the current drawing in progress
     gfx_transform* transforms;
     int num_transforms;
-    char current_color[8]; // Keep track of current color
+    char current_color[10]; // Keep track of current color
     
     // Variables to keep track of mouse button state and drag position
     int mouse_drag_x, mouse_drag_y, mouse_down;
