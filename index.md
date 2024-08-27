@@ -31,7 +31,7 @@ Building and installing from source is quite easy, once you have the requisite d
 
 [Purr Data][] and [plugdata][] include pd-lua and have it enabled by default, so no extra software is needed.
 
-For vanilla, we recommend installing the [Deken package](http://deken.puredata.info/library/pdlua). This was originally maintained by Alexandre Porres, but Ben Wesch recently added Deken tests and uploads to our GitHub workflow, so that the Deken releases are now automatized and always in sync with the GitHub releases. Thanks, Ben!
+For vanilla, we recommend installing the [Deken package](http://deken.puredata.info/library/pdlua). This was originally uploaded by Alexandre Porres, but Ben Wesch recently added Deken tests and uploads to our GitHub workflow, so that the Deken releases are now automatized and always in sync with the GitHub releases. Thanks, Ben!
 
 Other ready-made packages from various Linux distributions I know of:
 
