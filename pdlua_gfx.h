@@ -316,7 +316,7 @@ static int set_color(lua_State* L) {
     SETFLOAT(args + 1, luaL_checknumber(L, 2)); // g
     SETFLOAT(args + 2, luaL_checknumber(L, 3)); // b
 
-    if (lua_gettop(L) > 4) { // object and table are already on stack, hence 5
+    if (lua_gettop(L) >= 4) { // object and table are already on stack, hence 5
         // alpha (optional, default to 1.0)
         SETFLOAT(args + 3, luaL_checknumber(L, 4));
     }
