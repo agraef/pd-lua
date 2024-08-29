@@ -29,15 +29,15 @@ pd._loadpath = ""
 pd._currentpath = ""
 
 -- add a path to Lua's "require" search paths
-pd._setrequirepath = function(path, pdlua_path)
+pd._setrequirepath = function(path)
   pd._packagepath = package.path
   pd._packagecpath = package.cpath
   if (pd._iswindows) then
-    package.path = path .. "\\?;" .. path .. "\\?.lua;" .. pdlua_path .. "\\?;" .. pdlua_path .. "\\?.lua;" .. package.path
-    package.cpath = path .. "\\?.dll;" .. pdlua_path .. "\\?.dll;" .. package.cpath
+    package.path = path .. "\\?;" .. path .. "\\?.lua;" .. package.path
+    package.cpath = path .. "\\?.dll;" .. package.cpath
   else
-    package.path = path .. "/?;" .. path .. "/?.lua;" .. pdlua_path .. "/?;" .. pdlua_path .. "/?.lua;" .. package.path
-    package.cpath = path .. "/?.so;" .. pdlua_path .. "/?.so;" .. package.cpath
+    package.path = path .. "/?;" .. path .. "/?.lua;" .. package.path
+    package.cpath = path .. "/?.so;" .. package.cpath
   end
 end
 
@@ -344,6 +344,9 @@ function pd.Class:construct(sel, atoms)
   self.inlets = 0
   self.outlets = 0
   self._canvaspath = pd._canvaspath(self._object) .. "/"
+  if pdx then
+    pdx.reload(self)
+  end
   if self:initialize(sel, atoms) then
     pd._createinlets(self._object, self.inlets)
     pd._createoutlets(self._object, self.outlets)
@@ -353,6 +356,9 @@ function pd.Class:construct(sel, atoms)
     self:postinitialize()
     return self
   else
+    if pdx then
+      pdx.unreload(self)
+    end
     return nil
   end
 end
@@ -517,4 +523,9 @@ end
 DATA = 0
 SIGNAL = 1
 Colors = {background = 0, foreground = 1, outline = 2}
+
+-- pre-load pdx.lua (live coding support); if you don't want this, just
+-- comment out the line below
+pdx = require 'pdx'
+
 -- fin pd.lua

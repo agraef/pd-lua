@@ -175,7 +175,7 @@ void initialise_lua_state()
 // In plugdata we're linked statically and thus c_externdir is empty.
 // So we pass a data directory to the setup function instead and store it here.
 // ag: Renamed to pdlua_datadir since we also need this in vanilla when
-// setting up the Lua search path when loading a pd_lua file.
+// setting up Lua's package.path.
 char pdlua_datadir[MAXPDSTRING];
 #if PLUGDATA
     // Hook to inform plugdata which class names are lua objects
@@ -2037,6 +2037,29 @@ static int pdlua_error(lua_State *L)
     return 0;
 }
 
+static void pdlua_packagepath(lua_State *L, const char *path)
+{
+    PDLUA_DEBUG("pdlua_packagepath: stack top %d", lua_gettop(L));
+    lua_getglobal(L, "package");
+    lua_pushstring(L, "path");
+    lua_gettable(L, -2);
+    const char *packagepath = lua_tostring(L, -1);
+    char *buf = malloc(2*strlen(path)+20+strlen(packagepath));
+    if (!buf) return;
+#ifdef _WIN32
+    sprintf(buf, "%s\\?;%s\\?.lua;%s", path, path, packagepath);
+#else
+    sprintf(buf, "%s/?;%s/?.lua;%s", path, path, packagepath);
+#endif
+    lua_pop(L, 1);
+    lua_pushstring(L, "path");
+    lua_pushstring(L, buf);
+    lua_settable(L, -3);
+    free(buf);
+    lua_pop(L, 1);
+    PDLUA_DEBUG("pdlua_packagepath: end. stack top %d", lua_gettop(L));
+}
+
 static void pdlua_setrequirepath
 ( /* FIXME: documentation (is this of any use at all?) */
     lua_State   *L,
@@ -2048,8 +2071,7 @@ static void pdlua_setrequirepath
     lua_pushstring(L, "_setrequirepath");
     lua_gettable(L, -2);
     lua_pushstring(L, path);
-    lua_pushstring(L, pdlua_datadir);
-    if (lua_pcall(L, 2, 0, 0) != 0)
+    if (lua_pcall(L, 1, 0, 0) != 0)
     {
         pd_error(NULL, "lua: internal error in `pd._setrequirepath': %s", lua_tostring(L, -1));
         lua_pop(L, 1);
@@ -2579,6 +2601,12 @@ void pdlua_setup(void)
     if (fd >= 0)
     { /* pd.lua was opened */
         reader.fd = fd;
+        // We need to set up Lua's package.path here so that pdx.lua can be
+        // found (and possibly other pre-loaded extension modules in the
+        // future). Note that we can't just use pdlua_setrequirepath() here
+        // because it calls pd._setrequirepath in pd.lua which isn't loaded
+        // yet at this point.
+        pdlua_packagepath(__L(), pdlua_datadir);
 #if LUA_VERSION_NUM	< 502
         result = lua_load(__L(), pdlua_reader, &reader, "pd.lua");
 #else // 5.2 style

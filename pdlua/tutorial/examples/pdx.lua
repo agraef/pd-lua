@@ -3,10 +3,8 @@
 pdx.lua: useful extensions to pd.lua
 Copyright (C) 2020 Albert Gräf <aggraef@gmail.com>
 
-To use this in your pd-lua scripts: local pdx = require 'pdx'
-
 Currently there's only the pdx.reload() function, which implements a kind of
-remote reload functionality based on dofile and receivers, as explained in the
+live coding functionality based on dofile and receivers, as explained in the
 pd-lua tutorial. More may be added in the future.
 
 This program is free software; you can redistribute it and/or
@@ -29,6 +27,13 @@ local pdx = {}
 --[[
 Reload functionality. Call pdx.reload() on your object to enable, and
 pdx.unreload() to disable this functionality again.
+
+NOTE: As of pd-lua 0.12.8, this module is now pre-loaded, and pdx.reload()
+gets called automatically before running the initialize method of any object,
+so calling pdx.reload() explicitly is no longer needed. (Old code importing
+the module and doing the call will continue to work, though.) Instead, you
+will now have to call pdx.unreload() in your initialize method if you want to
+*disable* this feature for some reason.
 
 pdx.reload installs a "pdluax" receiver which reloads the object's script file
 when it receives the "reload" message without any arguments, or a "reload
