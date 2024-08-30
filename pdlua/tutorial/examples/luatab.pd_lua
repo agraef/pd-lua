@@ -1,10 +1,14 @@
 local luatab = pd.Class:new():register("luatab")
 
+--local pdx = require 'pdx'
+
 function luatab:initialize(sel, atoms)
    -- single inlet for the frequency, bang goes to the single outlet when we
    -- finished generating a new waveform
    self.inlets = 1
    self.outlets = 1
+   --pdx.reload(self)
+   --pdx.unreload(self)
    -- the name of the array/table should be in the 1st creation argument
    if type(atoms[1]) == "string" then
       self.tabname = atoms[1]
