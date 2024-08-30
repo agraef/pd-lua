@@ -879,10 +879,10 @@ The obligatory test patch:
 
 #### Real-world example: Cross-fades
 
-Ok, the previous example got a bit more complicated, but it's still rather straightforward if you know how to compute a sine wave as blocks of signal data. But the above are really just toy examples for illustration purposes. Let's finally take a look at a somewhat more realistic and useful example which performs cross-fades on two incoming signals by doing linear interpolation between the input signals. A customary design for this kind of dsp object is to have a target cross-fade value (xfade argument) ranging from 0 (all left signal) to 1 (all right signal). We also want to be able to smoothly ramp from one cross-fade value to the next in order to avoid clicks (time argument), and have an initial delay until moving to the new xfade value (delay argument). Here is the definition of a `luaxfade` object which does all this, including the checking of all argument values, so that we don't run into any Lua exceptions because of bad values. The example also illustrates how to receive control messages on a signal inlet (cf. the `fade` message on the left signal inlet). You can find this as luaxfade.pd_lua in the tutorial examples.
+Let's finally take a look at a somewhat more realistic and useful example which performs cross-fades on two incoming signals by doing linear interpolation between the input signals. A customary design for this kind of dsp object is to have a target cross-fade value (`xfade` argument) ranging from 0 (all left signal) to 1 (all right signal). We also want to be able to smoothly ramp from one cross-fade value to the next in order to avoid clicks (`time` argument), and have an initial delay until moving to the new xfade value (`delay` argument). Here is the definition of a `luaxfade~` object which does all this, including the checking of all argument values, so that we don't run into any Lua exceptions because of bad values. The example also illustrates how to receive control messages on a signal inlet (cf. the `fade` message on the left signal inlet). You can find this as luaxfade.pd_lua in the tutorial examples.
 
 ~~~lua
-local luaxfade = pd.Class:new():register("luaxfade")
+local luaxfade = pd.Class:new():register("luaxfade~")
 
 function luaxfade:initialize(sel, atoms)
    self.inlets = {SIGNAL,SIGNAL}
@@ -905,7 +905,7 @@ function luaxfade:in_1_fade(atoms)
    -- been run yet, then we cannot compute the sample delay and ramp times
    -- below, so we bail out, telling the user to enable dsp first.
    if not self.samplerate then
-      self:error("luaxfade: unknown sample rate, please enable dsp first")
+      self:error("luaxfade~: unknown sample rate, please enable dsp first")
       return
    end
    local fade, time, delay = table.unpack(atoms)
@@ -1201,9 +1201,13 @@ The extended example adds messages for resizing the object and setting colors, a
 
 ## Live coding
 
-I've been telling you all along that in order to make Pd-Lua pick up changes you made to your .pd_lua files, you have to relaunch Pd and reload your patches. Well, in this section we are going to discuss Pd-Lua's *live coding* features, which let you modify your sources and have Pd-Lua reload them on the fly, without ever exiting the Pd environment. This rapid incremental style of development is one of the hallmark features of dynamic programming environments like Pd and Lua. Musicians also like to employ it to modify their algorithmic composition programs live on stage, which is where the term "live coding" comes from. You'll probably be using live coding a lot while developing your Pd-Lua externals, but I've kept this topic for the final section of this guide, because it requires a good understanding of Pd-Lua's basic features. So without any further ado, let's dive right into it now.
+I've been telling you all along that in order to make Pd-Lua pick up changes you made to your .pd_lua files, you have to relaunch Pd and reload your patches. Well, this isn't actually true, but I've kept this topic for the final section of this guide, because it is somewhat advanced, and there are several different methods available which differ in capabilities and ease of use.
 
-First, we need to describe the predefined Pd-Lua object classes `pdlua` and `pdluax`, so that you know which live-coding solutions older Pd-Lua versions had on offer. We also discuss how to add a `reload` message to your existing object definitions. This is quite easy to do by directly employing Pd-Lua's `dofile` method, which is also what both `pdlua` and `pdluax` use internally. These methods all work with older Pd-Lua versions, but they require a lot of manual fiddling with the Lua source and are are thus arduous and error-prone. That's why Pd-Lua nowadays includes an extension module called pdx.lua which automatizes the entire process and is much less work than all the other approaches (basically, you just send a `reload` message to the special `pdluax` receiver). This is the method we recommend for all modern Pd-Lua versions. We describe it last so that you can also gather a good understanding of the available "legacy" live coding methods (which can still be used, even now that pdx.lua has been fully integrated). But if you want something that just works with minimal effort, feel free to skip ahead to the [pdx.lua](#pdx.lua) section below.
+So in this section we are going to cover Pd-Lua's *live coding* features, which let you modify your sources and have Pd-Lua reload them on the fly, without ever exiting the Pd environment. This rapid incremental style of development is one of the hallmark features of dynamic interactive programming environments like Pd and Lua. Musicians also like to employ it to modify their programs live on stage, which is where the term "live coding" comes from.
+
+First, we need to describe the predefined Pd-Lua object classes `pdlua` and `pdluax`, so that you know the "traditional" live-coding solutions that Pd-Lua had on offer for a long time. We also discuss how to add a `reload` message to your existing object definitions. This is quite easy to do by directly employing Pd-Lua's `dofile` method, which is also what both `pdlua` and `pdluax` use internally. These methods all work with pretty much any Pd-Lua version out there, but may require some fiddling which can be both time-consuming and error-prone.
+
+That's why Pd-Lua nowadays includes an extension module called *pdx.lua* which also employs the `dofile` approach, but automatizes the entire process, and is therefore much easier to use. This is also the method we recommend for all modern Pd-Lua versions. We describe it last so that you can also gather a good understanding of Pd-Lua's traditional live coding methods, which are still included in Pd-Lua for backward compatibility, and are still being used in some scripts. But if you want something that just works with minimal effort in modern Pd-Lua then feel free to skip ahead to the [pdx.lua](#pdx.lua) section now.
 
 ### pdlua
 
@@ -1280,7 +1284,7 @@ Fortunately, if you're not content with Pd-Lua's traditional facilities for live
 
 ### dofile and dofilex
 
-So let's discuss how to use `dofile` in a direct fashion. Actually, we're going to use its companion `dofilex` here, which works the same as `dofile`, but loads Lua code relative to the "externdir" of the class (the directory of the .pd_lua file) rather than the directory of the Pd canvas with the pdlua object, which is what `dofile` does. Normally, you don't have to worry about these intricacies, but they *will* matter if Lua class names are specified using relative pathnames, such as `../foo` or `bar/baz`. Since we're reloading class definitions here, it's better to use `dofilex` so that our code doesn't break if we later change the directory structure.
+So let's discuss how to use `dofile` in a direct fashion. Actually, we're going to use its companion `dofilex` here, which works the same as `dofile`, but loads Lua code relative to the "externdir" of the class (the directory of the .pd_lua file) rather than the directory of the Pd canvas with the pdlua object, which is what `dofile` does. Normally, this won't make much of a difference, but it *will* matter if Lua class names are specified using relative pathnames, such as `../foo` or `bar/baz`. Since we're reloading class definitions here, it's better to use `dofilex` so that our objects don't break if we move things about.
 
 The method we sketch out below is really simple and doesn't have any of the drawbacks of the `pdluax` object, but you still have to add a small amount of boilerplate code to your existing object definition. Here is how `dofilex` is invoked:
 
@@ -1338,7 +1342,7 @@ Return to the patch, click the `reload` message, and finally reenter the frequen
 
 ### pdx.lua
 
-The method sketched out in the preceding subsection works well enough for simple patches. However, having to manually wire up the `reload` message to one object of each class that you're editing is still quite cumbersome. In a big patch, which is being changed all the time, this quickly becomes unwieldy. Wouldn't it be nice if we could equip each object with a special receiver, so that we can just click a message somewhere in the patch to reload a given class, or even all Pd-Lua objects at once? And maybe even do that remotely from the editor, using the `pdsend` program?
+The method sketched out in the preceding subsection works well enough for simple patches. However, having to manually wire up the `reload` message to one object of each class that you're editing is still quite cumbersome. In a big patch, which is being changed all the time, this quickly becomes unwieldy. Wouldn't it be nice if we could equip each object with a special receiver, so that we can just click a message somewhere in the patch to reload a given class, or even all Pd-Lua objects at once? Or even send that message via the `pdsend` program, e.g., from the text editor in which you edit the Lua source of your object?
 
 Well, all this is in fact possible, but the implementation is a bit too involved to fully present here. So we have provided this in a separate pdx.lua module, which you can find in the sources accompanying this tutorial for your perusal. As of Pd-Lua 0.12.8, pdx.lua is pre-loaded and all the required setup is performed automatically. You only have to add a message like the following to your patch, which goes to the special `pdluax` receiver (note that this is unrelated to the `pdluax` object discussed previously, it just incidentally uses the same name):
 
@@ -1358,15 +1362,13 @@ Or maybe name several classes, like so:
 ; pdluax reload foo, reload bar
 ~~~
 
-You get the idea. Getting set up for remote control via `pdsend` isn't much harder. E.g., let's say that we use UDP port 4711 on localhost for communicating with Pd, then you just need to connect `netreceive 4711 1` to the `pdluax` receiver in a suitable way.
-
-Let's use the luatab.pd_lua object from the previous subsection as an example, with the `in_1_reload` handler removed (we don't need it anymore, as all the machinery for live-coding is now provided for us). Here's how the above looks like in a patch:
+You get the idea. Getting set up for remote control via `pdsend` isn't much harder. E.g., let's say that we use UDP port 4711 on localhost for communicating with Pd, then you just need to connect `netreceive 4711 1` to the `pdluax` receiver in a suitable way. Let's use the luatab.pd_lua object from the previous subsection as an example. You can remove the `in_1_reload` handler from that script -- it's no longer needed, as pdx.lua now dispatches the `reload` messages for us. Here's how the revised patch looks like:
 
 ![Remote control](15-remote-control1.png)
 
-You can then use `pdsend 4711 localhost udp` to transmit the `pdluax reload` message to Pd when needed. You probably don't want to run those commands yourself, but a decent code editor will let you bind a keyboard command which does this for you. Myself, I'm a die-hard Emacs fan, so I've included a little elisp module pd-remote.el which shows how to do this. Once you've added this to your .emacs, you can just type Ctrl+C Ctrl+K in Emacs to make Pd reload your Lua script after saving it. It doesn't get much easier than that.
+This doesn't look any simpler than before, but it also does a whole lot more. Clicking the message not just reloads the `luatab` script, but *any* Lua object you have running, in *any* of the patches you have opened. And you can now use `pdsend 4711 localhost udp` to reload your Lua objects from literally anywhere. You probably don't want to run those commands yourself, but a decent code editor will let you bind a keyboard command which does this for you. Myself, I'm a die-hard Emacs fan, so I've included a little elisp module pd-remote.el which shows how to do this. Once you've added this to your .emacs, you can just type Ctrl+C Ctrl+K in any Lua buffer to make Pd reload your Lua scripts after editing them. It doesn't get much easier than that.
 
-Admittedly, adding the `netreceive` and messaging bits to your patches is still a little tedious and error-prone, so for your convenience I've also added a little abstraction named pd-remote.pd which takes care of all this and also looks a little tidier in your patches. Using the abstraction is easy: Insert `pd-remote` into the patch you're working on, and (optionally) connect a `pdluax reload` message (without the `;` prefix) to the inlet of the abstraction. In fact any of the variations of reload messages discussed above will work, if you remove the `;` prefix. Now you can just click on that message to reload your script files, and the abstraction will also respond to such messages on port 4711 (the port number can be changed in the abstraction if needed).
+Admittedly, adding the `netreceive` and messaging bits to your patches is still a little tedious, so I've provided a little abstraction named pd-remote.pd which takes care of all this and also looks much tidier in your patches. Using the abstraction is easy: Insert `pd-remote` into the patch you're working on, and (optionally) connect a `pdluax reload` message (without the `;` prefix) to the inlet of the abstraction. In fact any of the variations of reload messages discussed above will work, if you remove the `;` prefix. Now you can just click on that message to reload your script files, and the abstraction will also respond to such messages on port 4711 (the port number can be changed in the abstraction if needed).
 
 Here's how that looks like in a patch:
 
@@ -1376,27 +1378,29 @@ Here's how that looks like in a patch:
 
 **NOTE:** To make Pd find the pd-remote.pd abstraction without having to copy it to your project directory, you can add the pdlua external directory (which is where the abstraction gets installed) to your Pd library path, either in your Pd setup, or inside the patch with a `declare -stdpath` object, as shown above.
 
-The pd-remote.el file can be installed in your Emacs site-lisp directory if needed. Please also check the [pd-remote](https://github.com/agraef/pd-remote) repository on GitHub for the latest pd-remote version and further details. This also includes a pointer to a Visual Studio Code extension written by Baris Altun which can be used as a replacement for pd-remote.el if you're not familiar with Emacs, or just prefer to use VS Code as an editor.
+The pd-remote.el file can be installed in your Emacs site-lisp directory if needed. However, the easiest way to install it is from [MELPA](https://melpa.org/), a large repository of Emacs packages. Please also check the [pd-remote](https://github.com/agraef/pd-remote) repository on GitHub for the latest pd-remote version and further details. This also includes a pointer to a Visual Studio Code extension written by Baris Altun which can be used as a replacement for pd-remote.el if you're not familiar with Emacs, or just prefer to use VS Code as an editor.
 
 ---
 
 And here's a little gif showing the above patch in action. You may want to watch this in [Typora](https://www.typora.io/) or your favorite web browser to make the animation work.
 
-![Remote control 2](16-remote-control2.gif)
+![Remote control](16-remote-control2.gif)
 
 So there you have it: four different ways to live-code with Pd-Lua. Choose whatever best fits your purpose and is the most convenient for you.
 
 ### Live coding and dsp
 
-One caveat about using any of the above live-coding approaches in conjunction with Pd-Lua's [signal processing capabilities](#signals) is in order, though. When the Lua code of an object class gets reloaded, the existing code is replaced immediately. There isn't any kind of automatic "cross-fade" between old and new code. If you change the `perform` method of that class, there may well be discontinuities in the generated output signals which result in audible clicks. This won't matter much if you're doing live coding just for quicker turn-around while developing an object. But live on stage you may want to avoid this (unless you accept or even cherish such glitches as part of your live performance).
+One caveat about using any of the above live-coding solutions in conjunction with Pd-Lua's [signal processing capabilities](#signals) is in order. When the Lua code of an object class gets reloaded, the existing code is replaced immediately. There isn't any kind of automatic "cross-fade" between old and new code. If you change the `perform` method of that class, there may well be discontinuities in the generated output signals which result in audible clicks. This won't matter much if you're just developing an object in your studio. But live on stage you may want to avoid this -- unless you accept or even cherish such glitches as part of your live performance.
 
 There are ways to work around this issue, however. To demonstrate this, the tutorial examples include the following live-xfade.pd patch:
 
-![Remote control](17-live-xfade.png)
+![Live cross-fade](17-live-xfade.png)
 
-The foo~ and bar~ objects in this example are essentially the same, with some minor variations in the sound generation parameters which you might want to change during a live session. The particular sounds in this example are not important, each object just outputs a random walk of sine waves with some phase distortion. But they are different enough to require a smooth transition. This is handled by the previously described luaxfade object which switches between both sound sources when triggered by a reload message.
+The `foo~` and `bar~` objects in this example are essentially the same, with some minor variations in the sound generation parameters. The particular sounds in this example are not important, each object just outputs a random walk of sine waves of varying frequencies with some phase distortion. But they *will* produce clicks when switching them abruptly, thus we need a smooth cross-fade between the two sound sources. This is handled by the [`luaxfade~`](#real-world-example-cross-fades) object from the Signals section.
 
-It goes without saying that the approach sketched out above requires extra work, and some diligence when being used live on stage. Obviously, having some kind of automatic cross-fade functionality for dsp objects baked into Pd-Lua's run-time system would make this a lot easier. Maybe this can be provided by pdx.lua in a future release.
+What's special here is that the transitions are being triggered automatically, *by the received reload messages*. By these means, you can edit, say, the `foo~` object while the `bar~` object is playing, then save your edits and send a `reload` message. At this point the new code for `foo~` is loaded while the cross-fade from `bar~` to `foo~` is initiated at the same time.
+
+This method obviously requires some preparation and diligence when being used live on stage. Having some kind of automatic cross-fade functionality for dsp objects baked into Pd-Lua's run-time system would make this a lot easier. Maybe this can be provided by pdx.lua in a future release.
 
 ## Conclusion
 

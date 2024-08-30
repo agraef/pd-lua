@@ -1,4 +1,4 @@
-local luaxfade = pd.Class:new():register("luaxfade")
+local luaxfade = pd.Class:new():register("luaxfade~")
 
 function luaxfade:initialize(sel, atoms)
    self.inlets = {SIGNAL,SIGNAL}
@@ -21,7 +21,7 @@ function luaxfade:in_1_fade(atoms)
    -- been run yet, then we cannot compute the sample delay and ramp times
    -- below, so we bail out, telling the user to enable dsp first.
    if not self.samplerate then
-      self:error("luaxfade: unknown sample rate, please enable dsp first")
+      self:error("luaxfade~: unknown sample rate, please enable dsp first")
       return
    end
    local fade, time, delay = table.unpack(atoms)

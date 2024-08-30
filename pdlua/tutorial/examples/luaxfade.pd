@@ -1,5 +1,5 @@
 #N canvas 562 353 516 321 12;
-#X obj 30 140 luaxfade;
+#X obj 30 140 luaxfade~;
 #X floatatom 110 51 5 0 1 0 - - -, f 5;
 #N canvas 0 50 450 250 (subpatch) 0;
 #X array scope 4800 float 0 black black;
