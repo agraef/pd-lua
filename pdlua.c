@@ -56,6 +56,10 @@
 
 #include "pdlua_gfx.h"
 
+// This used to be in s_stuff.h, but not anymore since 0.55.1test1.
+int sys_trytoopenone(const char *dir, const char *name, const char* ext,
+    char *dirresult, char **nameresult, unsigned int size, int bin);
+
 #ifdef PDINSTANCE
 
 typedef struct _lua_Instance {
