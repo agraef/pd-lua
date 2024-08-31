@@ -149,11 +149,6 @@ void initialise_lua_state()
 # error "Pd version is too new, please file a bug report"
 #endif
 
-#if PD_MINOR_VERSION > 55 || PD_MINOR_VERSION == 55 && PD_BUGFIX_VERSION > 0
-// API breakage in Pd 0.55.1+
-#define sys_trytoopenone(dir, name, ext, dirresult, nameresult, size, bin) sys_trytoopenit(dir, name, ext, dirresult, nameresult, size, bin, 1)
-#endif
-
 #ifdef UNUSED
 #elif defined(__GNUC__)
 # define UNUSED(x) UNUSED_ ## x __attribute__((unused))
