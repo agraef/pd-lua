@@ -1205,9 +1205,9 @@ I've been telling you all along that in order to make Pd-Lua pick up changes you
 
 So in this section we are going to cover Pd-Lua's *live coding* features, which let you modify your sources and have Pd-Lua reload them on the fly, without ever exiting the Pd environment. This rapid incremental style of development is one of the hallmark features of dynamic interactive programming environments like Pd and Lua. Musicians also like to employ it to modify their programs live on stage, which is where the term "live coding" comes from.
 
-First, we need to describe the predefined Pd-Lua object classes `pdlua` and `pdluax`, so that you know the "traditional" live-coding solutions that Pd-Lua had on offer for a long time. We also discuss how to add a `reload` message to your existing object definitions. This is quite easy to do by directly employing Pd-Lua's `dofile` method, which is also what both `pdlua` and `pdluax` use internally. These methods all work with pretty much any Pd-Lua version out there, but may require some fiddling which can be both time-consuming and error-prone.
+First, we need to describe the predefined Pd-Lua object classes `pdlua` and `pdluax`, so that you know the "traditional" live-coding instruments that Pd-Lua had on offer for a long time. We also discuss how to add a `reload` message to your existing object definitions. This is quite easy to do by directly employing Pd-Lua's `dofile` method, which is also what both `pdlua` and `pdluax` use internally. These methods all work with pretty much any Pd-Lua version out there, but may require some fiddling which can be both time-consuming and error-prone.
 
-That's why Pd-Lua nowadays includes an extension module called *pdx.lua* which also employs the `dofile` approach, but automatizes the entire process, and is therefore much easier to use. This is also the method we recommend for all modern Pd-Lua versions. We describe it last so that you can also gather a good understanding of Pd-Lua's traditional live coding methods, which are still included in Pd-Lua for backward compatibility, and are still being used in some scripts. But if you want something that just works with minimal effort in modern Pd-Lua then feel free to skip ahead to the [pdx.lua](#pdx.lua) section now.
+That's why Pd-Lua nowadays includes an extension module called *pdx.lua* which works in a similar fashion, but automatizes the entire process, and is therefore much easier to use. This is also the method we recommend for all modern Pd-Lua versions. We describe it last so that you can also gather a good understanding of Pd-Lua's traditional live coding methods, which are still included in Pd-Lua for backward compatibility, and are still being used in some scripts. But if you want something that just works with minimal effort in modern Pd-Lua then feel free to skip ahead to the [pdx.lua](#pdx.lua) section now.
 
 ### pdlua
 
@@ -1386,7 +1386,23 @@ And here's a little gif showing the above patch in action. You may want to watch
 
 ![Remote control](16-remote-control2.gif)
 
-So there you have it: four different ways to live-code with Pd-Lua. Choose whatever best fits your purpose and is the most convenient for you.
+So there you have it: Not one, not two, but three different ways to live-code with Pd-Lua (or four, if you count in the `pdlua` object). I'd say that pdx.lua is by far the most advanced and user-friendly solution among these, but you can choose whatever best fits your purpose and is the most convenient for you.
+
+### Object reinitialization in pdx.lua
+
+If pdx.lua reloads a script file, it normally does *not* run the `initialize` method. This is by design, as we want the reload process to be as smooth as possible while running a patch, and invoking the `initialize` method could potentially be quite disruptive, as it usually reinitializes all your member variables.
+
+However, pdx.lua has another trick up its sleeve if you do need some kind of reinitialization, such as changing the inlets and outlets of your object. There are two callback methods that you can implement, `prereload` and `postreload` which will be invoked immediately before and after reloading the script file, respectively.  Either method can be used to reinitialize your object during reloading in any desired way. The only difference between the two methods is that `prereload` still runs in the old script, while `postreload` executes the new code which has just been loaded. Typically you'd use `prereload` to perform any required bookkeeping or state-saving before the script gets loaded, and `postreload` for custom initialization afterwards.
+
+In particular, these callbacks can change any member variables, including `inlets` and `outlets`, either directly or by invoking some other methods. The inlet/outlet configuration of your object will then be adjusted accordingly. The easiest way to do this is to just call the `initialize` method of your object from `postreload`. Taking the `luatab` object as an example again, just add the following method to the luatab.pd_lua script:
+
+~~~lua
+function luatab:postreload()
+    self:initialize()
+end
+~~~
+
+Now, if you need to change the number of inlets and outlets of the object, you can just modify the definitions of `inlets` and `outlets` in your `initialize` method and reload. Simple as that.
 
 ### Live coding and dsp
 
