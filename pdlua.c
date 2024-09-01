@@ -1272,37 +1272,71 @@ static int pdlua_object_createinlets(lua_State *L)
     {
         t_pdlua *o = lua_touserdata(L, 1);
         if(o) {
-            if (lua_isnumber(L, 2)) {
-                // If it's a number, it means the number of data inlets
-                o->inlets = luaL_checknumber(L, 2);
-                o->proxy_in = malloc(o->inlets * sizeof(t_pdlua_proxyinlet));
-                o->in = malloc(o->inlets * sizeof(t_inlet*));
-                for (int i = 0; i < o->inlets; ++i)
-                {
+            /* This is complicated, because we also need to update existing
+               inlets if we created them before. To these ends, we need to get
+               rid of any old inlets that aren't needed anymore, and remove
+               cords going into these, as well as cords for the remaining
+               inlets if their type (control or signal) has changed. Failing
+               to do so would cause Pd to crash. */
+            // record the number of old inlets
+            int old_inlets = o->inlets;
+            // determine the new number of inlets
+            int have_number = lua_isnumber(L, 2);
+            int have_table = lua_istable(L, 2);
+            int new_inlets = have_number ? luaL_checknumber(L, 2) :
+                have_table ? lua_rawlen(L, 2) : 0;
+            if (!have_number && !have_table) return luaL_error(L, "inlets must be a number or a table");
+            // need to suspend dsp state here, in case any signal inlets are
+            // created or destroyed
+            int dspstate = canvas_suspend_dsp();
+            // check whether we need to redraw iolets and cords
+            int redraw = o->pd.te_binbuf && gobj_shouldvis(&o->pd.te_g, o->canvas) && glist_isvisible(o->canvas);
+            if (redraw) {
+                gobj_vis(&o->pd.te_g, o->canvas, 0);
+            }
+            // remove the excess inlets; note that we need to keep the other
+            // inlets around for now, because we may have to remove their
+            // cords later
+            for (int i = new_inlets; i < old_inlets; ++i) {
+                canvas_deletelinesforio(o->canvas, (t_text*)o, o->in[i], 0);
+                inlet_free(o->in[i]);
+            }
+            // create the new inlets
+            o->inlets = new_inlets;
+            o->proxy_in = realloc(o->proxy_in, new_inlets * sizeof(t_pdlua_proxyinlet));
+            o->in = realloc(o->in, new_inlets * sizeof(t_inlet*));
+            o->siginlets = 0;
+            for (int i = 0; i < new_inlets; ++i) {
+                if (i >= old_inlets)
+                    // add a new proxy
                     pdlua_proxyinlet_init(&o->proxy_in[i], o, i);
-                    o->in[i] = inlet_new(&o->pd, &o->proxy_in[i].pd, 0, 0);
-                }
-            } else if (lua_istable(L, 2)) {
-                // If it's a table, it means a list of inlet types (data or signal)
-                o->inlets = lua_rawlen(L, 2);
-                o->proxy_in = malloc(o->inlets * sizeof(t_pdlua_proxyinlet));
-                o->in = malloc(o->inlets * sizeof(t_inlet*));
-                for (int i = 0; i < o->inlets; ++i)
-                {
+                int is_signal = 0;
+                if (have_table) {
                     lua_rawgeti(L, 2, i + 1); // Get element at index i+1
-                    if (lua_isnumber(L, -1)) {
-                        int is_signal = lua_tonumber(L, -1);
-                        o->siginlets += is_signal;
-                        
-                        pdlua_proxyinlet_init(&o->proxy_in[i], o, i);
-                        o->in[i] = inlet_new(&o->pd, &o->proxy_in[i].pd, is_signal ? &s_signal : 0, is_signal ? &s_signal : 0);
-                    }
+                    if (lua_isnumber(L, -1))
+                        // this should be a 0-1 flag, convert from a Lua
+                        // number which is some kind of float
+                        is_signal = !!(int)lua_tonumber(L, -1);
                     lua_pop(L, 1); // Pop the value from the stack
                 }
-            } else {
-                // Invalid argument type
-                return luaL_error(L, "inlets must be a number or a table");
+                o->siginlets += is_signal;
+                if (i < old_inlets) {
+                    int old_issignal = obj_issignalinlet(&o->pd, i);
+                    if (is_signal != old_issignal)
+                        // need to remove all cords
+                        canvas_deletelinesforio(o->canvas, (t_text*)o, o->in[i], 0);
+                    // get rid of the old inlet now, it will be recreated below
+                    inlet_free(o->in[i]);
+                }
+                t_symbol *sym = is_signal ? &s_signal : 0;
+                o->in[i] = inlet_new(&o->pd, &o->proxy_in[i].pd, sym, sym);
             }
+            if (redraw) {
+                // force object and its iolets to be redrawn
+                gobj_vis(&o->pd.te_g, o->canvas, 1);
+                canvas_fixlinesfor(o->canvas, (t_text*)o);
+            }
+            canvas_resume_dsp(dspstate);
         }
         
     }
@@ -1324,37 +1358,61 @@ static int pdlua_object_createoutlets(lua_State *L)
         t_pdlua *o = lua_touserdata(L, 1);
         if (o)
         {
-            if (lua_isnumber(L, 2)) {
-                // If it's a number, it means the number of data outlets
-                o->outlets = luaL_checknumber(L, 2);
-                if (o->outlets > 0)
-                {
-                    o->out = malloc(o->outlets * sizeof(t_outlet *));
-                    for (int i = 0; i < o->outlets; ++i) o->out[i] = outlet_new(&o->pd, 0);
-                }
-                else o->out = NULL;
-            } else if (lua_istable(L, 2)) {
-                // If it's a table, it means a list of outlet types (data or signal)
-                o->outlets = lua_rawlen(L, 2);
-                if (o->outlets > 0)
-                {
-                    o->out = malloc(o->outlets * sizeof(t_outlet *));
-                    for (int i = 0; i < o->outlets; ++i)
-                    {
-                        lua_rawgeti(L, 2, i + 1); // Get element at index i+1
-                        if (lua_isnumber(L, -1)) {
-                            int is_signal = lua_tonumber(L, -1);
-                            o->sigoutlets += is_signal;
-                            o->out[i] = outlet_new(&o->pd, is_signal ? &s_signal : 0);
-                        }
-                        lua_pop(L, 1); // Pop the value from the stack
-                    }
-                }
-                else o->out = NULL;
-            } else {
-                // Invalid argument type
-                return luaL_error(L, "outlets must be a number or a table");
+            // record the number of old outlets
+            int old_outlets = o->outlets;
+            // determine the new number of outlets
+            int have_number = lua_isnumber(L, 2);
+            int have_table = lua_istable(L, 2);
+            int new_outlets = have_number ? luaL_checknumber(L, 2) :
+                have_table ? lua_rawlen(L, 2) : 0;
+            if (!have_number && !have_table) return luaL_error(L, "outlets must be a number or a table");
+            // need to suspend dsp state here, in case any signal outlets are
+            // created or destroyed
+            int dspstate = canvas_suspend_dsp();
+            // check whether we need to redraw iolets and cords
+            int redraw = o->pd.te_binbuf && gobj_shouldvis(&o->pd.te_g, o->canvas) && glist_isvisible(o->canvas);
+            if (redraw) {
+                gobj_vis(&o->pd.te_g, o->canvas, 0);
             }
+            // remove the excess outlets; note that we need to keep the other
+            // outlets around for now, because we may have to remove their
+            // cords later
+            for (int i = new_outlets; i < old_outlets; ++i) {
+                canvas_deletelinesforio(o->canvas, (t_text*)o, 0, o->out[i]);
+                outlet_free(o->out[i]);
+            }
+            // create the new outlets
+            o->outlets = new_outlets;
+            o->out = realloc(o->out, new_outlets * sizeof(t_outlet*));
+            o->sigoutlets = 0;
+            for (int i = 0; i < new_outlets; ++i) {
+                int is_signal = 0;
+                if (have_table) {
+                    lua_rawgeti(L, 2, i + 1); // Get element at index i+1
+                    if (lua_isnumber(L, -1))
+                        // this should be a 0-1 flag, convert from a Lua
+                        // number which is some kind of float
+                        is_signal = !!(int)lua_tonumber(L, -1);
+                    lua_pop(L, 1); // Pop the value from the stack
+                }
+                o->sigoutlets += is_signal;
+                if (i < old_outlets) {
+                    int old_issignal = obj_issignaloutlet(&o->pd, i);
+                    if (is_signal != old_issignal)
+                        // need to remove all cords
+                        canvas_deletelinesforio(o->canvas, (t_text*)o, 0, o->out[i]);
+                    // get rid of the old outlet now, it will be recreated below
+                    outlet_free(o->out[i]);
+                }
+                t_symbol *sym = is_signal ? &s_signal : 0;
+                o->out[i] = outlet_new(&o->pd, sym);
+            }
+            if (redraw) {
+                // force object and its iolets to be redrawn
+                gobj_vis(&o->pd.te_g, o->canvas, 1);
+                canvas_fixlinesfor(o->canvas, (t_text*)o);
+            }
+            canvas_resume_dsp(dspstate);
             
         }
     }
@@ -1561,7 +1619,7 @@ static int pdlua_object_free(lua_State *L)
                 o->in = NULL;
             }
             
-            if (o->proxy_in) freebytes(o->proxy_in, sizeof(struct pdlua_proxyinlet) * o->inlets);
+            if (o->proxy_in) free(o->proxy_in);
             
             if(o->out)
             {

@@ -39,6 +39,12 @@ pdx.reload installs a "pdluax" receiver which reloads the object's script file
 when it receives the "reload" message without any arguments, or a "reload
 class" message with a matching class name.
 
+Before reloading the script, we also execute the object's prereload() method if
+it exists, and the postreload() method after reloading, so that the user can
+customize object reinitialization as needed (e.g., to call initialize() after
+reloading, or to perform some other custom reinitialization). This was
+suggested by @ben-wes (thanks Ben!).
+
 We have to go to some lengths here since we only want the script to be
 reloaded *once* for each class, not for every object in the class. This
 complicates things quite a bit. In particular, we need to keep track of object
@@ -71,14 +77,48 @@ local function pdluax(self, sel, atoms)
    if sel == "reload" then
       -- reload message, check that any extra argument matches the class name
       if atoms[1] == nil or atoms[1] == self._name then
-	 pd.post(string.format("pdx: reloading %s", self._name))
-	 self:dofilex(self._scriptname)
-	 -- update the object's finalizer and restore our own, in case
-	 -- anything has changed there
-	 if self.finalize ~= finalize then
-	    reloadables[self._name][self].finalize = self.finalize
-	    self.finalize = finalize
-	 end
+         -- invoke the prereload method if it exists
+         if self.prereload and type(self.prereload) == "function" then
+            self:prereload()
+         end
+         pd.post(string.format("pdx: reloading %s", self._name))
+         self:dofilex(self._scriptname)
+         -- update the object's finalizer and restore our own, in case
+         -- anything has changed there
+         if self.finalize ~= finalize then
+            reloadables[self._name][self].finalize = self.finalize
+            self.finalize = finalize
+         end
+         -- invoke the postreload method if it exists
+         if self.postreload and type(self.postreload) == "function" then
+            local inlets, outlets = self.inlets, self.outlets
+            self:postreload()
+            -- recreate inlets and outlets as needed
+            local function iolets_eq(a, b)
+               if type(a) ~= type(b) then
+                  return false
+               elseif type(a) == "table" then
+                  if #a ~= #b then
+                     return false
+                  else
+                     for i = 1, #a do
+                        if a[i] ~= b[i] then
+                           return false
+                        end
+                     end
+                     return true
+                  end
+               else
+                  return a == b
+               end
+            end
+            if not iolets_eq(self.inlets, inlets) then
+               pd._createinlets(self._object, self.inlets)
+            end
+            if not iolets_eq(self.outlets, outlets) then
+               pd._createoutlets(self._object, self.outlets)
+            end
+         end
       end
    end
 end
