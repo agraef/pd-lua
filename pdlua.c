@@ -172,6 +172,9 @@ void initialise_lua_state()
 # define PDLUA_DEBUG3 PDLUA_DEBUG
 #endif
 
+EXTERN int sys_trytoopenone(const char *dir, const char *name, const char* ext,
+                            char *dirresult, char **nameresult, unsigned int size, int bin);
+
 // In plugdata we're linked statically and thus c_externdir is empty.
 // So we pass a data directory to the setup function instead and store it here.
 // ag: Renamed to pdlua_datadir since we also need this in vanilla when
