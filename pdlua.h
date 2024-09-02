@@ -59,6 +59,7 @@ typedef struct pdlua
     t_outlet                **out; /**< The outlets themselves. */
     int                     siginlets; /**< Number of signal inlets. */
     int                     sigoutlets; /**< Number of signal outlets. */
+    int                     sig_warned; /**< Flag for perform signal errors. */
     t_canvas                *canvas; /**< The canvas that the object was created on. */
     int                     has_gui; /**< True if graphics are enabled. */
     t_pdlua_gfx             gfx; /**< Holds state for graphics. */

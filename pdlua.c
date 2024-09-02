@@ -1021,10 +1021,17 @@ static t_int *pdlua_perform(t_int *w){
     if (!lua_istable(__L(), -1))
     {
         const char *s = "pdlua: 'perform' function should return";
-        if (o->sigoutlets == 1)
-            pd_error(o, "%s %s", s, "a table");
-        else if (o->sigoutlets > 1)
-            pd_error(o, "%s %d %s", s, o->sigoutlets, "tables");
+        if (o->sigoutlets == 1) {
+            if (!o->sig_warned) {
+                pd_error(o, "%s %s", s, "a table");
+                o->sig_warned = 1;
+            }
+        } else if (o->sigoutlets > 1) {
+            if (!o->sig_warned) {
+                pd_error(o, "%s %d %s", s, o->sigoutlets, "tables");
+                o->sig_warned = 1;
+            }
+        }
         lua_pop(__L(), 1 + o->sigoutlets);
         return w + o->siginlets + o->sigoutlets + 3;
     }
@@ -1057,6 +1064,7 @@ static t_int *pdlua_perform(t_int *w){
 static void pdlua_dsp(t_pdlua *x, t_signal **sp){
     int sum = x->siginlets + x->sigoutlets;
     if(sum == 0) return;
+    x->sig_warned = 0;
     
     PDLUA_DEBUG("pdlua_dsp: stack top %d", lua_gettop(__L()));
     lua_getglobal(__L(), "pd");
@@ -1225,6 +1233,7 @@ static int pdlua_object_new(lua_State *L)
                 o->out = NULL;
                 o->siginlets = 0;
                 o->sigoutlets = 0;
+                o->sig_warned = 0;
                 o->canvas = canvas_getcurrent();
                 
                 o->gfx.width = 80;
