@@ -2302,11 +2302,11 @@ static int pdlua_dofilex(lua_State *L)
                     }
                 }
             }
-            else pd_error(NULL, "lua: error loading `%s': sys_trytoopenone() failed", filename);
+            else pd_error(NULL, "lua: couldn't locate `%s'", filename);
         }
-        else pd_error(NULL, "lua: error in class:dofilex() - class is null");
+        else pd_error(NULL, "lua: null class in dofilex()");
     }
-    else pd_error(NULL, "lua: error in class:dofilex() - object is wrong type");
+    else pd_error(NULL, "lua: wrong type of object in dofilex()");
     lua_pushstring(L, buf); /* return the path as well so we can open it later with pdlua_menu_open() */
     PDLUA_DEBUG("pdlua_dofilex end. stack top is %d", lua_gettop(L));
  
@@ -2373,11 +2373,11 @@ static int pdlua_dofile(lua_State *L)
                     }
                 }
             }
-            else pd_error(o, "lua: error loading `%s': canvas_open() failed", filename);
+            else pd_error(o, "lua: couldn't locate `%s'", filename);
         }
-        else pd_error(NULL, "lua: error in object:dofile() - object is null");
+        else pd_error(NULL, "lua: null object in dofile()");
     }
-    else pd_error(NULL, "lua: error in object:dofile() - object is wrong type");
+    else pd_error(NULL, "lua: wrong type of object in dofile()");
     lua_pushstring(L, buf); /* return the path as well so we can open it later with pdlua_menu_open() */
     PDLUA_DEBUG("pdlua_dofile end. stack top is %d", lua_gettop(L));
     
