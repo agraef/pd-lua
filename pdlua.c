@@ -185,6 +185,7 @@ char pdlua_datadir[MAXPDSTRING];
     // Hook to inform plugdata which class names are lua objects
     void(*plugdata_register_class)(const char*);
 #endif
+static char pdlua_cwd[MAXPDSTRING];
 
 /** State for the Lua file reader. */
 typedef struct pdlua_readerdata
@@ -894,6 +895,10 @@ static void pdlua_stack_dump (lua_State *L)
 }
 #endif
 
+#ifdef WIN32
+#define realpath(N,R) _fullpath((R),(N),PATH_MAX)
+#endif
+
 /* nw.js support. If this is non-NULL then we're running inside Jonathan
    Wilkes' Pd-L2Ork variant and access to the GUI uses JavaScript. */
 static void (*nw_gui_vmess)(const char *sel, char *fmt, ...) = NULL;
@@ -911,6 +916,14 @@ static void pdlua_menu_open(t_pdlua *o)
     #if PLUGDATA
         // This is a more reliable method of finding out what file an object came from
         // TODO: we might also want to use something like this for pd-vanilla?
+
+    /* 20240903 ag: Tim, I think that this needs revisiting, because whereami
+       only works for registered Lua objects. For the special pdlua and pdluax
+       objects it apparently returns just an empty path. So the special-case
+       code here only appears to work for regular objects, and even those will
+       open incorrectly (or rather not at all) from plugdata if they are in
+       the pdlua datadir. */
+
         lua_getglobal(__L(), "pd");
         lua_getfield(__L(), -1, "_whereami");
         lua_pushstring(__L(),  o->pd.te_pd->c_name->s_name);
@@ -937,6 +950,12 @@ static void pdlua_menu_open(t_pdlua *o)
     char        pathname[FILENAME_MAX];
     t_class     *class;
 
+    /* 20240903 ag: This is surpringly complicated, because there are various
+       cases to consider. First, whoami gives us the script name, and
+       externdir its path. In rare cases the path may be relative to
+       pdlua_cwd, we account for that here. In most cases this will give us
+       the absolute pathname of the script. The only exception is pdluax,
+       where the name already includes the full path, so we just use that. */
     PDLUA_DEBUG("pdlua_menu_open stack top is %d", lua_gettop(__L()));
     /** Get the scriptname of the object */
     lua_getglobal(__L(), "pd");
@@ -968,7 +987,29 @@ static void pdlua_menu_open(t_pdlua *o)
         else
 #endif
         path = class->c_externdir->s_name;
-        snprintf(pathname, FILENAME_MAX-1, "%s/%s", path, name);
+        if (sys_isabsolutepath(name)) {
+            // pdluax returns an absolute path for its script, just use that.
+            // I'm never sure about whether strncpy 0-terminates in case of
+            // overflow, so we use snprintf instead (which always does).
+            snprintf(pathname, FILENAME_MAX-1, "%s", name);
+        } else if (sys_isabsolutepath(path)) {
+            // If the externdir is an absolute path, just use it, no questions
+            // asked. This should cover most cases.
+            snprintf(pathname, FILENAME_MAX-1, "%s/%s", path, name);
+        } else {
+            // Normally, the externdir of an object should be absolute, but if
+            // it isn't, it should be relative to the cwd we recorded at
+            // startup time.
+            char buf[PATH_MAX+1], real_path[PATH_MAX+1], *s = buf;
+            if (*path)
+                snprintf(s, PATH_MAX, "%s/%s/%s", pdlua_cwd, path, name);
+            else
+                snprintf(s, PATH_MAX, "%s/%s", pdlua_cwd, name);
+            // canonicalize
+            if (realpath(s, real_path)) s = real_path;
+            snprintf(pathname, FILENAME_MAX-1, "%s", s);
+        }
+        //post("path = %s, name = %s, pathname = %s", path, name, pathname);
         lua_pop(__L(), 4); /* pop class, global "pd", name, global "pd"*/
         
 #if PD_MAJOR_VERSION==0 && PD_MINOR_VERSION<43
@@ -2690,8 +2731,17 @@ void pdlua_setup(void)
     // external dir in <datadir>/pdlua.
     snprintf(pdlua_datadir, MAXPDSTRING-1, "%s/pdlua", datadir);
 #else
-    snprintf(pdlua_datadir, MAXPDSTRING-1, "%s", pdlua_proxyinlet_class->c_externdir->s_name);
+    const char *s = pdlua_proxyinlet_class->c_externdir->s_name;
+    if (!sys_isabsolutepath(s)) {
+        // try to turn this into an absolute path
+        char real_path[PATH_MAX+1];
+        if (realpath(s, real_path)) s = real_path;
+    }
+    snprintf(pdlua_datadir, MAXPDSTRING-1, "%s", s);
 #endif
+    if (!getcwd(pdlua_cwd, MAXPDSTRING))
+        // if we can't get the cwd, this is the best that we can do
+        strcpy(pdlua_cwd, ".");
     snprintf(pd_lua_path, MAXPDSTRING-1, "%s/pd.lua", pdlua_datadir); /* the full path to pd.lua */
     PDLUA_DEBUG("pd_lua_path %s", pd_lua_path);
     fd = open(pd_lua_path, O_RDONLY);
