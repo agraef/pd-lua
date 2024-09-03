@@ -2670,7 +2670,7 @@ void pdlua_setup(void)
 #endif
     if (strlen(pdlua_version) == 0) {
       // NOTE: This should be set from the Makefile, otherwise we fall back to:
-      pdlua_version = "0.12.9";
+      pdlua_version = "0.12.10";
     }
     snprintf(pdluaver, MAXPDSTRING-1, "pdlua %s (GPL) 2008 Claude Heiland-Allen, 2014 Martin Peach et al.", pdlua_version);
     snprintf(compiled, MAXPDSTRING-1, "pdlua: compiled for pd-%d.%d on %s",
