@@ -60,6 +60,10 @@
 int sys_trytoopenone(const char *dir, const char *name, const char* ext,
     char *dirresult, char **nameresult, unsigned int size, int bin);
 
+// Check for absolute filenames in the second argument. Otherwise,
+// sys_trytoopenone will happily prepend the given path anyway.
+#define trytoopenone(dir, name, ...) sys_trytoopenone(sys_isabsolutepath(name) ? "" : dir, name, __VA_ARGS__)
+
 #ifdef PDINSTANCE
 
 typedef struct _lua_Instance {
@@ -989,8 +993,6 @@ static void pdlua_menu_open(t_pdlua *o)
         path = class->c_externdir->s_name;
         if (sys_isabsolutepath(name)) {
             // pdluax returns an absolute path for its script, just use that.
-            // I'm never sure about whether strncpy 0-terminates in case of
-            // overflow, so we use snprintf instead (which always does).
             snprintf(pathname, FILENAME_MAX-1, "%s", name);
         } else if (sys_isabsolutepath(path)) {
             // If the externdir is an absolute path, just use it, no questions
@@ -2266,7 +2268,7 @@ static int pdlua_dofilex(lua_State *L)
         if (c)
         {
             filename = luaL_optstring(L, 2, NULL);
-            fd = sys_trytoopenone(c->c_externdir->s_name, filename, "",
+            fd = trytoopenone(c->c_externdir->s_name, filename, "",
               buf, &ptr, MAXPDSTRING, 1);
             if (fd >= 0)
             {
@@ -2593,7 +2595,7 @@ static int pdlua_loader_pathwise
     /* ag: Try loading <path>/<classname>.pd_lua (experimental).
        sys_trytoopenone will correctly find the file in a subdirectory if a
        path is given, and it will then return that subdir in dirbuf. */
-    if ((fd = sys_trytoopenone(path, objectname, ".pd_lua",
+    if ((fd = trytoopenone(path, objectname, ".pd_lua",
         dirbuf, &ptr, MAXPDSTRING, 1)) >= 0)
         if(pdlua_loader_wrappath(fd, objectname, dirbuf))
             return 1;
@@ -2604,7 +2606,7 @@ static int pdlua_loader_pathwise
     strcat(filename, "/");
     strncat(filename, classname, MAXPDSTRING-strlen(filename));
     filename[MAXPDSTRING-1] = 0;
-    if ((fd = sys_trytoopenone(path, filename, ".pd_lua",
+    if ((fd = trytoopenone(path, filename, ".pd_lua",
         dirbuf, &ptr, MAXPDSTRING, 1)) >= 0)
         if(pdlua_loader_wrappath(fd, objectname, dirbuf))
             return 1;
