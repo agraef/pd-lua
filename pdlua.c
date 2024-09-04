@@ -2244,8 +2244,9 @@ static int pdlua_dofilex(lua_State *L)
         if (c)
         {
             filename = luaL_optstring(L, 2, NULL);
-            if (!filename) return 0;
-            fd = trytoopenone(c->c_externdir->s_name, filename, "",
+            if (!filename || !*filename) return 0;
+            const char *path = c->c_externdir->s_name;
+            fd = trytoopenone(path && *path ? path : pdlua_datadir, filename, "",
               buf, &ptr, MAXPDSTRING, 1);
             if (fd >= 0)
             {
@@ -2316,7 +2317,7 @@ static int pdlua_dofile(lua_State *L)
         if (o)
         {
             filename = luaL_optstring(L, 2, NULL);
-            if (!filename) return 0;
+            if (!filename || !*filename) return 0;
             fd = canvas_open(o->canvas, filename, "", buf, &ptr, MAXPDSTRING, 1);
             if (fd >= 0)
             {
