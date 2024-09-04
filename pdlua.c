@@ -771,13 +771,6 @@ static int pdlua_click(t_gobj *z, t_glist *gl, int xpos, int ypos, int shift, in
     return text_widgetbehavior.w_clickfn(z, gl, xpos, ypos, shift, alt, dbl, doit);
 }
 
-// The _reload method will tell the pdlua object to reload the original script that spawned it
-// This is used in plugdata for dynamic reloading, but can be useful in other environments too
-// Prefixed with _ to prevent namespace pollution
-static void pdlua_reload(t_gobj* z)
-{
-    pdlua_dispatch((t_pdlua *)z, 0, gensym("_reload"), 0, NULL);
-}
 
 static void pdlua_displace(t_gobj *z, t_glist *glist, int dx, int dy){
     t_pdlua *x = (t_pdlua *)z;
@@ -917,30 +910,6 @@ void plugdata_forward_message(void* x, t_symbol *s, int argc, t_atom *argv);
 /** Here we find the lua code for the object and open it in an editor */
 static void pdlua_menu_open(t_pdlua *o)
 {
-    #if PLUGDATA
-        // This is a more reliable method of finding out what file an object came from
-        // TODO: we might also want to use something like this for pd-vanilla?
-        lua_getglobal(__L(), "pd");
-        lua_getfield(__L(), -1, "_whereami");
-        lua_pushstring(__L(),  o->pd.te_pd->c_name->s_name);
-
-        if (lua_pcall(__L(), 1, 1, 0))
-        {
-            pd_error(NULL, "lua: error in whereami:\n%s", lua_tostring(__L(), -1));
-            lua_pop(__L(), 2); /* pop the error string and the global "pd" */
-            return;
-        }
-        if(lua_isstring(__L(), -1)) {
-            const char* fullpath = luaL_checkstring(__L(), -1);
-            if(fullpath) {
-                t_atom arg;
-                SETSYMBOL(&arg, gensym(fullpath));
-                plugdata_forward_message(o, gensym("open_textfile"), 1, &arg);
-            }
-            return;
-        }
-#endif
-
     const char  *name;
     const char  *path;
     char        pathname[FILENAME_MAX];
@@ -1232,7 +1201,6 @@ static int pdlua_class_new(lua_State *L)
     if (c) {
         /* a class with a "menu-open" method will have the "Open" item highlighted in the right-click menu */
         class_addmethod(c, (t_method)pdlua_menu_open, gensym("menu-open"), A_NULL);/* (mrpeach 20111025) */
-        class_addmethod(c, (t_method)pdlua_reload, gensym("_reload"), A_NULL);/* (mrpeach 20111025) */
         class_addmethod(c, (t_method)pdlua_dsp, gensym("dsp"), A_CANT, 0); /* timschoen 20240226 */
     }
 /**/
