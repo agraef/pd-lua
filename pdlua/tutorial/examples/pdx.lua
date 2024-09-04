@@ -135,7 +135,7 @@ end
 -- the script, as well as invoking some callbacks before and afterwards which
 -- provide hooks for user customizations.
 local function pdluax(self, sel, atoms)
-   if sel == "reload" and not string.match(self._scriptname, ".pd_luax$") then
+   if sel == "reload" then
       -- reload message, check that any extra argument matches the class name
       if atoms[1] == nil or atoms[1] == self._name then
          -- iterate over *all* objects in this class and invoke their
@@ -205,8 +205,10 @@ function pdx.reload(self)
 	 reloadables[self._name][self] = { finalize = self.finalize }
 	 self.finalize = finalize
       end
-   else
-      -- New class, make this the default receiver.
+   elseif self._name ~= "pdlua" and self._name ~= "pdluax" then
+      -- New class, make this the default receiver. Note that since dofilex()
+      -- is designed for regular (.pd_lua) objects only, we explicitly exclude
+      -- the built-in pdlua and pdluax classes here, to prevent crashes.
       reloadables[self._name] = { current = self }
       reloadables[self._name][self] = { finalize = self.finalize }
       -- install our finalizer
