@@ -1198,7 +1198,10 @@ static int pdlua_class_new(lua_State *L)
     pdlua_widgetbehavior.w_clickfn    = pdlua_click;
     pdlua_widgetbehavior.w_visfn      = pdlua_vis;
     pdlua_widgetbehavior.w_activatefn = pdlua_activate;
-    class_setwidget(c, &pdlua_widgetbehavior);
+    /* 20240904 ag: this must be deferred until the gui is actually created,
+       in order not to interfere with standard text widget behavior like
+       resizing an object in non-gui mode. */
+    //class_setwidget(c, &pdlua_widgetbehavior);
 
     if (c) {
         /* a class with a "menu-open" method will have the "Open" item highlighted in the right-click menu */
@@ -1240,6 +1243,7 @@ static int pdlua_object_new(lua_State *L)
                 o->sigoutlets = 0;
                 o->sig_warned = 0;
                 o->canvas = canvas_getcurrent();
+                o->class = c;
                 
                 o->gfx.width = 80;
                 o->gfx.height = 80;
@@ -1267,8 +1271,22 @@ static int pdlua_object_new(lua_State *L)
 static int pdlua_object_creategui(lua_State *L)
 {
     t_pdlua *o = lua_touserdata(L, 1);
+    // We may need to redraw the object in case it's been reloaded, to get the
+    // iolets and patch cords fixed.
+    int redraw = !o->has_gui && o->pd.te_binbuf && gobj_shouldvis(&o->pd.te_g, o->canvas) && glist_isvisible(o->canvas);
+    if (redraw) {
+        gobj_vis(&o->pd.te_g, o->canvas, 0);
+    }
     o->has_gui = 1;
+    /* 20240904 ag: We now do this here, in order not to interfere with
+       standard text widget behavior in non-gui mode. */
+    class_setwidget(o->class, &pdlua_widgetbehavior);
     gfx_initialize(o);
+    if (redraw) {
+        // force object and its iolets to be redrawn
+        gobj_vis(&o->pd.te_g, o->canvas, 1);
+        canvas_fixlinesfor(o->canvas, (t_text*)o);
+    }
     return 0;
 }
 

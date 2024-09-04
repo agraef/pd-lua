@@ -63,6 +63,7 @@ typedef struct pdlua
     t_canvas                *canvas;    // The canvas that the object was created on.
     int                     has_gui;    // True if graphics are enabled.
     t_pdlua_gfx             gfx;        // Holds state for graphics.
+    t_class                 *class;     // Holds our class pointer.
 } t_pdlua;
 
 lua_State* __L();
