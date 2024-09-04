@@ -1266,9 +1266,10 @@ static int pdlua_object_new(lua_State *L)
 static int pdlua_object_creategui(lua_State *L)
 {
     t_pdlua *o = lua_touserdata(L, 1);
+    int reinit = lua_tonumber(L, 2);
     // We may need to redraw the object in case it's been reloaded, to get the
     // iolets and patch cords fixed.
-    int redraw = !o->has_gui && o->pd.te_binbuf && gobj_shouldvis(&o->pd.te_g, o->canvas) && glist_isvisible(o->canvas);
+    int redraw = reinit && o->pd.te_binbuf && gobj_shouldvis(&o->pd.te_g, o->canvas) && glist_isvisible(o->canvas);
     if (redraw) {
         gobj_vis(&o->pd.te_g, o->canvas, 0);
     }

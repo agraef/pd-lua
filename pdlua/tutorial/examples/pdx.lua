@@ -77,6 +77,8 @@ local function pdluax(self, sel, atoms)
    if sel == "reload" and not string.match(self._scriptname, ".pd_luax$") then
       -- reload message, check that any extra argument matches the class name
       if atoms[1] == nil or atoms[1] == self._name then
+	 local inlets, outlets = self.inlets, self.outlets
+	 local has_gui = type(self.paint) == "function"
          -- invoke the prereload method if it exists
          if self.prereload and type(self.prereload) == "function" then
             self:prereload()
@@ -91,34 +93,41 @@ local function pdluax(self, sel, atoms)
          end
          -- invoke the postreload method if it exists
          if self.postreload and type(self.postreload) == "function" then
-            local inlets, outlets = self.inlets, self.outlets
             self:postreload()
-            -- recreate inlets and outlets as needed
-            local function iolets_eq(a, b)
-               if type(a) ~= type(b) then
-                  return false
-               elseif type(a) == "table" then
-                  if #a ~= #b then
-                     return false
-                  else
-                     for i = 1, #a do
-                        if a[i] ~= b[i] then
-                           return false
-                        end
-                     end
-                     return true
-                  end
-               else
-                  return a == b
-               end
-            end
-            if not iolets_eq(self.inlets, inlets) then
-               pd._createinlets(self._object, self.inlets)
-            end
-            if not iolets_eq(self.outlets, outlets) then
-               pd._createoutlets(self._object, self.outlets)
-            end
          end
+	 -- recreate inlets and outlets as needed
+	 local function iolets_eq(a, b)
+	    if type(a) ~= type(b) then
+	       return false
+	    elseif type(a) == "table" then
+	       if #a ~= #b then
+		  return false
+	       else
+		  for i = 1, #a do
+		     if a[i] ~= b[i] then
+			return false
+		     end
+		  end
+		  return true
+	       end
+	    else
+	       return a == b
+	    end
+	 end
+	 if not iolets_eq(self.inlets, inlets) then
+	    pd._createinlets(self._object, self.inlets)
+	 end
+	 if not iolets_eq(self.outlets, outlets) then
+	    pd._createoutlets(self._object, self.outlets)
+	 end
+	 -- also create the gui if a paint method was added during reload
+	 -- NOTE: At present, you can only switch from non-gui to gui, since
+	 -- the current implementation provides no way to "un-guify" a gui
+	 -- object. So for now you need to re-create the object after a reload
+	 -- to make this happen.
+	 if not has_gui and type(self.paint) == "function" then
+	    pd._creategui(self._object, 1)
+	 end
       end
    end
 end
