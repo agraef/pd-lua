@@ -936,16 +936,11 @@ static void pdlua_menu_open(t_pdlua *o)
     PDLUA_DEBUG3("pdlua_menu_open: L is %p, name is %s stack top is %d", __L(), name, lua_gettop(__L()));
     if (name && *name) // `pdluax` without argument gives empty script name
     {
-        lua_getglobal(__L(), "pd");
-        lua_getfield(__L(), -1, "_get_class");
-        lua_pushlightuserdata(__L(), o);
-        if (lua_pcall(__L(), 1, 1, 0))
-        {
-            pd_error(NULL, "lua: error in get_class:\n%s", lua_tostring(__L(), -1));
-            lua_pop(__L(), 4); /* pop the error string, global "pd", name, global "pd"*/
+        class = o->class;
+        if (!class) {
+            lua_pop(__L(), 2); /* pop name, global "pd"*/
             return;
         }
-        class = (t_class *)lua_touserdata(__L(), -1);
 #if PLUGDATA
         if (!*class->c_externdir->s_name)
             path = pdlua_datadir;
@@ -973,7 +968,7 @@ static void pdlua_menu_open(t_pdlua *o)
             snprintf(pathname, FILENAME_MAX-1, "%s", s);
         }
         //post("path = %s, name = %s, pathname = %s", path, name, pathname);
-        lua_pop(__L(), 4); /* pop class, global "pd", name, global "pd"*/
+        lua_pop(__L(), 2); /* pop name, global "pd"*/
         
 #if PD_MAJOR_VERSION==0 && PD_MINOR_VERSION<43
         post("Opening %s for editing", pathname);
