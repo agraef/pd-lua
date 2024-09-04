@@ -920,14 +920,6 @@ static void pdlua_menu_open(t_pdlua *o)
     #if PLUGDATA
         // This is a more reliable method of finding out what file an object came from
         // TODO: we might also want to use something like this for pd-vanilla?
-
-    /* 20240903 ag: Tim, I think that this needs revisiting, because whereami
-       only works for registered Lua objects. For the special pdlua and pdluax
-       objects it apparently returns just an empty path. So the special-case
-       code here only appears to work for regular objects, and even those will
-       open incorrectly (or rather not at all) from plugdata if they are in
-       the pdlua datadir. */
-
         lua_getglobal(__L(), "pd");
         lua_getfield(__L(), -1, "_whereami");
         lua_pushstring(__L(),  o->pd.te_pd->c_name->s_name);
