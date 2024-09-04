@@ -934,7 +934,7 @@ static void pdlua_menu_open(t_pdlua *o)
     }
     name = luaL_checkstring(__L(), -1);
     PDLUA_DEBUG3("pdlua_menu_open: L is %p, name is %s stack top is %d", __L(), name, lua_gettop(__L()));
-    if (name)
+    if (name && *name) // `pdluax` without argument gives empty script name
     {
         lua_getglobal(__L(), "pd");
         lua_getfield(__L(), -1, "_get_class");
@@ -990,6 +990,8 @@ static void pdlua_menu_open(t_pdlua *o)
         else
           sys_vgui("::pd_menucommands::menu_openfile {%s}\n", pathname);
 #endif
+    } else {
+        lua_pop(__L(), 2); /* pop name, global "pd"*/
     }
     PDLUA_DEBUG("pdlua_menu_open end. stack top is %d", lua_gettop(__L()));
 }
