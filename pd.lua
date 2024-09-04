@@ -289,8 +289,19 @@ function pd.Class:register(name)
   -- Those trailing slashes keep piling up, thus we need to check whether
   -- pd._loadpath already has one. This is only a temporary kludge until a
   -- proper fix is deployed. -ag 2023-02-02
+  --[[
+     Oh well, it appears that the "temporary kludge" is here to stay, so
+     let's at least fix it up to preserve an empty _loadpath, which is what we
+     get with pdluax. Which makes sense, since pdluax's _scriptname will be an
+     absolute path. But then an empty _loadpath should stay empty so that
+     self._loadpath .. self._scriptname returns a proper path.
+
+     This whole code has been touched so many times during sebshader's quest
+     to get relative paths in object names right, that I don't really dare to
+     touch it anymore, but this much we can do. -ag 20240905
+  ]]
   local fullpath = string.sub(pd._loadpath, -1) == "/" and pd._loadpath or
-     (pd._loadpath .. '/')
+     pd._loadpath ~= "" and pd._loadpath .. '/' or ""
   local fullname = fullpath .. name
 
   if nil ~= pd._classes[fullname] then
