@@ -74,7 +74,7 @@ end
 -- present this only recognizes the "reload" message and checks the class
 -- name, if given.
 local function pdluax(self, sel, atoms)
-   if sel == "reload" then
+   if sel == "reload" and not string.match(self._scriptname, ".pd_luax$") then
       -- reload message, check that any extra argument matches the class name
       if atoms[1] == nil or atoms[1] == self._name then
          -- invoke the prereload method if it exists
