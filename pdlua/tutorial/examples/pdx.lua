@@ -70,64 +70,95 @@ local function finalize(self)
    end
 end
 
--- Our receiver. In the future, more functionality may be added here, but at
--- present this only recognizes the "reload" message and checks the class
--- name, if given.
+local function do_prereload(self, data)
+   -- save the current state
+   data.state = {
+      self.inlets,
+      self.outlets,
+      type(self.paint) == "function"
+   }
+   -- invoke the prereload method if it exists
+   if self.prereload and type(self.prereload) == "function" then
+      self:prereload()
+   end
+end
+
+local function do_postreload(self, data)
+   -- update the object's finalizer and restore our own, in case
+   -- anything has changed there
+   if self.finalize ~= finalize then
+      data.finalize = self.finalize
+      self.finalize = finalize
+   end
+   -- invoke the postreload method if it exists
+   if self.postreload and type(self.postreload) == "function" then
+      self:postreload()
+   end
+   -- retrieve the prereload state
+   local inlets, outlets, has_gui = table.unpack(data.state)
+   data.state = nil
+   -- recreate inlets and outlets as needed
+   local function iolets_eq(a, b)
+      -- compare two iolet signatures a and b
+      if type(a) ~= type(b) then
+         return false
+      elseif type(a) == "table" then
+         if #a ~= #b then
+            return false
+         else
+            for i = 1, #a do
+               if a[i] ~= b[i] then
+                  return false
+               end
+            end
+            return true
+         end
+      else
+         return a == b
+      end
+   end
+   if not iolets_eq(self.inlets, inlets) then
+      pd._createinlets(self._object, self.inlets)
+   end
+   if not iolets_eq(self.outlets, outlets) then
+      pd._createoutlets(self._object, self.outlets)
+   end
+   -- also create the gui if a paint method was added during reload
+   if not has_gui and type(self.paint) == "function" then
+      -- NOTE: At present, you can only switch from non-gui to gui, but that
+      -- will be the most common use case anyway. The extra 1 flag in the call
+      -- informs the gui that redrawing the object may be in order.
+      pd._creategui(self._object, 1)
+   end
+end
+
+-- Our receiver. This is the centerpiece of the extension. In the future, more
+-- functionality may be added here. At present this catches the "reload"
+-- message, checking the class name if given, doing the actual reloading of
+-- the script, as well as invoking some callbacks before and afterwards which
+-- provide hooks for user customizations.
 local function pdluax(self, sel, atoms)
    if sel == "reload" and not string.match(self._scriptname, ".pd_luax$") then
       -- reload message, check that any extra argument matches the class name
       if atoms[1] == nil or atoms[1] == self._name then
-	 local inlets, outlets = self.inlets, self.outlets
-	 local has_gui = type(self.paint) == "function"
-         -- invoke the prereload method if it exists
-         if self.prereload and type(self.prereload) == "function" then
-            self:prereload()
+         -- iterate over *all* objects in this class and invoke their
+         -- prereload methods
+         for obj, data in pairs(reloadables[self._name]) do
+            if type(obj) == "table" then
+               do_prereload(obj, data)
+            end
          end
+         -- only one instance (the one with the receiver) does the actual
+         -- loading of the script file (no need to load it more than once)
          pd.post(string.format("pdx: reloading %s", self._name))
          self:dofilex(self._scriptname)
-         -- update the object's finalizer and restore our own, in case
-         -- anything has changed there
-         if self.finalize ~= finalize then
-            reloadables[self._name][self].finalize = self.finalize
-            self.finalize = finalize
+         -- iterate over *all* objects in this class, invoke their postreload
+         -- methods, and update the objects themselves as needed (iolets, gui)
+         for obj, data in pairs(reloadables[self._name]) do
+            if type(obj) == "table" then
+               do_postreload(obj, data)
+            end
          end
-         -- invoke the postreload method if it exists
-         if self.postreload and type(self.postreload) == "function" then
-            self:postreload()
-         end
-	 -- recreate inlets and outlets as needed
-	 local function iolets_eq(a, b)
-	    if type(a) ~= type(b) then
-	       return false
-	    elseif type(a) == "table" then
-	       if #a ~= #b then
-		  return false
-	       else
-		  for i = 1, #a do
-		     if a[i] ~= b[i] then
-			return false
-		     end
-		  end
-		  return true
-	       end
-	    else
-	       return a == b
-	    end
-	 end
-	 if not iolets_eq(self.inlets, inlets) then
-	    pd._createinlets(self._object, self.inlets)
-	 end
-	 if not iolets_eq(self.outlets, outlets) then
-	    pd._createoutlets(self._object, self.outlets)
-	 end
-	 -- also create the gui if a paint method was added during reload
-	 -- NOTE: At present, you can only switch from non-gui to gui, since
-	 -- the current implementation provides no way to "un-guify" a gui
-	 -- object. So for now you need to re-create the object after a reload
-	 -- to make this happen.
-	 if not has_gui and type(self.paint) == "function" then
-	    pd._creategui(self._object, 1)
-	 end
       end
    end
 end
