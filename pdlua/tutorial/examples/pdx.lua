@@ -3,10 +3,6 @@
 pdx.lua: useful extensions to pd.lua
 Copyright (C) 2020 Albert Gräf <aggraef@gmail.com>
 
-Currently there's only the pdx.reload() function, which implements a kind of
-live coding functionality based on dofile and receivers, as explained in the
-pd-lua tutorial. More may be added in the future.
-
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
@@ -25,8 +21,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 local pdx = {}
 
 --[[
-Reload functionality. Call pdx.reload() on your object to enable, and
-pdx.unreload() to disable this functionality again.
+Reload functionality. pdx.reload() enables, and pdx.unreload() disables it.
 
 NOTE: As of pd-lua 0.12.8, this module is now pre-loaded, and pdx.reload()
 gets called automatically before running the initialize method of any object,
@@ -70,6 +65,7 @@ local function finalize(self)
    end
 end
 
+-- pre-reload actions
 local function do_prereload(self, data)
    -- save the current state
    data.state = {
@@ -83,6 +79,7 @@ local function do_prereload(self, data)
    end
 end
 
+-- post-reload actions
 local function do_postreload(self, data)
    -- update the object's finalizer and restore our own, in case
    -- anything has changed there
