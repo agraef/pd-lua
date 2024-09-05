@@ -133,13 +133,6 @@ pd._whoami = function (object)
   end
 end
 
---class method dispatcher
-pd._get_class = function (object)
-  if nil ~= pd._objects[object] then
-    return pd._objects[object]:get_class()
-  end
-end
-
 -- prototypical OO system
 pd.Prototype = { }
 
@@ -319,7 +312,7 @@ function pd.Class:register(name)
   end
   pd._pathnames[regname] = fullname
   pd._classes[fullname] = self       -- record registration
-  self._class = pd._register(name)  -- register new class
+  self._class, self._class_gfx = pd._register(name)  -- register new class
   self._name = name
   self._loadpath = fullpath
   if name == "pdlua" then
@@ -331,7 +324,7 @@ function pd.Class:register(name)
 end
 
 function pd.Class:construct(sel, atoms)
-  self._object = pd._create(self._class)
+  self._object = pd._create(self._class, self._class_gfx)
   self.inlets = 0
   self.outlets = 0
   self._canvaspath = pd._canvaspath(self._object) .. "/"
@@ -462,7 +455,10 @@ function pd.Class:whoami()
 end
 
 function pd.Class:get_class() -- accessor for t_class*
-  return self._class or nil
+   -- ag 20240905: this is now implemented on the C side (you probably
+   -- shouldn't use this any more, we only keep this here for backward
+   -- compatibility)
+  return pd._get_class(self) or nil
 end
 
 local lua = pd.Class:new():register("pdlua")  -- global controls (the [pdlua] object only)

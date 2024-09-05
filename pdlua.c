@@ -1151,7 +1151,7 @@ static int pdlua_set_arguments(lua_State *L)
 }
 
 
-t_widgetbehavior pdlua_widgetbehavior;
+static t_widgetbehavior pdlua_widgetbehavior;
 
 /** Lua class registration. This is equivalent to the "setup" method for an ordinary Pd class */
 static int pdlua_class_new(lua_State *L)
@@ -1162,52 +1162,69 @@ static int pdlua_class_new(lua_State *L)
   * \li \c 1 Pd class pointer.
   * */
 {
-    const char  *name;
-    t_class     *c;
+    const char  *name, name_gfx[MAXPDSTRING];
+    t_class     *c, *c_gfx = NULL;
 
     name = luaL_checkstring(L, 1);
+    if (!name || !*name) {
+        // fail silently, return nothing
+        return 0;
+    }
+    snprintf(name_gfx, MAXPDSTRING-1, "%s:gfx", name);
     PDLUA_DEBUG3("pdlua_class_new: L is %p, name is %s stack top is %d", L, name, lua_gettop(L));
     c = class_new(gensym((char *) name), (t_newmethod) pdlua_new,
         (t_method) pdlua_free, sizeof(t_pdlua), CLASS_NOINLET, A_GIMME, 0);
+    if (strcmp(name, "pdlua") && strcmp(name, "pdluax")) {
+        // Shadow class for graphics objects. This is an exact clone of the
+        // regular (non-gui) class, except that it has a different
+        // widgetbehavior. We only need this for the regular Lua objects, the
+        // pdlua and pdluax built-ins don't have this.
+        c_gfx = class_new(gensym((char *) name_gfx), (t_newmethod) pdlua_new,
+                          (t_method) pdlua_free, sizeof(t_pdlua), CLASS_NOINLET, A_GIMME, 0);
+    }
     
     // Let plugdata know this class is a lua object
 #if PLUGDATA
+    // XXXFIXME: @timothyschoen: Not sure whether plugdata needs to know about
+    // name_gfx, too?
     plugdata_register_class(name);
 #endif
-
-    // Set custom widgetbehaviour for GUIs
-    pdlua_widgetbehavior.w_getrectfn  = pdlua_getrect;
-    pdlua_widgetbehavior.w_displacefn = pdlua_displace;
-#ifndef PURR_DATA
-    pdlua_widgetbehavior.w_selectfn   = text_widgetbehavior.w_selectfn;
-#else
-    // Purr Data only, this seems to be preferred over w_displacefn and is
-    // actually needed to make text_widgetbehavior.w_selectfn happy.
-    pdlua_widgetbehavior.w_displacefnwtag = pdlua_displace_wtag;
-    // We also do our own variant of text_widgetbehavior.w_selectfn, as the
-    // text_widgetbehavior won't give the right object tag with a freshly
-    // created gop for some reason.
-    pdlua_widgetbehavior.w_selectfn   = pdlua_select;
-#endif
-    pdlua_widgetbehavior.w_deletefn   = pdlua_delete;
-    pdlua_widgetbehavior.w_clickfn    = pdlua_click;
-    pdlua_widgetbehavior.w_visfn      = pdlua_vis;
-    pdlua_widgetbehavior.w_activatefn = pdlua_activate;
-    /* 20240904 ag: this must be deferred until the gui is actually created,
-       in order not to interfere with standard text widget behavior like
-       resizing an object in non-gui mode. */
-    //class_setwidget(c, &pdlua_widgetbehavior);
 
     if (c) {
         /* a class with a "menu-open" method will have the "Open" item highlighted in the right-click menu */
         class_addmethod(c, (t_method)pdlua_menu_open, gensym("menu-open"), A_NULL);/* (mrpeach 20111025) */
         class_addmethod(c, (t_method)pdlua_dsp, gensym("dsp"), A_CANT, 0); /* timschoen 20240226 */
     }
-/**/
+
+    if (c_gfx) {
+        class_addmethod(c_gfx, (t_method)pdlua_menu_open, gensym("menu-open"), A_NULL);
+        class_addmethod(c_gfx, (t_method)pdlua_dsp, gensym("dsp"), A_CANT, 0);
+
+        // Set custom widgetbehaviour for GUIs
+        pdlua_widgetbehavior.w_getrectfn  = pdlua_getrect;
+        pdlua_widgetbehavior.w_displacefn = pdlua_displace;
+#ifndef PURR_DATA
+        pdlua_widgetbehavior.w_selectfn   = text_widgetbehavior.w_selectfn;
+#else
+        // Purr Data only, this seems to be preferred over w_displacefn and is
+        // actually needed to make text_widgetbehavior.w_selectfn happy.
+        pdlua_widgetbehavior.w_displacefnwtag = pdlua_displace_wtag;
+        // We also do our own variant of text_widgetbehavior.w_selectfn, as the
+        // text_widgetbehavior won't give the right object tag with a freshly
+        // created gop for some reason.
+        pdlua_widgetbehavior.w_selectfn   = pdlua_select;
+#endif
+        pdlua_widgetbehavior.w_deletefn   = pdlua_delete;
+        pdlua_widgetbehavior.w_clickfn    = pdlua_click;
+        pdlua_widgetbehavior.w_visfn      = pdlua_vis;
+        pdlua_widgetbehavior.w_activatefn = pdlua_activate;
+        class_setwidget(c_gfx, &pdlua_widgetbehavior);
+    }
 
     lua_pushlightuserdata(L, c);
+    lua_pushlightuserdata(L, c_gfx);
     PDLUA_DEBUG("pdlua_class_new: end stack top is %d", lua_gettop(L));
-    return 1;
+    return 2;
 }
 
 /** Lua object creation. */
@@ -1223,6 +1240,7 @@ static int pdlua_object_new(lua_State *L)
     if (lua_islightuserdata(L, 1))
     {
         t_class *c = lua_touserdata(L, 1);
+        t_class *c_gfx = lua_touserdata(L, 2);
         if(c)
         {
             PDLUA_DEBUG("pdlua_object_new: path is %s", c->c_externdir->s_name);
@@ -1239,6 +1257,7 @@ static int pdlua_object_new(lua_State *L)
                 o->sig_warned = 0;
                 o->canvas = canvas_getcurrent();
                 o->class = c;
+                o->class_gfx = c_gfx;
                 
                 o->gfx.width = 80;
                 o->gfx.height = 80;
@@ -1266,7 +1285,9 @@ static int pdlua_object_new(lua_State *L)
 static int pdlua_object_creategui(lua_State *L)
 {
     t_pdlua *o = lua_touserdata(L, 1);
+    t_text *x = (t_text*)o;
     int reinit = lua_tonumber(L, 2);
+    if (!o->class_gfx) return 0; // we're not supposed to be here...
     // We may need to redraw the object in case it's been reloaded, to get the
     // iolets and patch cords fixed.
     int redraw = reinit && o->pd.te_binbuf && gobj_shouldvis(&o->pd.te_g, o->canvas) && glist_isvisible(o->canvas);
@@ -1274,14 +1295,33 @@ static int pdlua_object_creategui(lua_State *L)
         gobj_vis(&o->pd.te_g, o->canvas, 0);
     }
     o->has_gui = 1;
-    /* 20240904 ag: We now do this here, in order not to interfere with
-       standard text widget behavior in non-gui mode. */
-    class_setwidget(o->class, &pdlua_widgetbehavior);
+    // We need to switch classes mid-flight here. This is a bit of a hack, but
+    // we want to retain the standard text widgetbehavior for regular
+    // (non-gui) objects. As soon as we create the gui here, we switch over to
+    // o->class_gfx, which is an exact clone of o->class, except that it has
+    // our custom widgetbehavior for gui objects.
+    x->te_pd = o->class_gfx;
     gfx_initialize(o);
     if (redraw) {
         // force object and its iolets to be redrawn
         gobj_vis(&o->pd.te_g, o->canvas, 1);
-        canvas_fixlinesfor(o->canvas, (t_text*)o);
+        canvas_fixlinesfor(o->canvas, x);
+    }
+    return 0;
+}
+
+// ag 20240905: This used to be implemented on the Lua side, along with a
+// corresponding dispatch method so that the Lua method could be called from
+// C. But we don't use that method here anymore, so instead the Lua method
+// (which we want to keep around for backward compatibility) now calls this C
+// function, where we get the current class (which might be either the regular
+// a.k.a. text-based or the gfx shadow class) directly from the horse's mouth.
+static int pdlua_get_class(lua_State *L)
+{
+    t_text *x = lua_touserdata(L, 1);
+    if (x) {
+        lua_pushlightuserdata(L, x->te_pd);
+        return 1;
     }
     return 0;
 }
@@ -2380,6 +2420,9 @@ static void pdlua_init(lua_State *L)
     lua_settable(L, -3);
     lua_pushstring(L, "_register");
     lua_pushcfunction(L, pdlua_class_new);
+    lua_settable(L, -3);
+    lua_pushstring(L, "_get_class");
+    lua_pushcfunction(L, pdlua_get_class);
     lua_settable(L, -3);
     lua_pushstring(L, "_create");
     lua_pushcfunction(L, pdlua_object_new);
