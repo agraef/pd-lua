@@ -1287,15 +1287,14 @@ static int pdlua_object_creategui(lua_State *L)
 }
 
 /* ag 20240902: We shouldn't use these private data structures, but we have
-   to, since the public API doesn't provide any means to change an existing
-   iolet from control to signal and vice versa. Which we need to do in order
-   to update an existing pdlua object in-place. Just recreating the object
-   would loose all existing connections, which would be much too disruptive
-   for live-coding.
+   to, since Pd's public API doesn't provide any means to change an existing
+   iolet in-place. Which we need to do in order to update an existing pdlua
+   object in-place. Just recreating the object would loose all existing
+   connections, which would be much too disruptive for live-coding. */
 
-   Fortunately, the _inlet and _outlet structs have remained stable for a very
+/* Fortunately, the _inlet and _outlet structs have remained stable for a very
    VERY long time, and are the same across all existing Pd flavors, so we just
-   replicate them here. */
+   replicate their private declarations here. */
 
 union inletunion
 {
@@ -1336,7 +1335,7 @@ static int pdlua_object_createinlets(lua_State *L)
     {
         t_pdlua *o = lua_touserdata(L, 1);
         if(o) {
-            /* Note that we update the iolets of an existing object in-place
+            /* Note that we update the inlets of an existing object in-place
                here, without recreating the object. I learned this neat little
                trick from Pierre Guillot's pd-faustgen, thanks Pierre! */
             // record the number of old inlets
@@ -1386,16 +1385,18 @@ static int pdlua_object_createinlets(lua_State *L)
                     // add a new inlet
                     pdlua_proxyinlet_init(&o->proxy_in[i], o, i);
                     o->in[i] = inlet_new(&o->pd, &o->proxy_in[i].pd, sym, sym);
-                } else if (sig_changed) {
-                    // here's the hacky bit: update an existing inlet if its
-                    // signature has changed (see the lengthy comment above)
+                } else {
+                    // here's the hacky bit: update an existing inlet in-place
                     struct _inlet *x = (struct _inlet *)o->in[i];
                     // code adapted from inlet_new()
-                    if (sym)
-                        x->i_un.iu_floatsignalvalue = 0;
-                    else
-                        x->i_un.iu_symto = sym;
-                    x->i_symfrom = sym;
+                    x->i_dest = &o->proxy_in[i].pd;
+                    if (sig_changed) {
+                        if (sym)
+                            x->i_un.iu_floatsignalvalue = 0;
+                        else
+                            x->i_un.iu_symto = sym;
+                        x->i_symfrom = sym;
+                    }
                 }
             }
             if (redraw) {
