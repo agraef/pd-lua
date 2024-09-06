@@ -590,19 +590,23 @@ Clocks are used internally in Pd to implement objects which "do things" when a t
 
 - `self.clock:delay(time)`: sets the clock so that it will go off (and call the clock method) after `time` milliseconds
 
-- `self.clock:set(systime)`: sets the clock so that it will go off at the specified absolute `systime` (measured in Pd "ticks", whatever that means)
+- `self.clock:set(systime)`: sets the clock so that it will go off at the specified absolute `systime` (measured in Pd time units of `pd.TIMEUNITPERMSEC`, see below)
 
 - `self.clock:unset()`: unsets the clock, canceling any timeout that has been set previously
 
-- `self.clock:destruct()`: destroys the clock; this is to be called in the `finalize` method, so that the clock doesn't go off (trying to invoke an invalid object) after an object was deleted
+- `self.clock:destruct()`: destroys the clock
+
+
+---
+
+**NOTE:** Calling `self.clock:destruct()` on a clock that isn't needed any more (in the `finalize` method at the latest) used to be mandatory, and is still possible, but since 0.12.12 it is no longer necessary, as it also happens automatically when the target object gets deleted. This makes it now possible to have one-shot timers like `pd.Clock:new():register(self, "oneshot"):delay(1000)` which aren't assigned to any variable. (This is not recommended, though, if you want to maintain compatibility with earlier Pd-Lua versions.)
+
+---
+
 
 We mention in passing that you can call `self.clock:delay(time)` as soon as the clock has been created, even in the `initialize` method of an object. Furthermore, you can have as many clocks as you want in the same object, carrying out different actions, as long as you assign each clock to a different method.
 
-Presumably, the `self.clock:destruct()` method should also be invoked automatically when setting `self.clock` to `nil`, but the available documentation isn't terribly clear on this. So we recommend explicitly calling `self.clock:destruct()` in `self:finalize` to be on the safe side, as the documentation advises us to do, because otherwise "weird things will happen."
-
-Also note that `self.clock:set()` isn't terribly useful right now, because it refers to Pd's internal "systime" clock which isn't readily available in Pd-Lua.
-
-With these caveats in mind, here is a little `tictoc` object we came up with for illustration purposes, along with the usual test patch.
+Here is a little `tictoc` object we came up with for illustration purposes.
 
 ~~~lua
 local tictoc = pd.Class:new():register("tictoc")
@@ -620,8 +624,6 @@ function tictoc:initialize(sel, atoms)
    self.clock = pd.Clock:new():register(self, "tictoc")
    return true
 end
-
--- don't forget this, or else...
 
 function tictoc:finalize()
   self.clock:destruct()
@@ -670,7 +672,18 @@ function tictoc:tictoc()
 end
 ~~~
 
+And here is the usual test patch:
+
 ![Clock example](08-clock.png)
+
+
+
+An explanation of `self.clock:set(systime)` is still in order. In contrast to `self.clock:delay(time)`, this schedules a timeout at the given *absolute* time given in `pd.TIMEUNITPERMSEC` units. This may be preferable in some situations, e.g., if you have to schedule some events that use increasing timestamps instead of delta times. Version 0.12.12 of Pd-Lua adds the `pd.TIMEUNITPERMSEC` constant and some support functions for dealing with these time values:
+
+- `pd.systime()`: Returns the current time in `pd.TIMEUNITPERMSEC` units. You can use this to derive a value for `self.clock:set`'s `systime` argument. For instance, `self.clock:set(pd.systime() + time * pd.TIMEUNITPERMSEC)` is equivalent to `self.clock:delay(time)`.
+- `pd.timesince(systime)`: Returns the time since the given `systime` in msec. You might use this to measure the time between two events, like Pd's built-in `timer` object does. In particular, `pd.timesince(0)` gives you the msec equivalent of  `pd.systime()`, i.e., Pd's current time in msec.
+
+Also note that the notion of time alluded to above is Pd's internal or *logical* time which always advances monotonically (until it wraps around) with each dsp tick, i.e., once per 64 samples with Pd's default block size setting.
 
 More comprehensive examples using clocks can be found in the Pd-Lua distribution; have a look, e.g., at ldelay.pd_lua and luametro.pd_lua. Also, lpipe.pd_lua demonstrates how to dynamically create an entire collection of clocks in order to implement a delay line for a stream of messages.
 
@@ -678,7 +691,7 @@ More comprehensive examples using clocks can be found in the Pd-Lua distribution
 
 As every seasoned Pd user knows, Pd also enables you to transmit messages in a wireless fashion, using receiver symbols, or just *receivers* for short, as destination addresses. In Pd, this is done through the built-in `send` and `receive` objects, as well as the "send" and "receive symbol" properties of GUI objects.
 
-Sending messages to a receiver in Pd-Lua is straightforward:
+Sending messages to a receiver is straightforward:
 
 - `pd.send(sym, sel, atoms)`: Sends a message with the given selector symbol `sel` (a string) and arguments `atoms` (a Lua table, which may be empty if the message has no arguments) to the given receiver `sym` (a string).
 
@@ -710,9 +723,7 @@ So let's have a look at receivers now. These work pretty much like clocks in tha
 
 - `pd.Receive:new():register(self, sym, method)`: This creates a new receiver named `sym` (a string) for the Pd-Lua object `self` which, when a message for that receiver becomes available, runs the method specified as a string `method`. Let's say that `method` is `"receive"`, then `self:receive(sel, atoms)` will be invoked with the selector symbol `sel` and arguments `atoms` of the transmitted message. You want to assign the result (a `pd.Receive` object) to a member variable of the object (called `self.recv` below), so that you can refer to it later (if only to destroy it, see below).
 
-- `self.recv:destruct()`: destroys the receiver
-
-Note that the same caveat applies to receivers as in the case of clocks. That is, you should use the `destruct` method to destroy receivers in the `finalize` routine of the receiving object, so that they don't hang around when their object is long dead. Otherwise, you guessed it, "weird things will happen."
+- `self.recv:destruct()`: destroys the receiver (as with clocks, this is now entirely optional, but it may still be useful if the receiver needs to be removed before its target object ceases to be)
 
 Here is a little example which receives any kind of message, stores it, and outputs the last stored message when it gets a `bang` on its inlet.
 

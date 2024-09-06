@@ -1,4 +1,5 @@
-#N canvas 542 350 734 300 12;
+#N canvas 543 350 734 300 12;
+#X declare -lib pdlua;
 #X obj 40 50 dial;
 #X floatatom 40 10 5 0 0 0 - phase -, f 5;
 #X obj 200 70 tgl 15 0 empty empty empty 17 7 0 10 #fcfcfc #000000
@@ -72,6 +73,7 @@ color (face), f 40;
 #X text 230 10 <--- click to open;
 #X obj 200 123 expr phase + 1/60.;
 #X obj 350 123 expr random(-100 \, 100)/300.;
+#X obj 570 10 declare -lib pdlua;
 #X connect 0 0 16 0;
 #X connect 1 0 0 0;
 #X connect 2 0 4 0;
