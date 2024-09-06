@@ -153,6 +153,12 @@ function pd.Clock:register(object, method)
       self._target = object
       self._method = method
       pd._clocks[self._clock] = self
+      -- ag 20240906: record the clock in the target's _clocks table so that it
+      -- can be destroyed automatically with the object
+      if not object._clocks then
+        object._clocks = { }
+      end
+      object._clocks[self._clock] = self
       return self
     end
   end
@@ -160,9 +166,16 @@ function pd.Clock:register(object, method)
 end
 
 function pd.Clock:destruct()
-  pd._clocks[self._clock] = nil
-  pd._clockfree(self._clock)
-  self._clock = nil
+  -- ag 20240906: remove the clock from the target's _clocks table if any
+  if self._target and self._target._clocks then
+    --pd.post(string.format("%s: destroying clock %s", self._target._name, self._method))
+    self._target._clocks[self._clock] = nil
+  end
+  if self._clock then
+    pd._clocks[self._clock] = nil
+    pd._clockfree(self._clock)
+    self._clock = nil
+  end
 end
 
 function pd.Clock:dispatch()
@@ -254,6 +267,12 @@ function pd.Receive:register(object, name, method)
       self._target = object
       self._method = method
       pd._receives[self._receive] = self
+      -- ag 20240906: record the receiver in the target's _receives table so
+      -- that it can be destroyed automatically with the object
+      if not object._receives then
+        object._receives = { }
+      end
+      object._receives[self._receive] = self
       return self
     end
   end
@@ -261,12 +280,19 @@ function pd.Receive:register(object, name, method)
 end
 
 function pd.Receive:destruct()
-  pd._receives[self._receive] = nil
-  pd._receivefree(self._receive)
-  self._receive = nil
-  self._name = nil
-  self._target = nil
-  self._method = nil
+  -- ag 20240906: remove the receiver from the target's _receives table if any
+  if self._target and self._target._receives then
+    --pd.post(string.format("%s: destroying receiver %s", self._target._name, self._method))
+    self._target._receives[self._receive] = nil
+  end
+  if self._receive then
+    pd._receives[self._receive] = nil
+    pd._receivefree(self._receive)
+    self._receive = nil
+    self._name = nil
+    self._target = nil
+    self._method = nil
+  end
 end
 
 function pd.Receive:dispatch(sel, atoms)
@@ -348,6 +374,33 @@ function pd.Class:construct(sel, atoms)
 end
 
 function pd.Class:destruct()
+  -- ag 20240906: get rid of all clocks and receivers registered for us
+  if self._clocks then
+    local clocks = { }
+    -- since the destruct() method destructively updates our _clocks table,
+    -- record all registered clock objects in a new table
+    for _, c in pairs(self._clocks) do
+      table.insert(clocks, c)
+    end
+    -- now destroy them
+    for _, c in ipairs(clocks) do
+      c:destruct()
+    end
+    self._clocks = nil
+  end
+  if self._receives then
+    local receives = { }
+    -- since the destruct() method destructively updates our _receives table,
+    -- record all registered receivers in a new table
+    for _, r in pairs(self._receives) do
+      table.insert(receives, r)
+    end
+    -- now destroy them
+    for _, r in ipairs(receives) do
+      r:destruct()
+    end
+    self._receives = nil
+  end
   pd._objects[self] = nil
   self:finalize()
   pd._destroy(self._object)
