@@ -1695,6 +1695,21 @@ static int pdlua_clock_free(lua_State *L)
     return 0;
 }
 
+// 20240906 ag: Some time utility functions to support the clock functions.
+
+static int pdlua_systime(lua_State *L)
+{
+    lua_pushnumber(L, clock_getsystime());
+    return 1;
+}
+
+static int pdlua_timesince(lua_State *L)
+{
+    double systime = luaL_checknumber(L, 1);
+    lua_pushnumber(L, clock_gettimesince(systime));
+    return 1;
+}
+
 /** Lua object destruction. */
 static int pdlua_object_free(lua_State *L)
 /**< Lua interpreter state.
@@ -2501,6 +2516,21 @@ static void pdlua_init(lua_State *L)
     lua_settable(L, -3);
     lua_pushstring(L, "_error");
     lua_pushcfunction(L, pdlua_error);
+    lua_settable(L, -3);
+    /* 20240906 ag: Added TIMEUNITPERMSEC, systime and timesince, to make
+       clock_set useable. NOTE: TIMEUNITPERMSEC is the time unit for systime,
+       timesince, and clock_set and is from m_sched.c. It isn't in the Pd
+       headers anywhere, but its value has been the same forever, so we just
+       include it here and expose it in the Lua API. */
+#define TIMEUNITPERMSEC (32. * 441.)
+    lua_pushstring(L, "TIMEUNITPERMSEC");
+    lua_pushnumber(L, TIMEUNITPERMSEC);
+    lua_settable(L, -3);
+    lua_pushstring(L, "systime");
+    lua_pushcfunction(L, pdlua_systime);
+    lua_settable(L, -3);
+    lua_pushstring(L, "timesince");
+    lua_pushcfunction(L, pdlua_timesince);
     lua_settable(L, -3);
     lua_pop(L, 1);
     PDLUA_DEBUG("pdlua_init: end. stack top is %d", lua_gettop(L));
