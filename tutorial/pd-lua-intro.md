@@ -326,14 +326,13 @@ Thanks for using foo!
 We all make mistakes. It's inevitable that you'll run into errors in the Lua code you wrote, so let's finally discuss how those mishaps are handled. Pd-Lua simply reports errors from the Lua interpreter in the Pd console. For instance, suppose that we mistyped `pd.post` as `pd_post` in the code for the one-time welcome message above. You'll see an error message like this in the console:
 
 ~~~
-error: pdlua_new: error in constructor for `foo':
-[string "foo"]:7: attempt to call a nil value (global 'pd_post')
+error: lua: foo.pd_lua: 29: attempt to call a nil value (global 'pd_post')
 error: couldn't create "foo"
 ~~~
 
-In this case the error happened in the `initialize` method, so the object couldn't actually be created, and you will have to correct the typo before going on. Fortunately, the message tells us exactly where the error occurred, so we can fix it easily. Syntax errors anywhere in the script file will be caught and handled in a similar fashion.
+To explain the error message: If you read the Lua reference manual well enough, then you'll recall that an undefined global like the mistyped `pd_post` symbol above will yield the value `nil`, which obviously isn't a function and thus can't be called like one. Simple enough. (Other error messages might not be as perspicuous, and may require a web search to figure out.) In this case the error happened in the `postinitialize` method, so the object couldn't actually be created, and you will have to correct the typo before going on. Fortunately, the message tells us exactly where the error occurred, so we can fix it easily. Syntax errors anywhere in the script file will be caught and handled in a similar fashion.
 
-Runtime errors in inlet methods, on the other hand, will allow your objects to be created and to start executing; they just won't behave as expected and cause somewhat cryptic errors to be printed in the console. For instance, let's suppose that you forgot the curly braces around the float value in `self:outlet` (a fairly common error), so that the method reads:
+Runtime errors in inlet methods, on the other hand, will allow your objects to be created and to start executing. They just won't behave as expected and cause a variety of error messages to be printed in the console, which, depending on the error condition, might look a bit cryptic at first glance. For instance, let's suppose that you forgot the curly braces around the float value in `self:outlet` (a fairly common error), so that the method reads:
 
 ~~~lua
 function foo:in_1_bang()
@@ -342,17 +341,16 @@ function foo:in_1_bang()
 end
 ~~~
 
-Lua is a dynamically-typed language, so this little glitch becomes apparent only when you actually send a bang message to the object, which causes the following errors to be logged in the console:
+Lua is a dynamically-typed language, so this little glitch becomes apparent only when you actually send a bang message to the object, which causes the following error to be logged in the console:
 
 ~~~
-error: lua: error: not a table
+error: foo.pd_lua: 41: error: invalid atoms table [outlet 1]
 ... click the link above to track it down, or click the 'Find Last Error' item in the Edit menu.
-error: lua: error: no atoms??
 ~~~
 
-Ok, so the first message tells us that *somewhere* Pd-Lua expected a table but got a non-table value. The second message actually comes from the C routine deep down in the bowls of Pd-Lua which does the actual output to an outlet. If you see that message, it's a telltale sign that you tried to output an atom not properly wrapped in a Lua table, but it gives no indication of where that happened either, other than that you can use "Find Last Error" to locate the object which caused the problem.
+This message actually comes from the C routine deep down in Pd-Lua which parses the arguments to the `outlet` method and checks them for validity before it sends any data through the outlet. In this case it took issue with the `atoms` argument. If you see that message, it's a telltale sign that you tried to output an atom not properly wrapped in a Lua table. The message also tells you about the outlet number which caused the issue, and the line number with the definition of the method in which the error happened (which is the `foo:in_1_bang` method in this case). So it's not the *exact* location of the `self:outlet()` call, but still close enough so that you can easily find that spot with the extra information provided in the error message.
 
-It goes without saying that the Pd-Lua developers could have chosen a better error message there. Well, at least we now have an idea what happened and in which object, but we may then still have to start peppering our code with `pd.post` calls in order to find (and fix) the issue.
+Now to fix the error, simply go to the line number from the error message in the editor to find the method with the error, and edit the `outlet` call to add the curly braces around `self.counter` back in again. In case you already closed the editor, recall that you can just click on the error message (or use the "Find Last Error" operation) to locate the object, then right-click the object and open it.
 
 ## Inlets and outlets
 
@@ -695,7 +693,7 @@ Sending messages to a receiver is straightforward:
 
 - `pd.send(sym, sel, atoms)`: Sends a message with the given selector symbol `sel` (a string) and arguments `atoms` (a Lua table, which may be empty if the message has no arguments) to the given receiver `sym` (a string).
 
-This works pretty much like the `outlet` method, but outputs messages to the given receiver instead. For instance, let's say you have a toggle with receiver symbol `onoff` in your patch, then you can turn on that toggle with a call like `pd.send("onoff", "float", {1})`. (Recall that the `atoms` argument always needs to be a table, even if it is a singleton, lest you'll get that dreaded "no atoms??" error that we discussed earlier).
+This works pretty much like the `outlet` method, but outputs messages to the given receiver instead. For instance, let's say you have a toggle with receiver symbol `onoff` in your patch, then you can turn on that toggle with a call like `pd.send("onoff", "float", {1})`. (Recall that the `atoms` argument always needs to be a table, even if it is a singleton, lest you'll get that "invalid atoms table" error that we discussed earlier).
 
 One complication are receiver symbols using a `$0-` patch id prefix, which are commonly used to differentiate receiver symbols in different toplevel patches or abstractions, in order to prevent name clashes. A Pd-Lua object doesn't have any idea of what toplevel patch it is located in, and what the numeric id of that patch is, so you'll have to expand the `$0-` prefix on the Pd side and pass it, e.g., as a creation argument. For instance, suppose that the toggle receiver is in fact named `$0-onoff`, then something like the following Pd-Lua object will do the trick, if you invoke it as `luasend $0-onoff`:
 
