@@ -1904,7 +1904,9 @@ static t_atom *pdlua_popatomtable
            must actually set it to a nonzero value which indicates an error
            and that the result is *not* an empty atoms table. */
         *count = 1;
-        pd_error(o, "lua: error: not a table");
+        // this error will be flagged in the caller, so no need to add even
+        // more noise here
+        //pd_error(o, "lua: error: not a table");
         ok = 0;
     }
     lua_pop(L, 1);
@@ -1941,7 +1943,7 @@ static int pdlua_outlet(lua_State *L)
             if (lua_isnumber(L, 2)) out = lua_tonumber(L, 2) - 1; /* C has 0.., Lua has 1.. */
             else
             {
-                pd_error(o, "lua: error: outlet must be a number");
+                pd_error(o, "lua: error: outlet index must be a number");
                 lua_pop(L, 4); /* pop all the arguments */
                 return 0;
             }
@@ -1953,11 +1955,11 @@ static int pdlua_outlet(lua_State *L)
                     sym = gensym((char *) s); /* const cast */
                     if (s)
                     {
-                        if (strlen(s) != sl) pd_error(o, "lua: warning: symbol munged (contains \\0 in body)");
+                        if (strlen(s) != sl) pd_error(o, "lua: warning: selector symbol munged (contains \\0 in body) [outlet %d]", out+1);
                         lua_pushvalue(L, 4);
                         atoms = pdlua_popatomtable(L, &count, o);
                         if (count == 0 || atoms) outlet_anything(o->out[out], sym, count, atoms);
-                        else pd_error(o, "lua: error: no atoms??");
+                        else pd_error(o, "lua: error: %s atoms table [outlet %d]", lua_isnoneornil(L, 4)?"missing":"invalid", out+1);
                         if (atoms) 
                         {
                             free(atoms);
@@ -1965,15 +1967,15 @@ static int pdlua_outlet(lua_State *L)
                             return 0;
                         }
                     }
-                    else pd_error(o, "lua: error: null selector");
+                    else pd_error(o, "lua: error: null selector [outlet %d]", out+1);
                 }
-                else pd_error(o, "lua: error: selector must be a string");
+                else pd_error(o, "lua: error: selector must be a string [outlet %d]", out+1);
             }
-            else pd_error(o, "lua: error: outlet out of range");
+            else pd_error(o, "lua: error: outlet index out of range [outlet %d]", out+1);
         }
-        else pd_error(NULL, "lua: error: no object to outlet from");
+        else pd_error(NULL, "lua: error: null object for outlet");
     }
-    else pd_error(NULL, "lua: error: bad arguments to outlet");
+    else pd_error(NULL, "lua: error: missing object for outlet");
     lua_pop(L, 4); /* pop all the arguments */
     PDLUA_DEBUG("pdlua_outlet: end. stack top %d", lua_gettop(L));
     return 0;
@@ -2005,18 +2007,18 @@ static int pdlua_send(lua_State *L)
         receivesym = gensym((char *) receivename); /* const cast */
         if (receivesym) 
         {
-            if (strlen(receivename) != receivenamel) pd_error(NULL, "lua: warning: symbol munged (contains \\0 in body)");
+            if (strlen(receivename) != receivenamel) pd_error(NULL, "lua: warning: receive symbol munged (contains \\0 in body) [send %s]", receivename);
             if (lua_isstring(L, 2)) 
             {
                 selname = lua_tolstring(L, 2, &selnamel);
                 selsym = gensym((char *) selname); /* const cast */
                 if (selsym)
                 {
-                    if (strlen(selname) != selnamel) pd_error(NULL, "lua: warning: symbol munged (contains \\0 in body)");
+                    if (strlen(selname) != selnamel) pd_error(NULL, "lua: warning: selector symbol munged (contains \\0 in body) [send %s]", receivename);
                     lua_pushvalue(L, 3);
                     atoms = pdlua_popatomtable(L, &count, NULL);
                     if ((count == 0 || atoms) && (receivesym->s_thing)) typedmess(receivesym->s_thing, selsym, count, atoms);
-                    else pd_error(NULL, "lua: error: no atoms??");
+                    else pd_error(NULL, "lua: error: %s atoms table [send %s]", lua_isnoneornil(L, 3)?"missing":"invalid", receivename);
                     if (atoms) 
                     {
                         free(atoms);
@@ -2024,13 +2026,13 @@ static int pdlua_send(lua_State *L)
                         return 0;
                     }
                 }
-                else pd_error(NULL, "lua: error: null selector");
+                else pd_error(NULL, "lua: error: null selector [send %s]", receivename);
             }
-            else pd_error(NULL, "lua: error: selector must be a string");
+            else pd_error(NULL, "lua: error: selector must be a string [send %s]", receivename);
         }
-        else pd_error(NULL, "lua: error: null receive name");
+        else pd_error(NULL, "lua: error: null receive name in send");
     }
-    else pd_error(NULL, "lua: error: receive name must be string");
+    else pd_error(NULL, "lua: error: receive name in send must be string");
     PDLUA_DEBUG("pdlua_send: fail end. stack top is %d", lua_gettop(L));
     return 0;
 }
