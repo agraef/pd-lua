@@ -1900,6 +1900,10 @@ static t_atom *pdlua_popatomtable
     }
     else 
     {
+        /* ag 20240907: We must not leave *count uninitialized here, and we
+           must actually set it to a nonzero value which indicates an error
+           and that the result is *not* an empty atoms table. */
+        *count = 1;
         pd_error(o, "lua: error: not a table");
         ok = 0;
     }
