@@ -555,12 +555,31 @@ function luax:initialize(sel, atoms)          -- motivation: pd-list 2007-09-23
   end
 end
 
+-- convenience creation functions for classes, arrays, clocks, receivers
+
+function pd.class(...)
+   return pd.Class:new():register(...)
+end
+
+function pd.table(...)
+   return pd.Table:new():sync(...)
+end
+
+function pd.clock(...)
+   return pd.Clock:new():register(...)
+end
+
+function pd.receive(...)
+   return pd.Receive:new():register(...)
+end
+
+-- constants used in the signal and graphics API
 DATA = 0
 SIGNAL = 1
 Colors = {background = 0, foreground = 1, outline = 2}
 
--- pre-load pdx.lua (live coding support); if you don't want this, just
--- comment out the line below
+-- pre-load pdx.lua (advanced live coding support); if you don't want this,
+-- just comment out the line below
 pdx = require 'pdx'
 
 -- fin pd.lua
