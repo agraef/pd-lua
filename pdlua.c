@@ -679,8 +679,8 @@ static t_pdlua *pdlua_new
     PDLUA_DEBUG("pdlua_new: before lua_pcall(L, 2, 1, 0) stack top %d", lua_gettop(__L()));
     if (lua_pcall(__L(), 2, 1, 0))
     {
-        pd_error(NULL, "pdlua_new: error in constructor for `%s':\n%s", s->s_name, lua_tostring(__L(), -1));
-        lua_pop(__L(), 2); /* pop the error string and the global "pd" */
+        mylua_error(__L(), NULL);
+        lua_pop(__L(), 1); /* pop the global "pd" */
         return NULL;
     }
     else
@@ -2603,14 +2603,16 @@ static int pdlua_loader_fromfd
     class_set_extern_dir(gensym(dirbuf));
     pdlua_setrequirepath(__L(), dirbuf);
     reader.fd = fd;
+    // we want to have the filename with extension as the name of the chunk
+    char filename[MAXPDSTRING];
+    snprintf(filename, MAXPDSTRING-1, "%s.pd_lua", name);
 #if LUA_VERSION_NUM	< 502
-    if (lua_load(__L(), pdlua_reader, &reader, name) || lua_pcall(__L(), 0, 0, 0))
+    if (lua_load(__L(), pdlua_reader, &reader, filename) || lua_pcall(__L(), 0, 0, 0))
 #else // 5.2 style
-    if (lua_load(__L(), pdlua_reader, &reader, name, NULL) || lua_pcall(__L(), 0, 0, 0))
+    if (lua_load(__L(), pdlua_reader, &reader, filename, NULL) || lua_pcall(__L(), 0, 0, 0))
 #endif // LUA_VERSION_NUM	< 502
     {
-      pd_error(NULL, "lua: error loading `%s':\n%s", name, lua_tostring(__L(), -1));
-      lua_pop(__L(), 1);
+      mylua_error(__L(), NULL);
       pdlua_clearrequirepath(__L());
       class_set_extern_dir(&s_);
       PDLUA_DEBUG("pdlua_loader: script error end. stack top %d", lua_gettop(__L()));
@@ -2880,10 +2882,9 @@ void pdlua_setup(void)
         if (0 != result)
         //if (lua_load(__L(), pdlua_reader, &reader, "pd.lua") || lua_pcall(__L(), 0, 0, 0))
         {
-            pd_error(NULL, "lua: error loading `pd.lua':\n%s", lua_tostring(__L(), -1));
+            mylua_error(__L(), NULL);
             pd_error(NULL, "lua: loader will not be registered!");
             pd_error(NULL, "lua: (is `pd.lua' in Pd's path list?)");
-            lua_pop(__L(), 1);
         }
         else
         {
