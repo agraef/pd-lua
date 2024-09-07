@@ -818,7 +818,7 @@ Note that here we replaced the signal data in the `in1` table with the result, s
 
 Easy enough. And this is how this object works in a little test patch:
 
-![17-signal1](17-signal1.png)
+![Mixing signals](17-signal1.png)
 
 #### Example 2: Analyzing a signal
 
@@ -843,7 +843,7 @@ end
 
 A little test patch:
 
-![17-signal2](17-signal2.png)
+![Analyzing a signal](17-signal2.png)
 
 #### Example 3: Generating a signal
 
@@ -891,7 +891,7 @@ end
 
 The obligatory test patch:
 
-![17-signal3](17-signal3.png)
+![Generating a signal](17-signal3.png)
 
 #### Real-world example: Cross-fades
 
@@ -988,7 +988,7 @@ end
 
 And here's the luaxfade.pd patch which takes a sine wave on the left and a noise signal on the right inlet and performs cross fades with a ramp time of 500 msec and an initial delay of 200 msec. To adjust these values, just edit the `fade` message accordingly.
 
-![17-signal4](17-signal4.png)
+![Cross-fades](17-signal4.png)
 
 ### Graphics
 
@@ -1004,7 +1004,7 @@ We use a custom GUI object, a simple kind of dial, as a running example to illus
 
 Let's begin with a basic clock-like dial: just a circular *face* and a border around it, on which we draw a *center point* and the *hand* (a line) starting at the center point and pointing in any direction which indicates the current *phase* angle. So this is what we are aiming for:
 
-![18-graphics1](18-graphics1.png)
+![A basic dial](18-graphics1.png)
 
 Following the clock paradigm, we assume that a zero phase angle means pointing upwards (towards the 12 o'clock position), while +1 or -1 indicates the 6 o'clock position, pointing downwards. Phase angles less than -1 or greater than +1 wrap around. Positive phase differences denote clockwise, negative differences counter-clockwise rotation. And since we'd like to change the phase angle displayed on the dial, we add an inlet taking float values.
 
@@ -1150,7 +1150,7 @@ end
 
 Easy as pie. Here's how our patch looks like now:
 
-![18-graphics2](18-graphics2.png)
+![Adding an outlet](18-graphics2.png)
 
 #### Mouse actions
 
@@ -1195,23 +1195,23 @@ end
 
 And here's the same patch again, which now lets us drag the hand to change the phase value:
 
-![18-graphics3](18-graphics3.png)
+![Dial with mouse interaction](18-graphics3.png)
 
 #### More dial action: clocks and speedometers
 
 Now that our dial object is basically finished, let's do something interesting with it. The most obvious thing is to just turn it into a clock (albeit one with just a seconds hand) counting off the seconds. For that we just need to add a metro object which increments the phase angle and sends the value to the dial each second:
 
-![18-graphics4](18-graphics4.png)
+![A clock](18-graphics4.png)
 
 Pd lets us store the phase angle in a named variable (`v phase`) which can be recalled in an `expr` object doing the necessary calculations. The `expr` object sends the computed value to the `phase` receiver, which updates both the variable and the upper numbox, and the numbox then updates the dial. Note that we also set the variable whenever the dial outputs a new value, so you can also drag around the hand to determine the starting phase. And we added a `0` message to reset the hand to the 12 o'clock home position when needed.
 
 Here's another little example, rather useless but fun, simulating a speedometer which just randomly moves the needle left and right:
 
-![18-graphics5](18-graphics5.png)
+![A speedometer](18-graphics5.png)
 
 I'm sure you can imagine many more creative uses for this simple but surprisingly versatile little GUI object, which we did in just a few lines of fairly simple Lua code. Have fun with it! An extended version of this object, which covers some more features of the graphics API that we didn't discuss here to keep things simple, can be found as dial.pd and dial.pd_lua in the tutorial examples:
 
-![18-graphics6](18-graphics6.png)
+![Extended dial example](18-graphics6.png)
 
 The extended example adds messages for resizing the object and setting colors, and also shows how to save and restore object state in the creation arguments using the `set_args()` method mentioned at the beginning of this section. The accompanying patch covers all the examples we discussed here, and adds a third example showing how to utilize our dial object as a dB meter.
 
@@ -1344,7 +1344,7 @@ end
 
 Now launch the luatab.pd patch and connect a `reload` message to the `luatab wave` object, like so:
 
-![Livecoding example 1](13-livecoding1.png)
+![Live-coding with dofilex 1](13-livecoding1.png)
 
 Next change the wavetable function to whatever you want, e.g.:
 
@@ -1356,7 +1356,7 @@ Next change the wavetable function to whatever you want, e.g.:
 
 Return to the patch, click the `reload` message, and finally reenter the frequency value, so that the waveform gets updated:
 
-![Livecoding example 2](14-livecoding2.png)
+![Live-coding with dofilex 2](14-livecoding2.png)
 
 ### pdx.lua
 
@@ -1382,13 +1382,13 @@ Or maybe name several classes, like so:
 
 You get the idea. Getting set up for remote control via `pdsend` isn't much harder. E.g., let's say that we use UDP port 4711 on localhost for communicating with Pd, then you just need to connect `netreceive 4711 1` to the `pdluax` receiver in a suitable way. Let's use the luatab.pd_lua object from the previous subsection as an example. You can remove the `in_1_reload` handler from that script -- it's no longer needed, as pdx.lua now dispatches the `reload` messages for us. Here's how the revised patch looks like:
 
-![Remote control](15-remote-control1.png)
+![Live-coding with remote control](15-remote-control1.png)
 
 This doesn't look any simpler than before, but it also does a whole lot more. Clicking the message not just reloads the `luatab` script, but *any* Lua object you have running, in *any* of the patches you have opened. And you can now use `pdsend 4711 localhost udp` to reload your Lua objects from literally anywhere. Any decent code editor will let you bind a keyboard command which does this for you. Myself, I'm a die-hard Emacs fan, so I've included a little elisp module *pd-remote.el* which shows how to do this. Once you've added this to your .emacs, you can just type Ctrl+C Ctrl+K in any Lua buffer to make Pd reload your Lua scripts after editing them. It doesn't get much easier than that.
 
 In addition, I've provided a little abstraction named *pd-remote.pd* which takes care of adding the `netreceive` and messaging bits and also looks much tidier in your patches. Using the abstraction is easy: Insert `pd-remote` into the patch you're working on, and (optionally) connect a `pdluax reload` message (without the `;` prefix) to the inlet of the abstraction; or use something like `pdluax reload foo` to reload a specific object class. Now you can just click on that message to reload your script files, and the abstraction will also respond to such messages on port 4711 (the port number can be changed in the abstraction if needed). Here's how that looks like in a patch:
 
-![Remote control](15-remote-control2.png)
+![Live-coding with pd-remote.pd](15-remote-control2.png)
 
 ---
 
@@ -1400,7 +1400,7 @@ The pd-remote.el file can be installed in your Emacs site-lisp directory if need
 
 And here's a little gif showing the above patch in action. You may want to watch this in [Typora](https://www.typora.io/) or your favorite web browser to make the animation work.
 
-![Remote control](16-remote-control2.gif)
+![Live-coding in action](16-remote-control2.gif)
 
 So there you have it: Not one, not two, but three different ways to live-code with Pd-Lua (or four, if you count in the `pdlua` object). pdx.lua certainly is the most advanced and user-friendly solution among these, but you can choose whatever best fits your purpose and is the most convenient for you.
 
