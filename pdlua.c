@@ -526,6 +526,51 @@ static const char *basename(const char *name)
   return basenamep;
 }
 
+// ag 20240907: Improved Lua error reporting. Go to some lengths to get
+// prettier error messages than what the Lua runtime system provides.
+
+// This lets us report source locations in case there's no real Lua error,
+// but we still want a well-formatted custom error message.
+static char *src_info(lua_State *L, char *msg)
+{
+    // fill in some Lua source location information
+    lua_Debug ar;
+    // locate the Lua stack frame with our function; we're looking for a Lua
+    // source which is *not* pd.lua
+    for (int i = 1; i < 10 && lua_getstack(L, i, &ar) && lua_getinfo(L, "S", &ar); ++i) {
+        const char *src = ar.source;
+        // cf. "The Debug Interface" in the Lua reference manual
+        if (*src == '@') src = basename(src+1);
+        if (strcmp(ar.what, "Lua") == 0 && strcmp(src, "pd.lua") != 0) {
+            snprintf(msg, MAXPDSTRING-1, "%s: %d", src, ar.linedefined);
+            return msg;
+        }
+    }
+    // fall back to just a bland 'lua' if we couldn't find any information
+    strcpy(msg, "lua");
+    return msg;
+}
+
+// Drop-in replacement for lua_error() which outputs directly to the Pd
+// console (instead of taking the detour via stderr), and also replaces the
+// ugly [string "filename"] source designations from lua_Debug.short_src
+// (which the default Lua error reporting uses) with something nice.
+static void mylua_error (lua_State *L, t_pdlua *o) {
+    // o may indicate the object which is the source of the error, if available
+    // otherwise it must be NULL
+    char *err = lua_isstring(L, -1) ? lua_tostring(L, -1) : "internal error";
+    // some sscanf magic to extract the real source name
+    char s[MAXPDSTRING]; int i;
+    if (sscanf(err, "[string \"%[^\"]\"]:%n", s, &i) <= 0) strcpy(s, "");
+    // send the message directly to the Pd console
+    if (*s)
+        pd_error(o, "lua: %s: %s", s, err+i);
+    else
+        pd_error(o, "lua: %s", err);
+    // we've handled the error, pop the error string
+    lua_pop(L, 1);
+}
+
 /** Pd object constructor. */
 static t_pdlua *pdlua_new
 (
@@ -597,7 +642,7 @@ static t_pdlua *pdlua_new
             {
                 close(fd);
                 pdlua_clearrequirepath(__L());
-                lua_error(__L());
+                mylua_error(__L(), NULL);
             }
             else
             {
@@ -1916,23 +1961,6 @@ static t_atom *pdlua_popatomtable
     return NULL;
 }
 
-static char *src_info(lua_State *L, char *msg)
-{
-    // Fill in some Lua source location information.
-    lua_Debug ar;
-    // locate the Lua stack frame with our function; we're looking for Lua
-    // source which is not pd.lua
-    for (int i = 1; i < 10 && lua_getstack(L, i, &ar) && lua_getinfo(L, "S", &ar); ++i) {
-        if (strcmp(ar.what, "Lua") == 0 && strcmp(ar.source, "pd.lua") != 0) {
-            snprintf(msg, MAXPDSTRING-1, "%s: %d", ar.source, ar.linedefined);
-            return msg;
-        }
-    }
-    // fall back to just a bland 'lua' if we couldn't find any information
-    strcpy(msg, "lua");
-    return msg;
-}
-
 /** Send a message from a Lua object outlet. */
 static int pdlua_outlet(lua_State *L)
 /**< Lua interpreter state.
@@ -2342,7 +2370,7 @@ static int pdlua_dofilex(lua_State *L)
                 {
                     close(fd);
                     pdlua_clearrequirepath(L);
-                    lua_error(L);
+                    mylua_error(L, NULL);
                 }
                 else
                 {
@@ -2414,7 +2442,7 @@ static int pdlua_dofile(lua_State *L)
                 {
                     close(fd);
                     pdlua_clearrequirepath(L);
-                    lua_error(L);
+                    mylua_error(L, o);
                 }
                 else
                 {
