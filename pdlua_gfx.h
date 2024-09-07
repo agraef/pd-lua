@@ -42,6 +42,7 @@ int xxsys_hostfontsize(int fontsize, int zoom)
 
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
+static void mylua_error (lua_State *L, t_pdlua *o, const char *descr);
 
 // Functions that need to be implemented separately for each Pd flavour
 static int gfx_initialize(t_pdlua *obj);
@@ -94,8 +95,7 @@ void pdlua_gfx_repaint(t_pdlua *o, int firsttime) {
 
     if (lua_pcall(__L(), 1, 0, 0))
     {
-        pd_error(o, "lua: error in repaint:\n%s", lua_tostring(__L(), -1));
-        lua_pop(__L(), 1); /* pop the error string */
+        mylua_error(__L(), o, "repaint");
     }
 
     lua_pop(__L(), 1); /* pop the global "pd" */
@@ -116,8 +116,7 @@ void pdlua_gfx_mouse_event(t_pdlua *o, int x, int y, int type) {
 
     if (lua_pcall(__L(), 4, 0, 0))
     {
-        pd_error(o, "lua: error in mouseevent:\n%s", lua_tostring(__L(), -1));
-        lua_pop(__L(), 1); /* pop the error string */
+        mylua_error(__L(), o, "mouseevent");
     }
 
     lua_pop(__L(), 1); /* pop the global "pd" */
