@@ -1,3 +1,8 @@
+---
+author: Albert Gräf
+title: A Quick Introduction to Pd-Lua
+footer: ${title} - ${pageNo} / ${pageCount}
+---
 
 # A Quick Introduction to Pd-Lua
 
@@ -323,16 +328,18 @@ Thanks for using foo!
 
 ### Lua errors
 
-We all make mistakes. It's inevitable that you'll run into errors in the Lua code you wrote, so let's finally discuss how those mishaps are handled. Pd-Lua simply reports errors from the Lua interpreter in the Pd console. For instance, suppose that we mistyped `pd.post` as `pd_post` in the code for the one-time welcome message above. You'll see an error message like this in the console:
+We all make mistakes. It's inevitable that you'll run into errors in the Lua code you wrote, so let's finally discuss how those mishaps are handled. Pd-Lua simply reports errors from the Lua interpreter in the Pd console. For instance, suppose that we omitted the `pd` qualifier in the one-time welcome message above, turning `pd.post` into just `post` (quite an easy mistake to make). You'll then see an error message like this in the console:
 
 ~~~
-error: lua: foo.pd_lua: 29: attempt to call a nil value (global 'pd_post')
+error: lua: foo.pd_lua: 29: attempt to call a nil value (global 'post')
 error: couldn't create "foo"
 ~~~
 
-To explain the error message: If you read the Lua reference manual well enough, then you'll recall that an undefined global like the mistyped `pd_post` symbol above will yield the value `nil`, which obviously isn't a function and thus can't be called like one. Simple enough. (Other error messages might not be as perspicuous, and may require a web search to figure out.) In this case the error happened in the `postinitialize` method, so the object couldn't actually be created, and you will have to correct the typo before going on. Fortunately, the message tells us exactly where the error occurred, so we can fix it easily. Syntax errors anywhere in the script file will be caught and handled in a similar fashion.
+You'll recall that an undefined global like the mistyped `post` symbol above will always yield the `nil` value in Lua, which obviously isn't a function and thus can't be called like one. (Not all error messages will be quite as perspicuous, so a web search may be in order to figure them out.) In this case the error happened in the `postinitialize` method, so the object couldn't actually be created, and you will have to correct the typo before going on. Fortunately, the message tells us exactly where the error occurred, so we can fix it easily.
 
-Runtime errors in inlet methods, on the other hand, will allow your objects to be created and to start executing. They just won't behave as expected and cause a variety of error messages to be printed in the console, which, depending on the error condition, might look a bit cryptic at first glance. For instance, let's suppose that you forgot the curly braces around the float value in `self:outlet` (a fairly common error), so that the method reads:
+Syntax errors anywhere in the script file will be caught and handled in a similar fashion.
+
+Runtime errors in inlet methods, on the other hand, will allow your objects to be created and to start executing. They just won't behave as expected and cause a variety of error messages to be printed in the console which might look a bit cryptic at first glance. For instance, let's suppose that you forgot the curly braces around the float value in `self:outlet` (another fairly common error), so that the method reads:
 
 ~~~lua
 function foo:in_1_bang()
@@ -341,16 +348,16 @@ function foo:in_1_bang()
 end
 ~~~
 
-Lua is a dynamically-typed language, so this little glitch becomes apparent only when you actually send a bang message to the object, which causes the following error to be logged in the console:
+Lua is a dynamically-typed language, so this little glitch becomes apparent only when you actually send a `bang` message to the object, which causes the following error to be logged in the console:
 
 ~~~
 error: foo.pd_lua: 41: error: invalid atoms table [outlet 1]
 ... click the link above to track it down, or click the 'Find Last Error' item in the Edit menu.
 ~~~
 
-This message actually comes from the C routine deep down in Pd-Lua which parses the arguments to the `outlet` method and checks them for validity before it sends any data through the outlet. In this case it took issue with the `atoms` argument. If you see that message, it's a telltale sign that you tried to output an atom not properly wrapped in a Lua table. The message also tells you about the outlet number which caused the issue, and the line number with the definition of the method in which the error happened (which is the `foo:in_1_bang` method in this case). So it's not the *exact* location of the `self:outlet()` call, but still close enough so that you can easily find that spot with the extra information provided in the error message.
+This message actually comes from the C routine deep down in Pd-Lua which checks the arguments of the `outlet` method for validity before it sends any data through the outlet. In this case it took issue with the `atoms` argument. If you see that message, it's a telltale sign that you tried to output an atom not properly wrapped in a Lua table. The message also tells you about the outlet number which caused the issue, and the line number with the definition of the method in which the error happened (which is the `foo:in_1_bang` method in this case). So it's not the *exact* location of the `self:outlet()` call, but still close enough so that you can easily find that spot with the extra information provided in the error message.
 
-Now to fix the error, simply go to the line number from the error message in the editor to find the method with the error, and edit the `outlet` call to add the curly braces around `self.counter` back in again. In case you already closed the editor, recall that you can just click on the error message (or use the "Find Last Error" operation) to locate the object, then right-click the object and open it.
+To actually fix the error, simply go to the line number from the error message in the editor to find the method with the error, and edit the `outlet` call to add the curly braces around `self.counter` back in. In case you already closed the editor, recall that you can just click on the error message (or use the "Find Last Error" operation) to locate the object, then right-click the object and open it.
 
 ## Inlets and outlets
 
@@ -778,7 +785,7 @@ Enabling signal processing in a Pd-Lua object involves three ingredients:
 
 1. **Adding signal inlets and outlets:** As before, this is done by setting the `inlets` and `outlets` member variables in the `initialize` method. But instead of setting each variable to just a number, you specify a *signature*, which is a table indicating the signal and control in- and outlets with the special `SIGNAL` and `DATA` values. The number of in- and outlets is then given by the size of these tables. Thus, e.g., you'd use `self.inlets = { SIGNAL, SIGNAL, DATA }` if you need two signal and one control data inlet, in that order. Note that a number as the value of `inlets` or `outlets` corresponds to a signature with just `DATA` values in it.
 2. **Adding a dsp method:** This step is optional. The `dsp` method gets invoked whenever signal processing is turned on in Pd, passing two parameters: `samplerate` and `blocksize`. The former tells you about the sample rate (number of audio samples per second) Pd runs at, which will be useful if your object needs to translate time and frequency values from physical units (i.e., seconds, milliseconds, and Hz) to sample-based time and frequency values, so usually you want to store the given value in a member variable of your object. The latter specifies the block size, i.e., the number of samples Pd expects to be processed during each call of the `perform` method (see below). You only need to store that number if your object doesn't have any signal inlets, so that you know how many samples need to be generated. Otherwise the block size can also be inferred from the size of the `in` tables passed to the `perform` method. Adding the `dsp` method is optional. You only have to define it if the signal and control data processing in your object requires the `samplerate` and `blocksize` values, or if you need to be notified when dsp processing gets turned on for some other reason.
-3. **Adding a perform method:** This method is where the actual signal processing happens. It receives blocks of signal data from the inlets through its arguments, where each block is represented as a Lua table containing floating point sample values. The method then needs to return a tuple of similar Lua tables with the blocks of signal data for each outlet. Note that the number of *arguments* of the method matches the number of signal *inlets*, while the number of *return values* corresponds to the number of signal *outlets*. The `perform` method is *not* optional; if your object outputs any signal data, the method needs to be implemented, otherwise you'll get a `'perform' function should return a table` or similar error in the Pd console as soon as you turn on dsp processing.
+3. **Adding a perform method:** This method is where the actual signal processing happens. It receives blocks of signal data from the inlets through its arguments, where each block is represented as a Lua table containing floating point sample values. The method then needs to return a tuple of similar Lua tables with the blocks of signal data for each outlet. Note that the number of *arguments* of the method matches the number of signal *inlets*, while the number of *return values* corresponds to the number of signal *outlets*. The `perform` method is *not* optional; if your object outputs any signal data, the method needs to be implemented, otherwise you'll get a `perform: function should return a table` or similar error in the Pd console as soon as you turn on dsp processing.
 
 In addition to the `dsp` and `perform` methods, your object may contain any number of methods doing the usual control data processing on the `DATA` inlets. It is also possible to receive control data on the `SIGNAL` inlets; however, you won't be able to receive `float` messages, because they will be interpreted as constant signals which get passed as blocks of signal data to the `perform` method instead.
 
