@@ -148,6 +148,22 @@ So let's relaunch Pd, reload the patch again, and add some GUI elements to test 
 
 Note that this is still a very basic example. While the example is complete and fully functional, we have barely scratched the surface here. Pd-Lua also allows you to process an object's creation arguments (employing the `atoms` parameter of the `initialize` method, which we didn't use above), log messages and errors in the Pd console, create handlers for different types of input messages and signals, output data and signals to different outlets, work with Pd arrays, clocks, and receivers, and even do some graphics and live coding. We will dive into each of these topics in the rest of this tutorial.
 
+## Objects and Shortcuts
+
+You may have wondered about the whole `pd.Class:new():register("foo")` thing, why is that so complicated? The answer is that Lua uses *prototypes* (class-less objects) to define object-oriented data structures and their methods. Consequently, Pd-Lua defines a few of these to represent various kinds of Pd objects on the Lua side. There's `pd.Class` which represents Pd object classes, `pd.Table` which is used to access Pd arrays and tables, and `pd.Clock`, `pd.Receive` for Pd's clock and receiver objects. Most of the time, you'll be dealing with `pd.Class` objects and their methods, but the other kinds of objects often come in handy, too.
+
+Each kind of object needs a way to create an instance of the object, that's what the `new()` method is for, and a second method (usually called `register`, but Pd arrays use `sync` instead) which associates the Lua object with its counterpart in Pd. The `register()` method also creates the corresponding data structure in Pd in most cases.
+
+So that's why we first invoke `new()` and then `register()` on the prototype (`pd.Class`, etc.) to create a representation of the Pd data structure in Lua land; it's always this two-step process. However, it goes without saying that no-one wants to be that verbose when coding, so Pd-Lua 0.12.14 and later also provide some *shortcuts*. In the case of `pd.Class:new():register()`, the shortcut is simply `pd.class()`. (Note that `class` is written in all lower-case, while the prototype `pd.Class` has `Class` capitalized -- this may be hard to see in the font we've chosen for this document.)
+
+Thus, we might have abbreviated the definition of the `foo` object class in our first example as:
+
+~~~lua
+local foo = pd.class("foo")
+~~~
+
+Much shorter, and easy to remember. Shortcuts for the other kinds of objects will be introduced along with the long forms in the corresponding sections below. Feel free to use them. But note that in the tutorial and the accompanying examples we generally keep to the long forms, so that our examples will work unchanged with older Pd-Lua versions.
+
 ## Where your Lua files go
 
 As already mentioned, the externals (.pd_lua files) themselves can go either into the directory of the patch using the external, or into any other directory on Pd's search path (on Linux, this generally includes, ~/.pd-externals, or  ~/.pd-l2ork-externals when running pd-l2ork or purr-data).
@@ -518,7 +534,7 @@ Pd-Lua provides a `Table` class to represent array and table data, and a few fun
 
 Here are the array/table functions provided by Pd-Lua. Note that like in Pd arrays, indices are zero-based and thus range from `0` to `tab:length()-1`.
 
-- `pd.Table:new():sync(name)`: creates the Lua representation of a Pd array and associates it with the Pd array named `name`. The result is `nil` if an array or table of that name doesn't exist. You usually assign that value to a local variable (named `tab` below) to refer to it later.
+- `pd.Table:new():sync(name)`, short form: `pd.table(name)`: creates the Lua representation of a Pd array and associates it with the Pd array named `name`. The result is `nil` if an array or table of that name doesn't exist. You usually assign that value to a local variable (named `tab` below) to refer to it later.
 
 - `tab:length()`: returns the length of `tab` (i.e., the number of samples in it)
 
@@ -591,7 +607,7 @@ In the same vein, the Pd-Lua distribution includes a much more comprehensive exa
 
 Clocks are used internally in Pd to implement objects which "do things" when a timeout occurs, such as delays, pipes, and metronomes. Pd-Lua exposes this functionality so that objects written in Lua can do the same. The following functions are provided:
 
-- `pd.Clock:new():register(self, method)`: This creates a new clock for the Pd-Lua object `self` which, when it goes off, runs the method specified as a string `method`. Let's say that `method` is `"trigger"`, then `self:trigger()` will be called without arguments when the clock times out. You usually want to assign the result (a `pd.Clock` object) to a member variable of the object (called `self.clock` below), so that you can refer to it later.
+- `pd.Clock:new():register(self, method)`, short form `pd.clock(self, method)`: This creates a new clock for the Pd-Lua object `self` which, when it goes off, runs the method specified as a string `method`. Let's say that `method` is `"trigger"`, then `self:trigger()` will be called without arguments when the clock times out. You usually want to assign the result (a `pd.Clock` object) to a member variable of the object (called `self.clock` below), so that you can refer to it later.
 
 - `self.clock:delay(time)`: sets the clock so that it will go off (and call the clock method) after `time` milliseconds
 
@@ -726,7 +742,7 @@ It is worth noting here that the same technique applies whenever you need to pas
 
 So let's have a look at receivers now. These work pretty much like clocks in that you create them registering a method, and destroy them when they are no longer needed:
 
-- `pd.Receive:new():register(self, sym, method)`: This creates a new receiver named `sym` (a string) for the Pd-Lua object `self` which, when a message for that receiver becomes available, runs the method specified as a string `method`. Let's say that `method` is `"receive"`, then `self:receive(sel, atoms)` will be invoked with the selector symbol `sel` and arguments `atoms` of the transmitted message. You want to assign the result (a `pd.Receive` object) to a member variable of the object (called `self.recv` below), so that you can refer to it later (if only to destroy it, see below).
+- `pd.Receive:new():register(self, sym, method)`, short form `pd.receive(self, sym, method)`: This creates a new receiver named `sym` (a string) for the Pd-Lua object `self` which, when a message for that receiver becomes available, runs the method specified as a string `method`. Let's say that `method` is `"receive"`, then `self:receive(sel, atoms)` will be invoked with the selector symbol `sel` and arguments `atoms` of the transmitted message. You want to assign the result (a `pd.Receive` object) to a member variable of the object (called `self.recv` below), so that you can refer to it later (if only to destroy it, see below).
 
 - `self.recv:destruct()`: destroys the receiver (as with clocks, this is now entirely optional, but it may still be useful if the receiver needs to be removed before its target object ceases to be)
 
