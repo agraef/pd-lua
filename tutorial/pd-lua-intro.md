@@ -150,13 +150,13 @@ Note that this is still a very basic example. While the example is complete and 
 
 ## Objects and Shortcuts
 
-You may have wondered about the whole `pd.Class:new():register("foo")` thing, why is that so complicated? The answer is that Lua uses *prototypes* (class-less objects) to define object-oriented data structures and their methods. Consequently, Pd-Lua defines a few of these to represent various kinds of Pd objects on the Lua side. There's `pd.Class` which represents Pd object classes, `pd.Table` which is used to access Pd arrays and tables, and `pd.Clock`, `pd.Receive` for Pd's clock and receiver objects. Most of the time, you'll be dealing with `pd.Class` objects and their methods, but the other kinds of objects often come in handy, too.
+You may have wondered about the whole `pd.Class:new():register("foo")` thing, why is that so complicated? The answer is that Lua uses *prototypes* (class-less objects) to define object-oriented data structures and their methods. Consequently, Pd-Lua defines a few of these to represent various kinds of Pd objects on the Lua side. There's `pd.Class` which represents Pd object classes, `pd.Table` which is used to access Pd arrays and tables, and `pd.Clock`, `pd.Receive` for Pd's clock and receiver objects.
 
 Each kind of object needs a way to create an instance of the object, that's what the `new()` method is for, and a second method (usually called `register`, but Pd arrays use `sync` instead) which associates the Lua object with its counterpart in Pd. The `register()` method also creates the corresponding data structure in Pd in most cases.
 
-So that's why we first invoke `new()` and then `register()` on the prototype (`pd.Class`, etc.) to create a representation of the Pd data structure in Lua land; it's always this two-step process. However, it goes without saying that no-one wants to be that verbose when coding, so Pd-Lua 0.12.14 and later also provide some *shortcuts*. In the case of `pd.Class:new():register()`, the shortcut is simply `pd.class()`. (Note that `class` is written in all lower-case, while the prototype `pd.Class` has `Class` capitalized -- this may be hard to see in the font we've chosen for this document.)
+So that's why we first invoke `new()` and then `register()` on the prototype (`pd.Class`, etc.); it's always this two-step process. However, since version 0.12.14, Pd-Lua also provides some convenient *shortcuts*. In the case of `pd.Class:new():register()`, the shortcut is simply `pd.class()`. (Note that `class` is written in all lower-case, while the prototype `pd.Class` has `Class` capitalized -- this may be hard to see in the font we've chosen for this document.)
 
-Thus, we might have abbreviated the definition of the `foo` object class in our first example as:
+Thus, we can abbreviate the definition of the `foo` object class in our first example as:
 
 ~~~lua
 local foo = pd.class("foo")
@@ -530,11 +530,11 @@ And here you can see the object running in a little test patch which outputs the
 
 Pd's arrays provide an efficient means to store possibly large vectors of float values. These are often used for sample data (waveforms) of a given size (the number of samples), but can also be employed to store copious amounts of numerical control data. Arrays are usually associated with a graphical display (called a *graph*), and Pd's table object lets you create an array along with a graph as a special kind of subpatch.
 
-Pd-Lua provides a `Table` class to represent array and table data, and a few functions to query and manipulate that data. This comes in handy, e.g., if you want to fill an array with a computed waveform. While Pd has its own corresponding facilities, complicated waveforms are often much easier to create in Lua, which offers a fairly complete set of basic mathematical functions in its standard library, and a whole lot more through 3rd party libraries such as [Numeric Lua](https://github.com/carvalho/numlua).
+Pd-Lua provides `pd.Table` to represent array and table data, and a few functions to query and manipulate that data. This comes in handy, e.g., if you want to fill an array with a computed waveform. While Pd has its own corresponding facilities, complicated waveforms are often much easier to create in Lua, which offers a fairly complete set of basic mathematical functions in its standard library, and a whole lot more through 3rd party libraries such as [Numeric Lua](https://github.com/carvalho/numlua).
 
 Here are the array/table functions provided by Pd-Lua. Note that like in Pd arrays, indices are zero-based and thus range from `0` to `tab:length()-1`.
 
-- `pd.Table:new():sync(name)`, short form: `pd.table(name)`: creates the Lua representation of a Pd array and associates it with the Pd array named `name`. The result is `nil` if an array or table of that name doesn't exist. You usually assign that value to a local variable (named `tab` below) to refer to it later.
+- `pd.Table:new():sync(name)`, short form: `pd.table(name)`: creates the Lua representation of a Pd array and associates it with the Pd array named `name`. This requires that an array or table of that name already exists (`sync` will *not* create it), otherwise the result is `nil`. You usually assign that value to a local variable (named `tab` below) to refer to it later.
 
 - `tab:length()`: returns the length of `tab` (i.e., the number of samples in it)
 
