@@ -11,7 +11,7 @@ Computer Music Dept., Institute of Art History and Musicology
 Johannes Gutenberg University (JGU) Mainz, Germany  
 September 2024
 
-This document is licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). Other formats: [Markdown](https://github.com/agraef/pd-lua/blob/master/tutorial/pd-lua-intro.md) source, [PDF](https://github.com/agraef/pd-lua/blob/master/pdlua/tutorial/pd-lua-intro.pdf)  
+This document is licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). Other formats: [Markdown](https://github.com/agraef/pd-lua/blob/master/tutorial/pd-lua-intro.md) source, [PDF](https://agraef.github.io/pd-lua/tutorial/pd-lua-intro.pdf)  
 Permanent link: <https://agraef.github.io/pd-lua/tutorial/pd-lua-intro.html>
 
 ## Why Pd-Lua?
