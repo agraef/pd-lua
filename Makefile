@@ -56,4 +56,5 @@ pdx_files = $(addprefix ./pdlua/tutorial/examples/, pdx.lua pd-remote.el pd-remo
 installplus:
 	$(INSTALL_DIR) -v "$(installpath)"
 	cp -r ./pdlua/ "${installpath}"/pdlua
+	cp pdlua-meta.pd "${installpath}"
 	cp $(pdx_files) "${installpath}"
