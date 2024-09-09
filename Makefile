@@ -39,7 +39,7 @@ luaflags += -DLUA_USE_WINDOWS
 endef
 endif
 
-cflags = ${luaflags} -DPDLUA_VERSION="$(pdlua_version)"
+cflags = ${luaflags} -DPDLUA_VERSION="$(pdlua_version)" -fsanitize=address -g
 
 pdlua.class.sources := pdlua.c $(luasrc)
 pdlua.class.ldlibs := $(lualibs)

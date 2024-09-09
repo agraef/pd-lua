@@ -35,6 +35,9 @@ typedef struct _pdlua_gfx
     char object_tag[128]; // Tcl/tk tag that is attached to all drawings
     char order_tag[64]; // Tag for invisible line, used to preserve correct object ordering
     char current_item_tag[64]; // Tcl/tk tag that is only attached to the current drawing in progress
+    char** layer_tags;
+    int num_layers;
+    char* current_layer_tag;
     gfx_transform* transforms;
     int num_transforms;
     char current_color[8]; // Keep track of current color
