@@ -2276,7 +2276,10 @@ static void pdlua_packagepath(lua_State *L, const char *path)
     lua_gettable(L, -2);
     const char *packagepath = lua_tostring(L, -1);
     char *buf = malloc(2*strlen(path)+20+strlen(packagepath));
-    if (!buf) return;
+    if (!buf) {
+        lua_pop(L, 2);
+        return;
+    }
 #ifdef _WIN32
     sprintf(buf, "%s\\?.lua;%s\\?\\init.lua;%s", path, path, packagepath);
 #else
