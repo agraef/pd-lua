@@ -31,10 +31,10 @@ pd._setrequirepath = function(path)
   pd._packagepath = package.path
   pd._packagecpath = package.cpath
   if (pd._iswindows) then
-    package.path = path .. "\\?;" .. path .. "\\?.lua;" .. package.path
+    package.path = path .. "\\?.lua;" .. path .. "\\?\\init.lua;" .. package.path
     package.cpath = path .. "\\?.dll;" .. package.cpath
   else
-    package.path = path .. "/?;" .. path .. "/?.lua;" .. package.path
+    package.path = path .. "/?.lua;" .. path .. "/?/init.lua;" .. package.path
     package.cpath = path .. "/?.so;" .. package.cpath
   end
 end
