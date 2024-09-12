@@ -2278,16 +2278,16 @@ static void pdlua_packagepath(lua_State *L, const char *path)
     char *buf = malloc(2*strlen(path)+20+strlen(packagepath));
     if (!buf) return;
 #ifdef _WIN32
-    sprintf(buf, "%s\\?;%s\\?.lua;%s", path, path, packagepath);
+    sprintf(buf, "%s\\?.lua;%s\\?\\init.lua;%s", path, path, packagepath);
 #else
-    sprintf(buf, "%s/?;%s/?.lua;%s", path, path, packagepath);
+    sprintf(buf, "%s/?.lua;%s/?/init.lua;%s", path, path, packagepath);
 #endif
     lua_pop(L, 1);
     lua_pushstring(L, "path");
     lua_pushstring(L, buf);
     lua_settable(L, -3);
-    free(buf);
     lua_pop(L, 1);
+    free(buf);
     PDLUA_DEBUG("pdlua_packagepath: end. stack top %d", lua_gettop(L));
 }
 
