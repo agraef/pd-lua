@@ -2289,6 +2289,23 @@ static void pdlua_packagepath(lua_State *L, const char *path)
     lua_pushstring(L, "path");
     lua_pushstring(L, buf);
     lua_settable(L, -3);
+    lua_pushstring(L, "cpath");
+    lua_gettable(L, -2);
+    packagepath = lua_tostring(L, -1);
+    buf = realloc(buf, 2*strlen(path)+20+strlen(packagepath));
+    if (!buf) {
+        lua_pop(L, 2);
+        return;
+    }
+#ifdef _WIN32
+    sprintf(buf, "%s\\?.dll;%s", path, packagepath);
+#else
+    sprintf(buf, "%s/?.so;%s", path, packagepath);
+#endif
+    lua_pop(L, 1);
+    lua_pushstring(L, "cpath");
+    lua_pushstring(L, buf);
+    lua_settable(L, -3);
     lua_pop(L, 1);
     free(buf);
     PDLUA_DEBUG("pdlua_packagepath: end. stack top %d", lua_gettop(L));
