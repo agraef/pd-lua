@@ -1184,11 +1184,12 @@ static int pdlua_set_arguments(lua_State *L)
                     binbuf_add(b, 1, &atom);
                 }
                 else if (lua_isstring(L, -1)) {
-                    // If it's a string, convert it to a symbol and add to binbuf
+                    // If it's a string, parse it using binbuf_text and add the resulting atoms to the binbuf
                     const char* str = lua_tostring(L, -1);
-                    t_atom atom;
-                    SETSYMBOL(&atom, gensym(str));
-                    binbuf_add(b, 1, &atom);
+                    t_binbuf *temp = binbuf_new();
+                    binbuf_text(temp, str, strlen(str));
+                    binbuf_add(b, binbuf_getnatom(temp), binbuf_getvec(temp));
+                    binbuf_free(temp);
                 }
 
                 // Pop the value from the stack
