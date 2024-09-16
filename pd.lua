@@ -453,6 +453,10 @@ function pd.Class:set_args(args)
     pd._set_args(self._object, args)
 end
 
+function pd.Class:canvas_realizedollar(s)
+    return pd._canvas_realizedollar(self._object, s)
+end
+
 function pd.Class:repaint()
   if type(self.paint) == "function" then
     local g = _gfx_internal.start_paint(self._object);
