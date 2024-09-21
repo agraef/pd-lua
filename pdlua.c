@@ -1184,11 +1184,12 @@ static int pdlua_set_arguments(lua_State *L)
                     binbuf_add(b, 1, &atom);
                 }
                 else if (lua_isstring(L, -1)) {
-                    // If it's a string, convert it to a symbol and add to binbuf
+                    // If it's a string, parse it using binbuf_text and add the resulting atoms to the binbuf
                     const char* str = lua_tostring(L, -1);
-                    t_atom atom;
-                    SETSYMBOL(&atom, gensym(str));
-                    binbuf_add(b, 1, &atom);
+                    t_binbuf *temp = binbuf_new();
+                    binbuf_text(temp, str, strlen(str));
+                    binbuf_add(b, binbuf_getnatom(temp), binbuf_getvec(temp));
+                    binbuf_free(temp);
                 }
 
                 // Pop the value from the stack
@@ -2490,6 +2491,23 @@ static int pdlua_dofile(lua_State *L)
     return lua_gettop(L) - n;
 }
 
+static int pdlua_canvas_realizedollar(lua_State *L)
+{
+    if (lua_islightuserdata(L, 1) && lua_isstring(L, 2))
+    {
+        t_pdlua *o = lua_touserdata(L, 1);
+        if (o && o->canvas)
+        {
+            const char *sym_name = lua_tostring(L, 2);
+            t_symbol *s = gensym(sym_name);
+            t_symbol *result = canvas_realizedollar(o->canvas, s);
+            lua_pushstring(L, result->s_name);
+            return 1;
+        }
+    }
+    return 0;
+}
+
 /** Initialize the pd API for Lua. */
 static void pdlua_init(lua_State *L)
 /**< Lua interpreter state. */
@@ -2584,6 +2602,9 @@ static void pdlua_init(lua_State *L)
     lua_settable(L, -3);
     lua_pushstring(L, "_set_args");
     lua_pushcfunction(L, pdlua_set_arguments);
+    lua_settable(L, -3);
+    lua_pushstring(L, "_canvas_realizedollar");
+    lua_pushcfunction(L, pdlua_canvas_realizedollar);
     lua_settable(L, -3);
     lua_pushstring(L, "_error");
     lua_pushcfunction(L, pdlua_error);
