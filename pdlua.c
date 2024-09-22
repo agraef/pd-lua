@@ -1232,6 +1232,7 @@ static int pdlua_class_new(lua_State *L)
         // pdlua and pdluax built-ins don't have this.
         c_gfx = class_new(gensym((char *) name_gfx), (t_newmethod) pdlua_new,
                           (t_method) pdlua_free, sizeof(t_pdlua), CLASS_NOINLET, A_GIMME, 0);
+        class_sethelpsymbol(c_gfx, gensym((char *) name));
     }
     
     // Let plugdata know this class is a lua object
