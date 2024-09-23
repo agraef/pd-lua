@@ -1200,6 +1200,8 @@ static int pdlua_set_arguments(lua_State *L)
                     binbuf_text(temp, str, strlen(str));
                     binbuf_add(b, binbuf_getnatom(temp), binbuf_getvec(temp));
                     binbuf_free(temp);
+                } else {
+                    pd_error(o, "%s: set_args: atom #%d is neither float nor string", src_info(L, msg), i);
                 }
 
                 // Pop the value from the stack
