@@ -718,7 +718,7 @@ Sending messages to a receiver is straightforward:
 
 This works pretty much like the `outlet` method, but outputs messages to the given receiver instead. For instance, let's say you have a toggle with receiver symbol `onoff` in your patch, then you can turn on that toggle with a call like `pd.send("onoff", "float", {1})`. (Recall that the `atoms` argument always needs to be a table, even if it is a singleton, lest you'll get that "invalid atoms table" error that we discussed earlier).
 
-One complication are receiver symbols using a `$0-` patch id prefix, which are commonly used to differentiate receiver symbols in different toplevel patches or abstractions, in order to prevent name clashes. For instance, suppose that the toggle receiver is in fact named `$0-onoff`, then something like the following Pd-Lua object will do the trick, if you invoke it as `luasend $0-onoff` (you'll also find an explanation further below on how to manage this expansion for symbols from incoming messages):
+One complication are receiver symbols using a `$0-` patch id prefix, which are commonly used to differentiate receiver symbols in different toplevel patches or abstractions, in order to prevent name clashes. For instance, suppose that the toggle receiver is in fact named `$0-onoff`, then something like the following Pd-Lua object will do the trick, if you invoke it as `luasend $0-onoff`:
 
 ~~~lua
 local luasend = pd.Class:new():register("luasend")
@@ -738,7 +738,11 @@ Of course, this also handles ordinary receive symbols just fine if you pass them
 
 ![Send example](09-send.png)
 
-It is worth noting here that the same technique applies whenever you need to pass on "$" arguments to a Pd-Lua object in a Pd abstraction.
+---
+
+**NOTE:** The same technique applies whenever you need to pass on "$" arguments to a Pd-Lua object in a Pd abstraction. This also works in older Pd-Lua versions. However, since Pd-Lua 0.12.17 there's also the possibility to expand such "$" symbols directly in Lua, see [Expanding dollar symbols](#expanding-dollar-symbols) below.
+
+---
 
 So let's have a look at receivers now. These work pretty much like clocks in that you create them registering a method, and destroy them when they are no longer needed:
 
@@ -784,6 +788,51 @@ end
 The obligatory test patch:
 
 ![Receive example](10-receive.png)
+
+### Expanding dollar symbols
+
+Some more in-depth information about dollar symbols and their use in Lua is in order. Specifically, we will discuss two new Pd-Lua object methods, `canvas_realizedollar()` (available since Pd-Lua 0.12.17) and  `set_args()` (available since Pd-Lua 0.12.0) which help you manage your receiver and sender symbols. In this use case, you will typically use quoted symbols like `\$0-foo`, so that your object receives the symbol unexpanded, which requires some facilities to expand such symbols in Lua, and maybe also record the unexpanded symbols in the object's creation arguments. These helper methods are technically considered part of Pd-Lua's graphics API (see [Graphics](#graphics) below) since they are often used for graphics objects. But they both work just as well with ordinary (non-graphical) Lua objects, and they come in handy here, so that we introduce them now:
+
+- `self:canvas_realizedollar(symbol)`: Expand "$" symbols in the `symbol` string argument and return the resulting string.
+- `self:set_args(atoms)`: Set the given list of numbers and strings `atoms` as the object's creation arguments. (Note that the new argument list doesn't become visible on the canvas until you edit, copy, or duplicate the modified object.)
+
+To explain how these two work in concert, let's go back to the basics first. As mentioned above, the patch id `$0` is widely used in Pd for send and receive names to avoid conflicts with other receivers and senders of similar names. Pd expands `$0` to the canvas id, which differs for every open patch, and it expands `$1`, `$2` etc. if the corresponding creation arguments are set in the context of an abstraction or clone instance. (Also note that in Purr Data there is another `$@` symbol which expands to the list of all creation arguments.)
+
+If you set the sender or receiver names for your Pd-Lua object as *creation arguments* of the object, Pd automatically expands them for you as discussed above. But if you want to set them through *messages* to the object, you will often use a quoted symbol like `\$0-foo`, so that your object receives the symbol unexpanded. You've probably seen this before, as it is also common practice, e.g., with Pd's GUI objects like sliders, radio buttons, etc. (check the escaping-characters subpatch of the message help patch for some examples).
+
+Quoting dollar symbols in this way offers the advantage that you can record the "$" symbol itself (rather than its expansion) in the object's properties (in the case of Pd GUI objects) or in its creation arguments (as can be done with Pd-Lua's `set_args()` method). But of course this means that if you want to use the actual receiver symbol in your Lua object then you need to expand the symbol in Lua (which is what the `canvas_realizedollar()` method is for).
+
+Here's a simple example illustrating this:
+
+~~~lua
+local localsend = pd.Class:new():register("localsend")
+
+function localsend:initialize(sel, atoms)
+   self.inlets = 1
+   -- pass the symbol from the creation argument,
+   -- which gets automatically expanded here
+   self.sender = tostring(atoms[1])
+   return true
+end
+
+function localsend:in_1_sender(x)
+   local sendername = tostring(x[1])
+
+   -- store the original name as argument (like "\$0-foo")
+   self:set_args({sendername})
+
+   -- apply the expanded name with the local id
+   self.sender = self:canvas_realizedollar(sendername)
+end
+
+function localsend:in_1_bang()
+   pd.send(self.sender, "float", {1})
+end
+~~~
+
+And here's a test patch from the tutorial examples which shows this object in action:
+
+![Dollar symbol example](19-dollar-symbols.png)
 
 ## Signals and graphics
 
@@ -1012,7 +1061,7 @@ Timothy Schoen's Pd-Lua graphics API provides you with a way to equip an object 
 
 In order to enable graphics in a Pd-Lua object, you have to provide a `paint` method. This receives a graphics context `g` as its argument, which lets you set the current color, and draw text and the various different geometric shapes using that color. In addition, you can provide methods to be called in response to mouse down, up, move, and drag actions on the object, which is useful to equip your custom GUI objects with mouse-based interaction.
 
-Last but not least, the `set_args` method lets you store internal object state in the object's creation arguments, which is useful if you need to keep track of persistent state when storing an object on disk (via saving the patch) or when duplicating or copying objects. This can also be used with ordinary Pd-Lua objects which don't utilize the graphics API, but it is most useful in the context of custom GUI objects.
+Last but not least, the `set_args` method lets you store internal object state in the object's creation arguments, which is useful if you need to keep track of persistent state when storing an object on disk (via saving the patch) or when duplicating or copying objects. Also, its companion `canvas_realizedollar` method allows you to expand symbols containing "$" patch arguments like `$0`, `$1`, etc. These two are often employed together, but they can also be used separately, and they work just as well with ordinary Pd-Lua objects which don't utilize the graphics API. In fact we've already introduced them while discussing receivers, see [Expanding dollar symbols](#expanding-dollar-symbols) above, so we won't go into them again; however, check the circle-gui example included in the distribution to see how to store Lua object configuration data persistently in the creation arguments of a custom GUI object.
 
 We use a custom GUI object, a simple kind of dial, as a running example to illustrate most of these elements in the following subsections. To keep things simple, we will not discuss the graphics API in much detail here, so you may want to check the graphics subpatch in the main pdlua-help patch, which contains a detailed listing of all available methods for reference.
 
@@ -1230,40 +1279,6 @@ I'm sure you can imagine many more creative uses for this simple but surprisingl
 ![Extended dial example](18-graphics6.png)
 
 The extended example adds messages for resizing the object and setting colors, and also shows how to save and restore object state in the creation arguments using the `set_args()` method mentioned at the beginning of this section. The accompanying patch covers all the examples we discussed here, and adds a third example showing how to utilize our dial object as a dB meter.
-
-### Expanding dollar symbols
-
-As mentioned above, the patch id `$0` is widely used in Pd for send and receive names to avoid conflicts with other receivers and senders of similar names. Pd expands `$0` to its local id, which differs for every open patch (similarly, it expands `$1`, `$2` etc. if the corresponding creation arguments are set in the context of an abstraction or clone instance).
-
-If you set these sender or receiver names for your Pd-Lua object as creation arguments, they will automatically get expanded as demonstrated before. If you want to set them through messages in Lua however (which is common for Pd's GUI objects like sliders, radio buttons, etc.), it becomes slightly more complicated since you will need to expand them yourself.
-
-Luckily, Pd's `canvas_realizedollar()` method does exactly this and is also available on the Lua side. Combined with the `set_args()` method, you can create objects that allow managing sender and receiver names, applying the expanded version immediately and also storing the original names in the arguments. Here's a simple example illustrating this:
-
-~~~lua
-local localsend = pd.Class:new():register("localsend")
-
-function localsend:initialize(sel, atoms)
-   self.inlets = 1
-   -- pass the symbol from the creation argument,
-   -- which gets automatically expanded here
-   self.sender = tostring(atoms[1])
-   return true
-end
-
-function localsend:in_1_sender(x)
-   local sendername = tostring(x[1])
-
-   -- store the original name as argument (like "\$0-foo")
-   self:set_args(sendername)
-
-   -- apply the expanded name with the local id
-   self.sender = self:canvas_realizedollar(sendername)
-end
-
-function localsend:in_1_bang()
-   pd.send(self.sender, "float", {1})
-end
-~~~
 
 ## Live coding
 
