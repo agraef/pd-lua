@@ -791,10 +791,10 @@ The obligatory test patch:
 
 ### Expanding dollar symbols
 
-Some more in-depth information about dollar symbols and their use in Lua is in order. Specifically, we will discuss two new Pd-Lua object methods, `canvas_realizedollar()` (available since Pd-Lua 0.12.17) and  `set_args()` (available since Pd-Lua 0.12.0) which help you manage your receiver and sender symbols. In this use case, you will typically use quoted symbols like `\$0-foo`, so that your object receives the symbol unexpanded, which requires some facilities to expand such symbols in Lua, and maybe also record the unexpanded symbols in the object's creation arguments. These helper methods are technically considered part of Pd-Lua's graphics API (see [Graphics](#graphics) below) since they are often used for graphics objects. But they both work just as well with ordinary (non-graphical) Lua objects, and they come in handy here, so that we introduce them now:
+Some more in-depth information about dollar symbols and their use in Lua is in order. Specifically, we will discuss two new Pd-Lua object methods, `canvas_realizedollar()` (available since Pd-Lua 0.12.17) and  `set_args()` (available since Pd-Lua 0.12.0) which help you manage your receiver and sender symbols. In this use case, you will typically use quoted symbols like `\$0-foo`, so that your object receives the symbol unexpanded, which requires some facilities to expand such symbols in Lua, and maybe also record the unexpanded symbols in the object's creation arguments. These helper methods are technically considered part of Pd-Lua's graphics API (see [Graphics](#graphics) below) since they are often used for graphical objects. But they both work just as well with ordinary (non-graphical) Lua objects, and they come in handy here, thus we introduce them now:
 
 - `self:canvas_realizedollar(symbol)`: Expand "$" symbols in the `symbol` string argument and return the resulting string.
-- `self:set_args(atoms)`: Set the given list of numbers and strings `atoms` as the object's creation arguments. (Note that the new argument list doesn't become visible on the canvas until you edit, copy, or duplicate the modified object.)
+- `self:set_args(atoms)`: Set the given list `atoms` of numbers and strings as the object's creation arguments.
 
 To explain how these two work in concert, let's go back to the basics first. As mentioned above, the patch id `$0` is widely used in Pd for send and receive names to avoid conflicts with other receivers and senders of similar names. Pd expands `$0` to the canvas id, which differs for every open patch, and it expands `$1`, `$2` etc. if the corresponding creation arguments are set in the context of an abstraction or clone instance. (Also note that in Purr Data there is another `$@` symbol which expands to the list of all creation arguments.)
 
@@ -833,6 +833,8 @@ end
 And here's a test patch from the tutorial examples which shows this object in action:
 
 ![Dollar symbol example](19-dollar-symbols.png)
+
+Try clicking on the `sender` messages in the patch and watch the symbol argument of the object change accordingly. Clicking the bang object labeled "click me" will then send the bang message to one of the two toggles on the right, depending on the `sender` message you clicked.
 
 ## Signals and graphics
 
