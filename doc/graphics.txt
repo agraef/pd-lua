@@ -100,12 +100,12 @@ function example:mouse_drag(x, y)
     self:repaint()
 end
 
-function example:paint()
+function example:paint(g)
     -- Fill background with color
-    gfx.set_color(255, 0, 0, 1)
-    gfx.fill_all()
+    g:set_color(255, 0, 0, 1)
+    g:fill_all()
 
     -- Draw an ellipse
-    gfx.set_color(0, 255, 0, 1)
-    gfx.fill_ellipse(self.circle_x, self.circle_y, 30, 30)
+    g:set_color(0, 255, 0, 1)
+    g:fill_ellipse(self.circle_x, self.circle_y, 30, 30)
 end
