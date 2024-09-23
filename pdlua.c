@@ -1149,10 +1149,15 @@ static void pdlua_dsp(t_pdlua *x, t_signal **sp){
 static int pdlua_set_arguments(lua_State *L)
 {
     // Check if the first argument is a valid user data pointer
+    char msg[MAXPDSTRING];
     if (lua_islightuserdata(L, 1))
     {
         // Retrieve the userdata pointer
         t_pdlua *o = lua_touserdata(L, 1);
+        if (!o) {
+            pd_error(NULL, "%s: set_args: null object", src_info(L, msg));
+            return 0;
+        }
 
         // Retrieve the binbuf
         t_binbuf* b = o->pd.te_binbuf;
@@ -1195,7 +1200,11 @@ static int pdlua_set_arguments(lua_State *L)
                 // Pop the value from the stack
                 lua_pop(L, 1);
             }
+        } else {
+            pd_error(o, "%s: set_args: argument must be a table", src_info(L, msg));
         }
+    } else {
+        pd_error(NULL, "%s: set_args: missing object", src_info(L, msg));
     }
 
     return 0;
