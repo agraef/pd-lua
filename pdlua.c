@@ -1162,7 +1162,10 @@ static int pdlua_get_arguments(lua_State *L)
         // Retrieve the binbuf
         t_binbuf* b = o->pd.te_binbuf;
 
-        if (!b) return 0;
+        if (!b) {
+            pd_error(o, "%s: get_args: null arguments", src_info(L, msg));
+            return 0;
+        }
         lua_newtable(L);
         char buf[MAXPDSTRING];
         const t_atom *ap;
@@ -1202,7 +1205,10 @@ static int pdlua_set_arguments(lua_State *L)
         // Retrieve the binbuf
         t_binbuf* b = o->pd.te_binbuf;
 
-        if (!b) return 0;
+        if (!b) {
+            pd_error(o, "%s: set_args: null arguments", src_info(L, msg));
+            return 0;
+        }
 
         t_atom name;
         SETSYMBOL(&name, atom_getsymbol(binbuf_getvec(b)));
