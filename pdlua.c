@@ -1146,6 +1146,46 @@ static void pdlua_dsp(t_pdlua *x, t_signal **sp){
     freebytes(sigvec, sigvecsize * sizeof(t_int));
 }
 
+static int pdlua_get_arguments(lua_State *L)
+{
+    // Check if the first argument is a valid user data pointer
+    char msg[MAXPDSTRING];
+    if (lua_islightuserdata(L, 1))
+    {
+        // Retrieve the userdata pointer
+        t_pdlua *o = lua_touserdata(L, 1);
+        if (!o) {
+            pd_error(NULL, "%s: set_args: null object", src_info(L, msg));
+            return 0;
+        }
+
+        // Retrieve the binbuf
+        t_binbuf* b = o->pd.te_binbuf;
+
+        if (!b) return 0;
+        lua_newtable(L);
+        char buf[MAXPDSTRING];
+        const t_atom *ap;
+        int indx = binbuf_getnatom(b), i = 0;
+        for (ap = binbuf_getvec(b); indx--; ap++, i++) {
+            if (i == 0) continue; // skip 1st atom = object name
+            lua_pushnumber(L, i);
+            if (ap->a_type == A_FLOAT)
+                lua_pushnumber(L, ap->a_w.w_float);
+            else {
+                atom_string(ap, buf, MAXPDSTRING);
+                lua_pushstring(L, buf);
+            }
+            lua_settable(L, -3);
+        }
+        return 1;
+    } else {
+        pd_error(NULL, "%s: set_args: missing object", src_info(L, msg));
+    }
+
+    return 0;
+}
+
 static int pdlua_set_arguments(lua_State *L)
 {
     // Check if the first argument is a valid user data pointer
@@ -2628,6 +2668,9 @@ static void pdlua_init(lua_State *L)
     lua_settable(L, -3);
     lua_pushstring(L, "post");
     lua_pushcfunction(L, pdlua_post);
+    lua_settable(L, -3);
+    lua_pushstring(L, "_get_args");
+    lua_pushcfunction(L, pdlua_get_arguments);
     lua_settable(L, -3);
     lua_pushstring(L, "_set_args");
     lua_pushcfunction(L, pdlua_set_arguments);

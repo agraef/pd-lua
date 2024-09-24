@@ -449,6 +449,10 @@ function pd.Class:postinitialize() end
 
 function pd.Class:finalize() end
 
+function pd.Class:get_args()
+    return pd._get_args(self._object)
+end
+
 function pd.Class:set_args(args)
     pd._set_args(self._object, args)
 end
