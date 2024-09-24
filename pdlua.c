@@ -1155,7 +1155,7 @@ static int pdlua_get_arguments(lua_State *L)
         // Retrieve the userdata pointer
         t_pdlua *o = lua_touserdata(L, 1);
         if (!o) {
-            pd_error(NULL, "%s: set_args: null object", src_info(L, msg));
+            pd_error(NULL, "%s: get_args: null object", src_info(L, msg));
             return 0;
         }
 
@@ -1180,7 +1180,7 @@ static int pdlua_get_arguments(lua_State *L)
         }
         return 1;
     } else {
-        pd_error(NULL, "%s: set_args: missing object", src_info(L, msg));
+        pd_error(NULL, "%s: get_args: missing object", src_info(L, msg));
     }
 
     return 0;
