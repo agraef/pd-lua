@@ -812,7 +812,9 @@ static int start_paint(lua_State* L) {
     int layer = luaL_checknumber(L, 2);
     if(layer >= gfx->num_layers)
     {
-        gfx->layer_tags = resizebytes(gfx->layer_tags, sizeof(char*) * gfx->num_layers, sizeof(char*) * ++gfx->num_layers);
+        int new_num_layers = layer + 1;
+        gfx->layer_tags = resizebytes(gfx->layer_tags, sizeof(char*) * gfx->num_layers, sizeof(char*) * new_num_layers);
+        gfx->num_layers = new_num_layers;
         gfx->layer_tags[layer] = malloc(64);
         snprintf(gfx->layer_tags[layer], 64, ".l%i%lx", layer, (long)obj);
     }
