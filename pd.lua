@@ -20,24 +20,22 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 -- storage for Pd C<->Lua interaction
 pd._classes = { } -- take absolute paths and turn them into classes
-pd._fullpaths = { }
 pd._pathnames = { } -- look up absolute path by creation name
 pd._objects = { }
 pd._clocks = { }
 pd._receives = { }
 pd._loadpath = ""
-pd._currentpath = ""
 
 -- add a path to Lua's "require" search paths
-pd._setrequirepath = function(path, pdlua_path)
+pd._setrequirepath = function(path)
   pd._packagepath = package.path
   pd._packagecpath = package.cpath
   if (pd._iswindows) then
-    package.path = path .. "\\?;" .. path .. "\\?.lua;" .. pdlua_path .. "\\?;" .. pdlua_path .. "\\?.lua;" .. package.path
-    package.cpath = path .. "\\?.dll;" .. pdlua_path .. "\\?.dll;" .. package.cpath
+    package.path = path .. "\\?.lua;" .. path .. "\\?\\init.lua;" .. package.path
+    package.cpath = path .. "\\?.dll;" .. package.cpath
   else
-    package.path = path .. "/?;" .. path .. "/?.lua;" .. pdlua_path .. "/?;" .. pdlua_path .. "/?.lua;" .. package.path
-    package.cpath = path .. "/?.so;" .. pdlua_path .. "/?.so;" .. package.cpath
+    package.path = path .. "/?.lua;" .. path .. "/?/init.lua;" .. package.path
+    package.cpath = path .. "/?.so;" .. package.cpath
   end
 end
 
@@ -135,22 +133,6 @@ pd._whoami = function (object)
   end
 end
 
---whereami method dispatcher
-pd._whereami = function(name)
-    if nil ~= pd._fullpaths[name] then
-      return pd._fullpaths[name]
-    end
-
-    return nil
-end
-
---class method dispatcher
-pd._get_class = function (object)
-  if nil ~= pd._objects[object] then
-    return pd._objects[object]:get_class()
-  end
-end
-
 -- prototypical OO system
 pd.Prototype = { }
 
@@ -171,6 +153,12 @@ function pd.Clock:register(object, method)
       self._target = object
       self._method = method
       pd._clocks[self._clock] = self
+      -- ag 20240906: record the clock in the target's _clocks table so that it
+      -- can be destroyed automatically with the object
+      if not object._clocks then
+        object._clocks = { }
+      end
+      object._clocks[self._clock] = self
       return self
     end
   end
@@ -178,9 +166,16 @@ function pd.Clock:register(object, method)
 end
 
 function pd.Clock:destruct()
-  pd._clocks[self._clock] = nil
-  pd._clockfree(self._clock)
-  self._clock = nil
+  -- ag 20240906: remove the clock from the target's _clocks table if any
+  if self._target and self._target._clocks then
+    --pd.post(string.format("%s: destroying clock %s", self._target._name, self._method))
+    self._target._clocks[self._clock] = nil
+  end
+  if self._clock then
+    pd._clocks[self._clock] = nil
+    pd._clockfree(self._clock)
+    self._clock = nil
+  end
 end
 
 function pd.Clock:dispatch()
@@ -272,6 +267,12 @@ function pd.Receive:register(object, name, method)
       self._target = object
       self._method = method
       pd._receives[self._receive] = self
+      -- ag 20240906: record the receiver in the target's _receives table so
+      -- that it can be destroyed automatically with the object
+      if not object._receives then
+        object._receives = { }
+      end
+      object._receives[self._receive] = self
       return self
     end
   end
@@ -279,12 +280,19 @@ function pd.Receive:register(object, name, method)
 end
 
 function pd.Receive:destruct()
-  pd._receives[self._receive] = nil
-  pd._receivefree(self._receive)
-  self._receive = nil
-  self._name = nil
-  self._target = nil
-  self._method = nil
+  -- ag 20240906: remove the receiver from the target's _receives table if any
+  if self._target and self._target._receives then
+    --pd.post(string.format("%s: destroying receiver %s", self._target._name, self._method))
+    self._target._receives[self._receive] = nil
+  end
+  if self._receive then
+    pd._receives[self._receive] = nil
+    pd._receivefree(self._receive)
+    self._receive = nil
+    self._name = nil
+    self._target = nil
+    self._method = nil
+  end
 end
 
 function pd.Receive:dispatch(sel, atoms)
@@ -300,8 +308,19 @@ function pd.Class:register(name)
   -- Those trailing slashes keep piling up, thus we need to check whether
   -- pd._loadpath already has one. This is only a temporary kludge until a
   -- proper fix is deployed. -ag 2023-02-02
+  --[[
+     Oh well, it appears that the "temporary kludge" is here to stay, so
+     let's at least fix it up to preserve an empty _loadpath, which is what we
+     get with pdluax. Which makes sense, since pdluax's _scriptname will be an
+     absolute path. But then an empty _loadpath should stay empty so that
+     self._loadpath .. self._scriptname returns a proper path.
+
+     This whole code has been touched so many times during sebshader's quest
+     to get relative paths in object names right, that I don't really dare to
+     touch it anymore, but this much we can do. -ag 20240905
+  ]]
   local fullpath = string.sub(pd._loadpath, -1) == "/" and pd._loadpath or
-     (pd._loadpath .. '/')
+     pd._loadpath ~= "" and pd._loadpath .. '/' or ""
   local fullname = fullpath .. name
 
   if nil ~= pd._classes[fullname] then
@@ -317,19 +336,10 @@ function pd.Class:register(name)
   else
     regname = name
   end
-
-  --pd._fullpaths[regname] = pd._currentpath or (fullname .. ".pd_lua")
-  if pd._currentpath == nil or pd._currentpath == '' then
-    pd._fullpaths[regname] = fullname .. ".pd_lua"
-  else
-    pd._fullpaths[regname] = pd._currentpath
-  end
-
   pd._pathnames[regname] = fullname
   pd._classes[fullname] = self       -- record registration
-  self._class = pd._register(name)  -- register new class
+  self._class, self._class_gfx = pd._register(name)  -- register new class
   self._name = name
-  self._path = pd._fullpaths[regname]
   self._loadpath = fullpath
   if name == "pdlua" then
     self._scriptname = "pd.lua"
@@ -340,10 +350,13 @@ function pd.Class:register(name)
 end
 
 function pd.Class:construct(sel, atoms)
-  self._object = pd._create(self._class)
+  self._object = pd._create(self._class, self._class_gfx)
   self.inlets = 0
   self.outlets = 0
   self._canvaspath = pd._canvaspath(self._object) .. "/"
+  if pdx then
+    pdx.reload(self)
+  end
   if self:initialize(sel, atoms) then
     pd._createinlets(self._object, self.inlets)
     pd._createoutlets(self._object, self.outlets)
@@ -353,11 +366,41 @@ function pd.Class:construct(sel, atoms)
     self:postinitialize()
     return self
   else
+    if pdx then
+      pdx.unreload(self)
+    end
     return nil
   end
 end
 
 function pd.Class:destruct()
+  -- ag 20240906: get rid of all clocks and receivers registered for us
+  if self._clocks then
+    local clocks = { }
+    -- since the destruct() method destructively updates our _clocks table,
+    -- record all registered clock objects in a new table
+    for _, c in pairs(self._clocks) do
+      table.insert(clocks, c)
+    end
+    -- now destroy them
+    for _, c in ipairs(clocks) do
+      c:destruct()
+    end
+    self._clocks = nil
+  end
+  if self._receives then
+    local receives = { }
+    -- since the destruct() method destructively updates our _receives table,
+    -- record all registered receivers in a new table
+    for _, r in pairs(self._receives) do
+      table.insert(receives, r)
+    end
+    -- now destroy them
+    for _, r in ipairs(receives) do
+      r:destruct()
+    end
+    self._receives = nil
+  end
   pd._objects[self] = nil
   self:finalize()
   pd._destroy(self._object)
@@ -406,10 +449,17 @@ function pd.Class:postinitialize() end
 
 function pd.Class:finalize() end
 
+function pd.Class:get_args()
+    return pd._get_args(self._object)
+end
+
 function pd.Class:set_args(args)
     pd._set_args(self._object, args)
 end
 
+function pd.Class:canvas_realizedollar(s)
+  return pd._canvas_realizedollar(self._object, s)
+end
 
 function pd.Class:repaint(layer)
   if layer == nil or layer <= 1 then
@@ -465,7 +515,6 @@ function pd.Class:dofilex(file)
   local pathsave = pd._loadpath
   pd._loadname = nil
   pd._loadpath = self._loadpath
-  pd._currentpath = file
   local f, path = pd._dofilex(self._class, file)
   pd._loadname = namesave
   pd._loadpath = pathsave
@@ -480,7 +529,6 @@ function pd.Class:dofile(file)
   local pathsave = pd._loadpath
   pd._loadname = nil
   pd._loadpath = self._loadpath
-  pd._currentpath = file
   local f, path = pd._dofile(self._object, file)
   pd._loadname = namesave
   pd._loadpath = pathsave
@@ -495,12 +543,11 @@ function pd.Class:whoami()
   return self._scriptname or self._name
 end
 
-function pd.Class:in_1__reload()
-  self:dofile(self._path)
-end
-
 function pd.Class:get_class() -- accessor for t_class*
-  return self._class or nil
+   -- ag 20240905: this is now implemented on the C side (you probably
+   -- shouldn't use this any more, we only keep this here for backward
+   -- compatibility)
+  return pd._get_class(self) or nil
 end
 
 local lua = pd.Class:new():register("pdlua")  -- global controls (the [pdlua] object only)
@@ -514,6 +561,7 @@ end
 function lua:in_1_load(atoms)  -- execute a script
   self:dofile(atoms[1])
 end
+
 
 local luax = pd.Class:new():register("pdluax")  -- classless lua externals (like [pdluax foo])
 
@@ -543,7 +591,31 @@ function luax:initialize(sel, atoms)          -- motivation: pd-list 2007-09-23
   end
 end
 
+-- convenience creation functions for classes, arrays, clocks, receivers
+
+function pd.class(...)
+   return pd.Class:new():register(...)
+end
+
+function pd.table(...)
+   return pd.Table:new():sync(...)
+end
+
+function pd.clock(...)
+   return pd.Clock:new():register(...)
+end
+
+function pd.receive(...)
+   return pd.Receive:new():register(...)
+end
+
+-- constants used in the signal and graphics API
 DATA = 0
 SIGNAL = 1
 Colors = {background = 0, foreground = 1, outline = 2}
+
+-- pre-load pdx.lua (advanced live coding support); if you don't want this,
+-- just comment out the line below
+pdx = require 'pdx'
+
 -- fin pd.lua

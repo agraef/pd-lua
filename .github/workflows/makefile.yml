@@ -97,7 +97,7 @@ jobs:
 # Big thanks to @tomara-x and @timothyschoen for showing me how to do this! -ag
 
   github-release:
-    if: startsWith(github.ref, 'refs/tags/')
+    if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
     needs: [ubuntu-build, macos-build, windows-build]
 
@@ -157,13 +157,11 @@ jobs:
     - name: check deken package
       shell: bash
       run: |
-        SHORT=${GITHUB_REF:10}
-        VERSION=${SHORT//\//_}
         echo "## ${{ matrix.os }}" | tee -a $GITHUB_STEP_SUMMARY
         mkdir -p package-${{ matrix.os }}
         docker run --rm --user $(id -u) --volume ./pdlua-${{ matrix.os }}:/pdlua \
           --volume ./package-${{ matrix.os }}:/package registry.git.iem.at/pd/deken \
-          deken package --output-dir /package -v "${VERSION}" /pdlua
+          deken package --output-dir /package -v "${{ github.ref_name }}" /pdlua
 
         dek_files=$(ls package-${{ matrix.os }}/*.dek)
         for dek_file in $dek_files; do
@@ -204,13 +202,11 @@ jobs:
         DEKEN_USERNAME: ${{ secrets.DEKEN_USERNAME }}
         DEKEN_PASSWORD: ${{ secrets.DEKEN_PASSWORD }}
       run: |
-        SHORT=${GITHUB_REF:10}
-        VERSION=${SHORT//\//_}
         for os in ubuntu macos windows; do
           docker run --rm -e DEKEN_USERNAME -e DEKEN_PASSWORD \
             --volume ./pdlua-${os}:/pdlua registry.git.iem.at/pd/deken \
-            deken upload --no-source-error -v "${VERSION}" /pdlua
+            deken upload --no-source-error -v "${{ github.ref_name }}" /pdlua
         done
         docker run --rm -e DEKEN_USERNAME -e DEKEN_PASSWORD \
           --volume ./pdlua-src:/pdlua registry.git.iem.at/pd/deken \
-          deken upload -v "${VERSION}" /pdlua
+          deken upload -v "${{ github.ref_name }}" /pdlua

@@ -1,12 +1,17 @@
+---
+author: Albert Gräf
+title: A Quick Introduction to Pd-Lua
+footer: ${title} - ${pageNo} / ${pageCount}
+---
 
 # A Quick Introduction to Pd-Lua
 
 Albert Gräf \<<aggraef@gmail.com>\>  
 Computer Music Dept., Institute of Art History and Musicology  
 Johannes Gutenberg University (JGU) Mainz, Germany  
-August 2024
+September 2024
 
-This document is licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). Other formats: [Markdown](https://github.com/agraef/pd-lua/blob/master/tutorial/pd-lua-intro.md) source, [PDF](https://github.com/agraef/pd-lua/blob/master/pdlua/tutorial/pd-lua-intro.pdf)  
+This document is licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). Other formats: [Markdown](https://github.com/agraef/pd-lua/blob/master/tutorial/pd-lua-intro.md) source, [PDF](https://agraef.github.io/pd-lua/tutorial/pd-lua-intro.pdf)  
 Permanent link: <https://agraef.github.io/pd-lua/tutorial/pd-lua-intro.html>
 
 ## Why Pd-Lua?
@@ -141,7 +146,23 @@ So let's relaunch Pd, reload the patch again, and add some GUI elements to test 
 
 ![Basic example](03-basic-example.png)
 
-Note that this is still a very basic example. While the example is complete and fully functional, we have barely scratched the surface here. Pd-Lua also allows you to process an object's creation arguments (employing the `atoms` parameter of the `initialize` method, which we didn't use above), log messages and errors in the Pd console, create handlers for different types of input messages, output data to different outlets, work with Pd arrays, clocks, and receivers, and even do some live coding. We will dive into each of these topics in the following sections.
+Note that this is still a very basic example. While the example is complete and fully functional, we have barely scratched the surface here. Pd-Lua also allows you to process an object's creation arguments (employing the `atoms` parameter of the `initialize` method, which we didn't use above), log messages and errors in the Pd console, create handlers for different types of input messages and signals, output data and signals to different outlets, work with Pd arrays, clocks, and receivers, and even do some graphics and live coding. We will dive into each of these topics in the rest of this tutorial.
+
+## Objects and Shortcuts
+
+You may have wondered about the whole `pd.Class:new():register("foo")` thing, why is that so complicated? The answer is that Lua uses *prototypes* (class-less objects) to define object-oriented data structures and their methods. Consequently, Pd-Lua defines a few of these to represent various kinds of Pd objects on the Lua side. There's `pd.Class` which represents Pd object classes, `pd.Table` which is used to access Pd arrays and tables, and `pd.Clock`, `pd.Receive` for Pd's clock and receiver objects.
+
+Each kind of object needs a way to create an instance of the object, that's what the `new()` method is for, and a second method (usually called `register`, but Pd arrays use `sync` instead) which associates the Lua object with its counterpart in Pd. The `register()` method also creates the corresponding data structure in Pd in most cases.
+
+So that's why we first invoke `new()` and then `register()` on the prototype (`pd.Class`, etc.); it's always this two-step process. However, since version 0.12.14, Pd-Lua also provides some convenient *shortcuts*. In the case of `pd.Class:new():register()`, the shortcut is simply `pd.class()`. (Note that `class` is written in all lower-case, while the prototype `pd.Class` has `Class` capitalized -- this may be hard to see in the font we've chosen for this document.)
+
+Thus, we can abbreviate the definition of the `foo` object class in our first example as:
+
+~~~lua
+local foo = pd.class("foo")
+~~~
+
+Much shorter, and easy to remember. Shortcuts for the other kinds of objects will be introduced along with the long forms in the corresponding sections below. Feel free to use them. But note that in the tutorial and the accompanying examples we generally keep to the long forms, so that our examples will work unchanged with older Pd-Lua versions.
 
 ## Where your Lua files go
 
@@ -323,17 +344,18 @@ Thanks for using foo!
 
 ### Lua errors
 
-We all make mistakes. It's inevitable that you'll run into errors in the Lua code you wrote, so let's finally discuss how those mishaps are handled. Pd-Lua simply reports errors from the Lua interpreter in the Pd console. For instance, suppose that we mistyped `pd.post` as `pd_post` in the code for the one-time welcome message above. You'll see an error message like this in the console:
+We all make mistakes. It's inevitable that you'll run into errors in the Lua code you wrote, so let's finally discuss how those mishaps are handled. Pd-Lua simply reports errors from the Lua interpreter in the Pd console. For instance, suppose that we omitted the `pd` qualifier in the one-time welcome message above, turning `pd.post` into just `post` (quite an easy mistake to make). You'll then see an error message like this in the console:
 
 ~~~
-error: pdlua_new: error in constructor for `foo':
-[string "foo"]:7: attempt to call a nil value (global 'pd_post')
+error: lua: foo.pd_lua: 29: attempt to call a nil value (global 'post')
 error: couldn't create "foo"
 ~~~
 
-In this case the error happened in the `initialize` method, so the object couldn't actually be created, and you will have to correct the typo before going on. Fortunately, the message tells us exactly where the error occurred, so we can fix it easily. Syntax errors anywhere in the script file will be caught and handled in a similar fashion.
+You'll recall that an undefined global like the mistyped `post` symbol above will always yield the `nil` value in Lua, which obviously isn't a function and thus can't be called like one. (Not all error messages will be quite as perspicuous, so a web search may be in order to figure them out.) In this case the error happened in the `postinitialize` method, so the object couldn't actually be created, and you will have to correct the typo before going on. Fortunately, the message tells us exactly where the error occurred, so we can fix it easily.
 
-Runtime errors in inlet methods, on the other hand, will allow your objects to be created and to start executing; they just won't behave as expected and cause somewhat cryptic errors to be printed in the console. For instance, let's suppose that you forgot the curly braces around the float value in `self:outlet` (a fairly common error), so that the method reads:
+Syntax errors anywhere in the script file will be caught and handled in a similar fashion.
+
+Runtime errors in inlet methods, on the other hand, will allow your objects to be created and to start executing. They just won't behave as expected and cause a variety of error messages to be printed in the console which might look a bit cryptic at first glance. For instance, let's suppose that you forgot the curly braces around the float value in `self:outlet` (another fairly common error), so that the method reads:
 
 ~~~lua
 function foo:in_1_bang()
@@ -342,17 +364,16 @@ function foo:in_1_bang()
 end
 ~~~
 
-Lua is a dynamically-typed language, so this little glitch becomes apparent only when you actually send a bang message to the object, which causes the following errors to be logged in the console:
+Lua is a dynamically-typed language, so this little glitch becomes apparent only when you actually send a `bang` message to the object, which causes the following error to be logged in the console:
 
 ~~~
-error: lua: error: not a table
+error: foo.pd_lua: 41: error: invalid atoms table [outlet 1]
 ... click the link above to track it down, or click the 'Find Last Error' item in the Edit menu.
-error: lua: error: no atoms??
 ~~~
 
-Ok, so the first message tells us that *somewhere* Pd-Lua expected a table but got a non-table value. The second message actually comes from the C routine deep down in the bowls of Pd-Lua which does the actual output to an outlet. If you see that message, it's a telltale sign that you tried to output an atom not properly wrapped in a Lua table, but it gives no indication of where that happened either, other than that you can use "Find Last Error" to locate the object which caused the problem.
+This message actually comes from the C routine deep down in Pd-Lua which checks the arguments of the `outlet` method for validity before it sends any data through the outlet. In this case it took issue with the `atoms` argument. If you see that message, it's a telltale sign that you tried to output an atom not properly wrapped in a Lua table. The message also tells you about the outlet number which caused the issue, and the line number with the definition of the method in which the error happened (which is the `foo:in_1_bang` method in this case). So it's not the *exact* location of the `self:outlet()` call, but still close enough so that you can easily find that spot with the extra information provided in the error message.
 
-It goes without saying that the Pd-Lua developers could have chosen a better error message there. Well, at least we now have an idea what happened and in which object, but we may then still have to start peppering our code with `pd.post` calls in order to find (and fix) the issue.
+To actually fix the error, simply go to the line number from the error message in the editor to find the method with the error, and edit the `outlet` call to add the curly braces around `self.counter` back in. In case you already closed the editor, recall that you can just click on the error message (or use the "Find Last Error" operation) to locate the object, then right-click the object and open it.
 
 ## Inlets and outlets
 
@@ -509,11 +530,11 @@ And here you can see the object running in a little test patch which outputs the
 
 Pd's arrays provide an efficient means to store possibly large vectors of float values. These are often used for sample data (waveforms) of a given size (the number of samples), but can also be employed to store copious amounts of numerical control data. Arrays are usually associated with a graphical display (called a *graph*), and Pd's table object lets you create an array along with a graph as a special kind of subpatch.
 
-Pd-Lua provides a `Table` class to represent array and table data, and a few functions to query and manipulate that data. This comes in handy, e.g., if you want to fill an array with a computed waveform. While Pd has its own corresponding facilities, complicated waveforms are often much easier to create in Lua, which offers a fairly complete set of basic mathematical functions in its standard library, and a whole lot more through 3rd party libraries such as [Numeric Lua](https://github.com/carvalho/numlua).
+Pd-Lua provides `pd.Table` to represent array and table data, and a few functions to query and manipulate that data. This comes in handy, e.g., if you want to fill an array with a computed waveform. While Pd has its own corresponding facilities, complicated waveforms are often much easier to create in Lua, which offers a fairly complete set of basic mathematical functions in its standard library, and a whole lot more through 3rd party libraries such as [Numeric Lua](https://github.com/michal-h21/numlua).
 
 Here are the array/table functions provided by Pd-Lua. Note that like in Pd arrays, indices are zero-based and thus range from `0` to `tab:length()-1`.
 
-- `pd.Table:new():sync(name)`: creates the Lua representation of a Pd array and associates it with the Pd array named `name`. The result is `nil` if an array or table of that name doesn't exist. You usually assign that value to a local variable (named `tab` below) to refer to it later.
+- `pd.Table:new():sync(name)`, short form: `pd.table(name)`: creates the Lua representation of a Pd array and associates it with the Pd array named `name`. This requires that an array or table of that name already exists (`sync` will *not* create it), otherwise the result is `nil`. You usually assign that value to a local variable (named `tab` below) to refer to it later.
 
 - `tab:length()`: returns the length of `tab` (i.e., the number of samples in it)
 
@@ -586,23 +607,27 @@ In the same vein, the Pd-Lua distribution includes a much more comprehensive exa
 
 Clocks are used internally in Pd to implement objects which "do things" when a timeout occurs, such as delays, pipes, and metronomes. Pd-Lua exposes this functionality so that objects written in Lua can do the same. The following functions are provided:
 
-- `pd.Clock:new():register(self, method)`: This creates a new clock for the Pd-Lua object `self` which, when it goes off, runs the method specified as a string `method`. Let's say that `method` is `"trigger"`, then `self:trigger()` will be called without arguments when the clock times out. You usually want to assign the result (a `pd.Clock` object) to a member variable of the object (called `self.clock` below), so that you can refer to it later.
+- `pd.Clock:new():register(self, method)`, short form `pd.clock(self, method)`: This creates a new clock for the Pd-Lua object `self` which, when it goes off, runs the method specified as a string `method`. Let's say that `method` is `"trigger"`, then `self:trigger()` will be called without arguments when the clock times out. You usually want to assign the result (a `pd.Clock` object) to a member variable of the object (called `self.clock` below), so that you can refer to it later.
 
 - `self.clock:delay(time)`: sets the clock so that it will go off (and call the clock method) after `time` milliseconds
 
-- `self.clock:set(systime)`: sets the clock so that it will go off at the specified absolute `systime` (measured in Pd "ticks", whatever that means)
+- `self.clock:set(systime)`: sets the clock so that it will go off at the specified absolute `systime` (measured in Pd time units of `pd.TIMEUNITPERMSEC`, see below)
 
 - `self.clock:unset()`: unsets the clock, canceling any timeout that has been set previously
 
-- `self.clock:destruct()`: destroys the clock; this is to be called in the `finalize` method, so that the clock doesn't go off (trying to invoke an invalid object) after an object was deleted
+- `self.clock:destruct()`: destroys the clock
+
+
+---
+
+**NOTE:** Calling `self.clock:destruct()` on a clock that isn't needed any more (in the `finalize` method at the latest) used to be mandatory, and is still possible, but since 0.12.12 it is no longer necessary, as it also happens automatically when the target object gets deleted. This makes it now possible to have one-shot timers like `pd.Clock:new():register(self, "oneshot"):delay(1000)` which aren't assigned to any variable. (This is not recommended, though, if you want to maintain compatibility with earlier Pd-Lua versions.)
+
+---
+
 
 We mention in passing that you can call `self.clock:delay(time)` as soon as the clock has been created, even in the `initialize` method of an object. Furthermore, you can have as many clocks as you want in the same object, carrying out different actions, as long as you assign each clock to a different method.
 
-Presumably, the `self.clock:destruct()` method should also be invoked automatically when setting `self.clock` to `nil`, but the available documentation isn't terribly clear on this. So we recommend explicitly calling `self.clock:destruct()` in `self:finalize` to be on the safe side, as the documentation advises us to do, because otherwise "weird things will happen."
-
-Also note that `self.clock:set()` isn't terribly useful right now, because it refers to Pd's internal "systime" clock which isn't readily available in Pd-Lua.
-
-With these caveats in mind, here is a little `tictoc` object we came up with for illustration purposes, along with the usual test patch.
+Here is a little `tictoc` object we came up with for illustration purposes.
 
 ~~~lua
 local tictoc = pd.Class:new():register("tictoc")
@@ -620,8 +645,6 @@ function tictoc:initialize(sel, atoms)
    self.clock = pd.Clock:new():register(self, "tictoc")
    return true
 end
-
--- don't forget this, or else...
 
 function tictoc:finalize()
   self.clock:destruct()
@@ -670,7 +693,18 @@ function tictoc:tictoc()
 end
 ~~~
 
+And here is the usual test patch:
+
 ![Clock example](08-clock.png)
+
+
+
+An explanation of `self.clock:set(systime)` is still in order. In contrast to `self.clock:delay(time)`, this schedules a timeout at the given *absolute* time given in `pd.TIMEUNITPERMSEC` units. This may be preferable in some situations, e.g., if you have to schedule some events that use increasing timestamps instead of delta times. Version 0.12.12 of Pd-Lua adds the `pd.TIMEUNITPERMSEC` constant and some support functions for dealing with these time values:
+
+- `pd.systime()`: Returns the current time in `pd.TIMEUNITPERMSEC` units. You can use this to derive a value for `self.clock:set`'s `systime` argument. For instance, `self.clock:set(pd.systime() + time * pd.TIMEUNITPERMSEC)` is equivalent to `self.clock:delay(time)`.
+- `pd.timesince(systime)`: Returns the time since the given `systime` in msec. You might use this to measure the time between two events, like Pd's built-in `timer` object does. In particular, `pd.timesince(0)` gives you the msec equivalent of  `pd.systime()`, i.e., Pd's current time in msec.
+
+Also note that the notion of time alluded to above is Pd's internal or *logical* time which always advances monotonically (until it wraps around) with each dsp tick, i.e., once per 64 samples with Pd's default block size setting.
 
 More comprehensive examples using clocks can be found in the Pd-Lua distribution; have a look, e.g., at ldelay.pd_lua and luametro.pd_lua. Also, lpipe.pd_lua demonstrates how to dynamically create an entire collection of clocks in order to implement a delay line for a stream of messages.
 
@@ -678,13 +712,13 @@ More comprehensive examples using clocks can be found in the Pd-Lua distribution
 
 As every seasoned Pd user knows, Pd also enables you to transmit messages in a wireless fashion, using receiver symbols, or just *receivers* for short, as destination addresses. In Pd, this is done through the built-in `send` and `receive` objects, as well as the "send" and "receive symbol" properties of GUI objects.
 
-Sending messages to a receiver in Pd-Lua is straightforward:
+Sending messages to a receiver is straightforward:
 
 - `pd.send(sym, sel, atoms)`: Sends a message with the given selector symbol `sel` (a string) and arguments `atoms` (a Lua table, which may be empty if the message has no arguments) to the given receiver `sym` (a string).
 
-This works pretty much like the `outlet` method, but outputs messages to the given receiver instead. For instance, let's say you have a toggle with receiver symbol `onoff` in your patch, then you can turn on that toggle with a call like `pd.send("onoff", "float", {1})`. (Recall that the `atoms` argument always needs to be a table, even if it is a singleton, lest you'll get that dreaded "no atoms??" error that we discussed earlier).
+This works pretty much like the `outlet` method, but outputs messages to the given receiver instead. For instance, let's say you have a toggle with receiver symbol `onoff` in your patch, then you can turn on that toggle with a call like `pd.send("onoff", "float", {1})`. (Recall that the `atoms` argument always needs to be a table, even if it is a singleton, lest you'll get that "invalid atoms table" error that we discussed earlier).
 
-One complication are receiver symbols using a `$0-` patch id prefix, which are commonly used to differentiate receiver symbols in different toplevel patches or abstractions, in order to prevent name clashes. A Pd-Lua object doesn't have any idea of what toplevel patch it is located in, and what the numeric id of that patch is, so you'll have to expand the `$0-` prefix on the Pd side and pass it, e.g., as a creation argument. For instance, suppose that the toggle receiver is in fact named `$0-onoff`, then something like the following Pd-Lua object will do the trick, if you invoke it as `luasend $0-onoff`:
+One complication are receiver symbols using a `$0-` patch id prefix, which are commonly used to differentiate receiver symbols in different toplevel patches or abstractions, in order to prevent name clashes. For instance, suppose that the toggle receiver is in fact named `$0-onoff`, then something like the following Pd-Lua object will do the trick, if you invoke it as `luasend $0-onoff`:
 
 ~~~lua
 local luasend = pd.Class:new():register("luasend")
@@ -704,15 +738,17 @@ Of course, this also handles ordinary receive symbols just fine if you pass them
 
 ![Send example](09-send.png)
 
-It is worth noting here that the same technique applies whenever you need to pass on "$" arguments to a Pd-Lua object in a Pd abstraction.
+---
+
+**NOTE:** The same technique applies whenever you need to pass on "$" arguments to a Pd-Lua object in a Pd abstraction. This also works in older Pd-Lua versions. However, since Pd-Lua 0.12.17 there's also the possibility to expand such "$" symbols directly in Lua, see [Expanding dollar symbols](#expanding-dollar-symbols) below.
+
+---
 
 So let's have a look at receivers now. These work pretty much like clocks in that you create them registering a method, and destroy them when they are no longer needed:
 
-- `pd.Receive:new():register(self, sym, method)`: This creates a new receiver named `sym` (a string) for the Pd-Lua object `self` which, when a message for that receiver becomes available, runs the method specified as a string `method`. Let's say that `method` is `"receive"`, then `self:receive(sel, atoms)` will be invoked with the selector symbol `sel` and arguments `atoms` of the transmitted message. You want to assign the result (a `pd.Receive` object) to a member variable of the object (called `self.recv` below), so that you can refer to it later (if only to destroy it, see below).
+- `pd.Receive:new():register(self, sym, method)`, short form `pd.receive(self, sym, method)`: This creates a new receiver named `sym` (a string) for the Pd-Lua object `self` which, when a message for that receiver becomes available, runs the method specified as a string `method`. Let's say that `method` is `"receive"`, then `self:receive(sel, atoms)` will be invoked with the selector symbol `sel` and arguments `atoms` of the transmitted message. You want to assign the result (a `pd.Receive` object) to a member variable of the object (called `self.recv` below), so that you can refer to it later (if only to destroy it, see below).
 
-- `self.recv:destruct()`: destroys the receiver
-
-Note that the same caveat applies to receivers as in the case of clocks. That is, you should use the `destruct` method to destroy receivers in the `finalize` routine of the receiving object, so that they don't hang around when their object is long dead. Otherwise, you guessed it, "weird things will happen."
+- `self.recv:destruct()`: destroys the receiver (as with clocks, this is now entirely optional, but it may still be useful if the receiver needs to be removed before its target object ceases to be)
 
 Here is a little example which receives any kind of message, stores it, and outputs the last stored message when it gets a `bang` on its inlet.
 
@@ -753,6 +789,54 @@ The obligatory test patch:
 
 ![Receive example](10-receive.png)
 
+### Expanding dollar symbols
+
+Some more in-depth information about dollar symbols and their use in Lua is in order. Specifically, we will discuss two new Pd-Lua object methods, `canvas_realizedollar()` (available since Pd-Lua 0.12.17) and  `set_args()` (available since 0.12.0) which help you manage your receiver and sender symbols. A third related method is `get_args()`, available since 0.12.18, which we also mention in passing for the sake of the completeness, but will not use in our example. These helper methods are technically part of Pd-Lua's graphics API (see [Graphics](#graphics) below) since they are often used in conjunction with graphical objects. But they work just as well with ordinary (non-graphical) Lua objects and come in handy here, that's why we introduce them now:
+
+- `self:canvas_realizedollar(symbol)`: Expands "$" symbols in the `symbol` string argument and returns the resulting string.
+- `self:set_args(atoms)`: Sets the given list `atoms` of numbers and strings as the object's creation arguments, and updates the display of the object on the canvas accordingly.
+- `self:get_args()`: Returns the object's current creation arguments as a list of numbers and strings in the same format as the argument of `set_args()`. This means that `self:set_args(self:get_args())` will just re-create the existing list of creation arguments, which by itself isn't all that useful. But you can manipulate the table returned by `get_args()` using Lua's table functions before passing the resulting table to `set_args()`. In particular, this allows you to replace certain arguments while keeping others.
+
+In case you're not familiar with "$" symbols in Pd, let's first discuss the basics; more information can be found in the Pd manual. The patch id `$0` is widely used in Pd for send and receive names to avoid conflicts with other receivers and senders of similar names. Pd expands `$0` to the canvas id, which differs for every open patch, and it expands `$1`, `$2` etc. if the corresponding creation arguments are set in the context of an abstraction or clone instance. (Also note that in Purr Data there is another `$@` symbol which expands to the list of all creation arguments.)
+
+If you set the sender or receiver names for your Pd-Lua object as *creation arguments* of the object, Pd automatically expands them for you as discussed above. But if you want to set them through *messages* to the object, you will often use a quoted symbol like `\$0-foo`, so that your object receives the symbol unexpanded. You've probably seen this before, as it is also common practice, e.g., with Pd's GUI objects like sliders, radio buttons, etc. (e.g., see escaping-characters in the message help patch for an example).
+
+Quoting dollar symbols in this way offers the advantage that you can record the "$" symbol itself (rather than its expansion) in the object's properties (in the case of Pd GUI objects) or in its creation arguments (as can be done with Pd-Lua's `set_args()` method). But of course this means that if you want to use the actual receiver symbol in your Lua object then you need to expand the symbol in Lua (which is what the `canvas_realizedollar()` method is for).
+
+Here's a simple example illustrating this:
+
+~~~lua
+local localsend = pd.Class:new():register("localsend")
+
+function localsend:initialize(sel, atoms)
+   self.inlets = 1
+   -- pass the symbol from the creation argument,
+   -- which gets automatically expanded here
+   self.sender = tostring(atoms[1])
+   return true
+end
+
+function localsend:in_1_sender(x)
+   local sendername = tostring(x[1])
+
+   -- store the original name as argument (like "\$0-foo")
+   self:set_args({sendername})
+
+   -- apply the expanded name with the local id
+   self.sender = self:canvas_realizedollar(sendername)
+end
+
+function localsend:in_1_bang()
+   pd.send(self.sender, "bang", {})
+end
+~~~
+
+And here's a test patch from the tutorial examples which shows this object in action:
+
+![Dollar symbol example](19-dollar-symbols.png)
+
+Try clicking on the `sender` messages in the patch and watch the symbol argument of the object change accordingly. Clicking the bang object labeled "click me" will then send the bang message to one of the two toggles on the right, depending on the `sender` message you clicked.
+
 ## Signals and graphics
 
 So far all of our examples only did control processing, which is what Pd-Lua was originally designed for. But thanks to the work of Timothy Schoen (the creator and main developer of [plugdata](https://plugdata.org/)), as of version 0.12.0 Pd-Lua also provides facilities for audio signal processing and graphics. It goes without saying that these capabilities vastly extend the scope of Pd-Lua applications, as you can now program pretty much any kind of Pd object in Lua, covering both signal and control processing, as well as custom GUI objects. We'll first discuss how to write a signal processing (a.k.a. dsp) object in Pd-Lua, and then go on to show the implementation of a simple GUI object using the graphics API.
@@ -767,11 +851,11 @@ So far all of our examples only did control processing, which is what Pd-Lua was
 
 Enabling signal processing in a Pd-Lua object involves three ingredients:
 
-1. **Adding signal inlets and outlets:** As before, this is done by setting the `inlets` and `outlets` member variables in the `initialize` method. But instead of setting these variables to just the numbers of inlets and outlets, you set them to a table which indicates the signal and control in- and outlets with the special `SIGNAL` and `DATA` values. The number of in- and outlets is then given by the size of these tables. Thus, e.g., you'd use `self.inlets = { SIGNAL, SIGNAL, DATA }` if you need two signal and one control data inlet, in that order.
+1. **Adding signal inlets and outlets:** As before, this is done by setting the `inlets` and `outlets` member variables in the `initialize` method. But instead of setting each variable to just a number, you specify a *signature*, which is a table indicating the signal and control in- and outlets with the special `SIGNAL` and `DATA` values. The number of in- and outlets is then given by the size of these tables. Thus, e.g., you'd use `self.inlets = { SIGNAL, SIGNAL, DATA }` if you need two signal and one control data inlet, in that order. Note that a number as the value of `inlets` or `outlets` corresponds to a signature with just `DATA` values in it.
 2. **Adding a dsp method:** This step is optional. The `dsp` method gets invoked whenever signal processing is turned on in Pd, passing two parameters: `samplerate` and `blocksize`. The former tells you about the sample rate (number of audio samples per second) Pd runs at, which will be useful if your object needs to translate time and frequency values from physical units (i.e., seconds, milliseconds, and Hz) to sample-based time and frequency values, so usually you want to store the given value in a member variable of your object. The latter specifies the block size, i.e., the number of samples Pd expects to be processed during each call of the `perform` method (see below). You only need to store that number if your object doesn't have any signal inlets, so that you know how many samples need to be generated. Otherwise the block size can also be inferred from the size of the `in` tables passed to the `perform` method. Adding the `dsp` method is optional. You only have to define it if the signal and control data processing in your object requires the `samplerate` and `blocksize` values, or if you need to be notified when dsp processing gets turned on for some other reason.
-3. **Adding a perform method:** This method is where the actual signal processing happens. If your object outputs any signal data, the `perform` method needs to be implemented, otherwise you'll get lots of errors in the Pd console as soon as you turn on dsp processing. The object receives blocks of signal data from the inlets as (numeric) Lua table arguments, and needs to return a tuple with the blocks of signal data for each outlet, again as Lua tables.
+3. **Adding a perform method:** This method is where the actual signal processing happens. It receives blocks of signal data from the inlets through its arguments, where each block is represented as a Lua table containing floating point sample values. The method then needs to return a tuple of similar Lua tables with the blocks of signal data for each outlet. Note that the number of *arguments* of the method matches the number of signal *inlets*, while the number of *return values* corresponds to the number of signal *outlets*. The `perform` method is *not* optional; if your object outputs any signal data, the method needs to be implemented, otherwise you'll get a `perform: function should return a table` or similar error in the Pd console as soon as you turn on dsp processing.
 
-In addition to the `dsp` and `perform` methods, your object may contain any number of methods doing the usual control data processing on the `DATA` inlets. It is also possible to receive control data on the `SIGNAL` inlets; however, you won't be able to receive  `float` messages on those inlets, because Pd interprets float data on signal inlets as constant signals, so they get passed as blocks of signal data to the `perform` method instead.
+In addition to the `dsp` and `perform` methods, your object may contain any number of methods doing the usual control data processing on the `DATA` inlets. It is also possible to receive control data on the `SIGNAL` inlets; however, you won't be able to receive `float` messages, because they will be interpreted as constant signals which get passed as blocks of signal data to the `perform` method instead.
 
 #### Example 1: Mixing signals
 
@@ -802,7 +886,7 @@ Note that here we replaced the signal data in the `in1` table with the result, s
 
 Easy enough. And this is how this object works in a little test patch:
 
-![17-signal1](17-signal1.png)
+![Mixing signals](17-signal1.png)
 
 #### Example 2: Analyzing a signal
 
@@ -827,7 +911,7 @@ end
 
 A little test patch:
 
-![17-signal2](17-signal2.png)
+![Analyzing a signal](17-signal2.png)
 
 #### Example 3: Generating a signal
 
@@ -875,14 +959,14 @@ end
 
 The obligatory test patch:
 
-![17-signal3](17-signal3.png)
+![Generating a signal](17-signal3.png)
 
 #### Real-world example: Cross-fades
 
-Ok, the previous example got a bit more complicated, but it's still rather straightforward if you know how to compute a sine wave as blocks of signal data. But the above are really just toy examples for illustration purposes. Let's finally take a look at a somewhat more realistic and useful example which performs cross-fades on two incoming signals by doing linear interpolation between the input signals. A customary design for this kind of dsp object is to have a target cross-fade value (xfade argument) ranging from 0 (all left signal) to 1 (all right signal). We also want to be able to smoothly ramp from one cross-fade value to the next in order to avoid clicks (time argument), and have an initial delay until moving to the new xfade value (delay argument). Here is the definition of a `luaxfade` object which does all this, including the checking of all argument values, so that we don't run into any Lua exceptions because of bad values. The example also illustrates how to receive control messages on a signal inlet (cf. the `fade` message on the left signal inlet). You can find this as luaxfade.pd_lua in the tutorial examples.
+Let's finally take a look at a somewhat more realistic and useful example which performs cross-fades on two incoming signals by doing linear interpolation between the input signals. A customary design for this kind of dsp object is to have a target cross-fade value (`xfade` argument) ranging from 0 (all left signal) to 1 (all right signal). We also want to be able to smoothly ramp from one cross-fade value to the next in order to avoid clicks (`time` argument), and have an initial delay until moving to the new xfade value (`delay` argument). Here is the definition of a `luaxfade~` object which does all this, including the checking of all argument values, so that we don't run into any Lua exceptions because of bad values. The example also illustrates how to receive control messages on a signal inlet (cf. the `fade` message on the left signal inlet). You can find this as luaxfade~.pd_lua in the tutorial examples.
 
 ~~~lua
-local luaxfade = pd.Class:new():register("luaxfade")
+local luaxfade = pd.Class:new():register("luaxfade~")
 
 function luaxfade:initialize(sel, atoms)
    self.inlets = {SIGNAL,SIGNAL}
@@ -905,7 +989,7 @@ function luaxfade:in_1_fade(atoms)
    -- been run yet, then we cannot compute the sample delay and ramp times
    -- below, so we bail out, telling the user to enable dsp first.
    if not self.samplerate then
-      self:error("luaxfade: unknown sample rate, please enable dsp first")
+      self:error("luaxfade~: unknown sample rate, please enable dsp first")
       return
    end
    local fade, time, delay = table.unpack(atoms)
@@ -972,7 +1056,7 @@ end
 
 And here's the luaxfade.pd patch which takes a sine wave on the left and a noise signal on the right inlet and performs cross fades with a ramp time of 500 msec and an initial delay of 200 msec. To adjust these values, just edit the `fade` message accordingly.
 
-![17-signal4](17-signal4.png)
+![Cross-fades](17-signal4.png)
 
 ### Graphics
 
@@ -980,7 +1064,7 @@ Timothy Schoen's Pd-Lua graphics API provides you with a way to equip an object 
 
 In order to enable graphics in a Pd-Lua object, you have to provide a `paint` method. This receives a graphics context `g` as its argument, which lets you set the current color, and draw text and the various different geometric shapes using that color. In addition, you can provide methods to be called in response to mouse down, up, move, and drag actions on the object, which is useful to equip your custom GUI objects with mouse-based interaction.
 
-Last but not least, Pd-Lua also provides the `set_args` method which lets you store internal object state in the object's creation arguments, which is useful if you need to keep track of persistent state when storing an object on disk (via saving the patch) or when duplicating or copying objects. This can also be used with ordinary Pd-Lua objects which don't utilize the graphics API, but it is most useful in the context of custom GUI objects.
+Last but not least, the `set_args` method lets you store internal object state in the object's creation arguments, while `get_args` lets you retrieve those arguments. This is useful if you need to keep track of persistent state when storing an object on disk (via saving the patch) or when duplicating or copying objects. Also, their companion `canvas_realizedollar` method allows you to expand symbols containing "$" patch arguments like `$0`, `$1`, etc. These three are often combined, but they can also be used separately, and they work just as well with ordinary Pd-Lua objects which don't utilize the graphics API. In fact we've already introduced them while discussing receivers, see [Expanding dollar symbols](#expanding-dollar-symbols) above, so we won't go into them again; however, check the circle-gui example included in the distribution to see how to store Lua object configuration data persistently in the creation arguments of a custom GUI object.
 
 We use a custom GUI object, a simple kind of dial, as a running example to illustrate most of these elements in the following subsections. To keep things simple, we will not discuss the graphics API in much detail here, so you may want to check the graphics subpatch in the main pdlua-help patch, which contains a detailed listing of all available methods for reference.
 
@@ -988,7 +1072,7 @@ We use a custom GUI object, a simple kind of dial, as a running example to illus
 
 Let's begin with a basic clock-like dial: just a circular *face* and a border around it, on which we draw a *center point* and the *hand* (a line) starting at the center point and pointing in any direction which indicates the current *phase* angle. So this is what we are aiming for:
 
-![18-graphics1](18-graphics1.png)
+![A basic dial](18-graphics1.png)
 
 Following the clock paradigm, we assume that a zero phase angle means pointing upwards (towards the 12 o'clock position), while +1 or -1 indicates the 6 o'clock position, pointing downwards. Phase angles less than -1 or greater than +1 wrap around. Positive phase differences denote clockwise, negative differences counter-clockwise rotation. And since we'd like to change the phase angle displayed on the dial, we add an inlet taking float values.
 
@@ -1036,7 +1120,9 @@ function dial:paint(g)
 end
 ~~~
 
-The existence of the  `paint` method tells Pd-Lua that this is a graphical object. As mentioned before, this method receives a graphics context `g` as argument. The graphics context is an internal data structure keeping track of the the graphics state of the object, which is used to invoke all the graphics operations. The `set_color` method of the graphics context is used to set the color for all drawing operations; in the case of `fill` operations it fills the graphical element with the color, while in the case of `stroke` operations it draws its border. There's just one color value, so we need to set the desired fill color in case of `fill`, and the desired stroke color in case of `stroke` operations. The color values 0 and 1 we use in this example are predefined, and indicate the default background color (usually white) and default foreground color (usually black), respectively. It is possible to choose other colors by calling `g:set_color(r, g, b)` with rgb color values instead, with each r, g, b value ranging from 0 to 255 (i.e., a byte value). For instance, the color "teal" would be specified as 0, 128, 128, the color "orange" as 255, 165, 0, "black" as 0, 0, 0, and "white" as 255, 255, 255. (The API also lets you specify rgba values, including an alpha a.k.a. opacity value a, but the alpha component will only work in plugdata right now, and even that I'm not really sure of. Thus it is best ignored for now.)
+The existence of the  `paint` method tells Pd-Lua that this is a graphical object. As mentioned before, this method receives a graphics context `g` as argument. The graphics context is an internal data structure keeping track of the graphics state of the object, which is used to invoke all the graphics operations. The `set_color` method of the graphics context is used to set the color for all drawing operations; in the case of `fill` operations it fills the graphical element with the color, while in the case of `stroke` operations it draws its border. There's just one color value, so we need to set the desired fill color in case of `fill`, and the desired stroke color in case of `stroke` operations. The color values 0 and 1 we use in this example are predefined, and indicate the default background color (usually white) and default foreground color (usually black), respectively.
+
+It is possible to choose other colors by calling `g:set_color(r, g, b)` with rgb color values instead, with each r, g, b value ranging from 0 to 255 (i.e., a byte value). For instance, the color "teal" would be specified as 0, 128, 128, the color "orange" as 255, 165, 0, "black" as 0, 0, 0, "white" as 255, 255, 255, etc. It's also possible to add a fourth *alpha* a.k.a. opacity value a, which is a floating point number in the range 0-1, where 0 means fully transparent, 1 fully opaque, and any value in between will blend in whatever is behind the graphical element to varying degrees. As of Pd-Lua 0.12.7, alpha values are fully supported in both plugdata and purr-data. In vanilla Pd they are simply ignored at present, so all graphical objects will be opaque no matter what alpha value you specify.
 
 Let's now take a closer look at the drawing operations themselves. We start out by filling the entire object rectangle, which is our drawing surface, with the default background color 0, using `g:fill_all()`. This operation is special in that it not only fills the entire object rectangle, but also creates a standard border rectangle around it. If you skip this, you'll get an object without border, which may be useful at times.
 
@@ -1132,7 +1218,7 @@ end
 
 Easy as pie. Here's how our patch looks like now:
 
-![18-graphics2](18-graphics2.png)
+![Adding an outlet](18-graphics2.png)
 
 #### Mouse actions
 
@@ -1177,31 +1263,37 @@ end
 
 And here's the same patch again, which now lets us drag the hand to change the phase value:
 
-![18-graphics3](18-graphics3.png)
+![Dial with mouse interaction](18-graphics3.png)
 
 #### More dial action: clocks and speedometers
 
 Now that our dial object is basically finished, let's do something interesting with it. The most obvious thing is to just turn it into a clock (albeit one with just a seconds hand) counting off the seconds. For that we just need to add a metro object which increments the phase angle and sends the value to the dial each second:
 
-![18-graphics4](18-graphics4.png)
+![A clock](18-graphics4.png)
 
-In the patch, we store the current phase angle in the `phase` variable, so that it can be updated easily using the `expr` object by just assigning to the variable. Note that we also update the variable whenever the dial outputs a new value, so you can also drag around the hand to determine its starting phase.
+Pd lets us store the phase angle in a named variable (`v phase`) which can be recalled in an `expr` object doing the necessary calculations. The `expr` object sends the computed value to the `phase` receiver, which updates both the variable and the upper numbox, and the numbox then updates the dial. Note that we also set the variable whenever the dial outputs a new value, so you can also drag around the hand to determine the starting phase. And we added a `0` message to reset the hand to the 12 o'clock home position when needed.
 
 Here's another little example, rather useless but fun, simulating a speedometer which just randomly moves the needle left and right:
 
-![18-graphics5](18-graphics5.png)
+![A speedometer](18-graphics5.png)
 
 I'm sure you can imagine many more creative uses for this simple but surprisingly versatile little GUI object, which we did in just a few lines of fairly simple Lua code. Have fun with it! An extended version of this object, which covers some more features of the graphics API that we didn't discuss here to keep things simple, can be found as dial.pd and dial.pd_lua in the tutorial examples:
 
-![18-graphics6](18-graphics6.png)
+![Extended dial example](18-graphics6.png)
 
 The extended example adds messages for resizing the object and setting colors, and also shows how to save and restore object state in the creation arguments using the `set_args()` method mentioned at the beginning of this section. The accompanying patch covers all the examples we discussed here, and adds a third example showing how to utilize our dial object as a dB meter.
 
 ## Live coding
 
-I've been telling you all along that in order to make Pd-Lua pick up changes you made to your .pd_lua files, you have to relaunch Pd and reload your patches. Well, in this section we are going to discuss Pd-Lua's *live coding* features, which let you modify your sources and have Pd-Lua reload them on the fly, without ever exiting the Pd environment. This rapid incremental style of development is one of the hallmark features of dynamic programming environments like Pd and Lua. Musicians also like to employ it to modify their algorithmic composition programs live on stage, which is where the term "live coding" comes from. You'll probably be using live coding a lot while developing your Pd-Lua externals, but I've kept this topic for the final section of this guide, because it requires a good understanding of Pd-Lua's basic features. So without any further ado, let's dive right into it now.
+I've been telling you all along that in order to make Pd-Lua pick up changes you made to your .pd_lua files, you have to relaunch Pd and reload your patches. Well, as you probably guessed by now, this isn't actually true. So in this section we are going to cover Pd-Lua's *live coding* features, which let you modify your sources and have Pd-Lua reload them on the fly, without ever exiting the Pd environment. This rapid incremental style of development is one of the hallmark features of dynamic interactive programming environments like Pd and Lua. Musicians also like to employ it to modify their programs live on stage, which is where the term "live coding" comes from.
 
-First, we need to describe the predefined Pd-Lua object classes `pdlua` and `pdluax`, so that you know what's readily available. We'll also discuss how to add a `reload` message to your existing object definitions. This is quite easy to do by directly employing Pd-Lua's `dofile` method, which is also what both `pdlua` and `pdluax` use internally. These methods all work with older Pd-Lua versions, but they require a lot of manual fiddling with the Lua source and are are thus arduous and error-prone. That's why we also provide the special pdx.lua module which automatizes the entire process and is much less work than all the other approaches (basically, you just add two lines to your script and be done with it). Hence this is the method we recommend for all modern Pd-Lua versions. We describe it last so that you can also gather a good understanding of the "legacy" live coding methods on offer. But if you want something that just works with minimal effort, feel free to skip ahead to the [pdx.lua](#pdx.lua) section below which should be readable without any prior knowledge of the other approaches.
+I've kept this topic for the final section of this guide, because it is somewhat advanced, and there are several different (traditional and new) methods available which differ in capabilities and ease of use. However, in modern Pd-Lua versions there *is* one preferred method which rules them all, so if you want to cut to the chase as quickly as possible, then feel free to just skip ahead to the [pdx.lua](#pdx.lua) section now.
+
+If you're still here, then you probably want to learn about the other methods, too. So in the following we first describe the predefined Pd-Lua object classes `pdlua` and `pdluax`, so that you know the "traditional" live-coding instruments that Pd-Lua had on offer for a long time. We also discuss how to add a `reload` message to your existing object definitions. This is quite easy to do by directly employing Pd-Lua's `dofile` function, which is also what both `pdlua` and `pdluax` use internally.
+
+These methods all work with pretty much any Pd-Lua version out there, but require a little bit of setup which can get time-consuming and error-prone if you're dealing with large patches involving a lot of different Lua objects.
+
+That's why Pd-Lua nowadays includes an extension module called *pdx.lua* that "just works" out of the box and automatizes everything, so that you only have to put a simple `reload` message in your main patch and be done with it. This is also the method we recommend, to novices and expert users alike. We describe it last so that you can also gather a good understanding of Pd-Lua's traditional live coding methods, and learn to appreciate them. These are still used in many older scripts, and Pd-Lua will continue to support them for backward compatibility.
 
 ### pdlua
 
@@ -1272,13 +1364,13 @@ Now change that `+` operator to `-`:
 
 Don't forget to save your edits, then go back to the patch and recreate the `pdluax foo` object on the left. The quickest way to do that is to just delete the object, then use Pd's "Undo" operation, Ctrl+Z. Et voilà: the new object now decrements the counter rather than incrementing it. Also note that the other object on the right still runs the old code which increments the counter; thus you will have to give that object the same treatment if you want to update it, too.
 
-While `pdluax` was considered Pd-Lua's main workhorse for live coding, it has its quirks. Most notably, the syntax is different from regular object definitions, so you have to change the code if you want to turn it into a .pd_lua file. Also, having to recreate an object to reload the script file is quite disruptive (it resets the internal state of the object), and may leave objects in an inconsistent state (different objects may use various different versions of the same script file). Sometimes this may be what you want, but it makes `pdluax` somewhat difficult to use. It's not really tailored for interactive development, but it shines if you need a specialized tool for changing your objects on a whim in a live situation.
+While `pdluax` was considered Pd-Lua's main workhorse for live coding in the past, it has its quirks. Most notably, the syntax is different from regular object definitions, so you have to change the code if you want to turn it into a .pd_lua file. Also, having to recreate an object to reload the script file is quite disruptive (it resets the internal state of the object), and may leave objects in an inconsistent state (different objects may use various different versions of the same script file). Sometimes this may be what you want, but it makes `pdluax` somewhat difficult to use. It's not really tailored for interactive development, but it shines if you need a specialized tool for changing your objects on a whim in a live situation.
 
-Fortunately, if you're not content with Pd-Lua's built-in facilities for live coding, it's easy to roll your own using the internal `dofile` method, which is discussed in the next subsection.
+Fortunately, if you're not content with Pd-Lua's traditional facilities for live coding, it's easy to roll your own using the internal `dofile` method, which is discussed in the next subsection.
 
 ### dofile and dofilex
 
-So let's discuss how to use `dofile` in a direct fashion. Actually, we're going to use its companion `dofilex` here, which works the same as `dofile`, but loads Lua code relative to the "externdir" of the class (the directory of the .pd_lua file) rather than the directory of the Pd canvas with the pdlua object, which is what `dofile` does. Normally, you don't have to worry about these intricacies, but they *will* matter if Lua class names are specified using relative pathnames, such as `../foo` or `bar/baz`. Since we're reloading class definitions here, it's better to use `dofilex` so that our code doesn't break if we later change the directory structure.
+So let's discuss how to use `dofile` in a direct fashion. Actually, we're going to use its companion `dofilex` here, which works the same as `dofile`, but loads Lua code relative to the "externdir" of the class (the directory of the .pd_lua file) rather than the directory of the Pd canvas with the pdlua object, which is what `dofile` does. Normally, this won't make much of a difference, but it *will* matter if Lua class names are specified using relative pathnames, such as `../foo` or `bar/baz`. Since we're reloading class definitions here, it's better to use `dofilex` so that our objects don't break if we move things about.
 
 The method we sketch out below is really simple and doesn't have any of the drawbacks of the `pdluax` object, but you still have to add a small amount of boilerplate code to your existing object definition. Here is how `dofilex` is invoked:
 
@@ -1320,7 +1412,7 @@ end
 
 Now launch the luatab.pd patch and connect a `reload` message to the `luatab wave` object, like so:
 
-![Livecoding example 1](13-livecoding1.png)
+![Live-coding with dofilex 1](13-livecoding1.png)
 
 Next change the wavetable function to whatever you want, e.g.:
 
@@ -1332,25 +1424,19 @@ Next change the wavetable function to whatever you want, e.g.:
 
 Return to the patch, click the `reload` message, and finally reenter the frequency value, so that the waveform gets updated:
 
-![Livecoding example 2](14-livecoding2.png)
+![Live-coding with dofilex 2](14-livecoding2.png)
 
 ### pdx.lua
 
-The method sketched out in the preceding subsection works well enough for simple patches. However, having to manually wire up the `reload` message to one object of each class that you're editing is still quite cumbersome. In a big patch, which is being changed all the time, this quickly becomes unwieldy. Wouldn't it be nice if we could equip each object with a special receiver, so that we can just click a message somewhere in the patch to reload a given class, or even all Pd-Lua objects at once? And maybe even do that remotely from the editor, using the `pdsend` program?
+The method sketched out in the preceding subsection works well enough for simple patches. However, having to manually wire up the `reload` message to one object of each class that you're editing is still quite cumbersome. In a big patch, which is being changed all the time, this quickly becomes unwieldy. Wouldn't it be nice if we could equip each object with a special receiver, so that we can just click a message somewhere in the patch to reload a given class, or even all Pd-Lua objects at once? Or even send that message via the `pdsend` program, e.g., from the text editor in which you edit the Lua source of your object?
 
-Well, all this is in fact possible, but the implementation is a bit too involved to fully present it here. So we have provided this in a separate pdx.lua module, which you can find in the sources accompanying this tutorial. Setting up an object for this kind of remote control is easy, though. First, you need to import the `pdx` module into your script, using Lua's `require`:
-
-~~~lua
-local pdx = require 'pdx'
-~~~
-
-Then just call `pdx.reload(self)` somewhere in the `initialize` method. This will set up the whole receiver/dofilex machinery in a fully automatic manner. Finally, add a message like this to your patch, which goes to the special `pdluax` receiver (note that this is completely unrelated to the `pdluax` object discussed previously, it just incidentally uses the same name):
+Well, all this is in fact possible, but the implementation is a bit too involved to fully present here. So we have provided this in a separate pdx.lua module, which you can find in the sources accompanying this tutorial for your perusal. As of Pd-Lua 0.12.8, pdx.lua is pre-loaded and all the required setup is performed automatically. You only have to add a message like the following to your patch, which goes to the special `pdluax` receiver (note that this is unrelated to the `pdluax` object discussed previously, it just incidentally uses the same name):
 
 ~~~
 ; pdluax reload
 ~~~
 
-When clicked, this just reloads all Pd-Lua objects in the patch, provided they have been set up with `pdx.reload`. You can also specify the class to be reloaded (the receiver matches this against each object's class name):
+When clicked, this just reloads all Pd-Lua objects in the patch. You can also specify the class to be reloaded (the receiver matches this against each object's class name):
 
 ~~~
 ; pdluax reload foo
@@ -1362,88 +1448,68 @@ Or maybe name several classes, like so:
 ; pdluax reload foo, reload bar
 ~~~
 
-You get the idea. Getting set up for remote control via `pdsend` isn't much harder. E.g., let's say that we use UDP port 4711 on localhost for communicating with Pd, then you just need to connect `netreceive 4711 1` to the `; pdluax reload` message in a suitable way, e.g.:
+You get the idea. Getting set up for remote control via `pdsend` isn't much harder. E.g., let's say that we use UDP port 4711 on localhost for communicating with Pd, then you just need to connect `netreceive 4711 1` to the `pdluax` receiver in a suitable way. Let's use the luatab.pd_lua object from the previous subsection as an example. You can remove the `in_1_reload` handler from that script -- it's no longer needed, as pdx.lua now dispatches the `reload` messages for us. Here's how the revised patch looks like:
 
-![Remote control 1](15-remote-control1.png)
+![Live-coding with remote control](15-remote-control1.png)
 
-You can then use `pdsend 4711 localhost udp` to transmit the `reload` message to Pd when needed. You probably don't want to run those commands yourself, but a decent code editor will let you bind a keyboard command which does this for you. Myself, I'm a die-hard Emacs fan, so I've included a little elisp module pd-remote.el which shows how to do this. Once you've added this to your .emacs, you can just type Ctrl+C Ctrl+K in Emacs to make Pd reload your Lua script after saving it. It doesn't get much easier than that.
+This doesn't look any simpler than before, but it also does a whole lot more. Clicking the message not just reloads the `luatab` script, but *any* Lua object you have running, in *any* of the patches you have opened. And you can now use `pdsend 4711 localhost udp` to reload your Lua objects from literally anywhere. Any decent code editor will let you bind a keyboard command which does this for you. Myself, I'm a die-hard Emacs fan, so I've included a little elisp module *pd-remote.el* which shows how to do this. Once you've added this to your .emacs, you can just type Ctrl+C Ctrl+K in any Lua buffer to make Pd reload your Lua scripts after editing them. It doesn't get much easier than that.
 
-Moreover, for your convenience I've also added a little abstraction named pd-remote.pd which takes care of the `netreceive` and messaging bits and will look much tidier in your patches. Using the abstraction is easy: Insert `pd-remote` into the patch you're working on, and connect a `pdluax reload` message (without the `;` prefix) to the inlet of the abstraction. Now you can just click on that message to reload your script files. In fact any of the variations of reload messages discussed above will work, if you remove the `;` prefix, and the abstraction will also respond to such messages on port 4711 by default (the port number can be changed in the abstraction if needed).
+In addition, I've provided a little abstraction named *pd-remote.pd* which takes care of adding the `netreceive` and messaging bits and also looks much tidier in your patches. Using the abstraction is easy: Insert `pd-remote` into the patch you're working on, and (optionally) connect a `pdluax reload` message (without the `;` prefix) to the inlet of the abstraction; or use something like `pdluax reload foo` to reload a specific object class. Now you can just click on that message to reload your script files, and the abstraction will also respond to such messages on port 4711 (the port number can be changed in the abstraction if needed). Here's how that looks like in a patch:
 
----
-
-**NOTE:** As of Pd-Lua 0.12.5, using pdx.lua has become much easier, since pdx.lua, pd-remote.el, and pd-remote.pd get installed in your pdlua external directory, and this directory now also gets searched for Lua imports. Thus `require 'pdx'` will just work in all your Pd-Lua scripts without any further ado. To make Pd find the pd-remote.pd abstraction, you'll still have to copy it to your project directory. Or you can add the pdlua directory to your Pd library path. (Depending on how Pd-Lua was installed, you may want to do that anyway so that the pdlua directory shows up in Pd's help browser.)
-
-The pd-remote.el file can be installed in your Emacs site-lisp directory if needed. Please also check the [pd-remote](https://github.com/agraef/pd-remote) repository on GitHub for the latest pd-remote version and further details. This also includes a pointer to a Visual Studio Code extension written by Baris Altun which can be used as a replacement for pd-remote.el if you're not familiar with Emacs, or just prefer to use VS Code as an editor.
+![Live-coding with pd-remote.pd](15-remote-control2.png)
 
 ---
 
-So here's the full source code of our reworked `luatab` example (now with the `in_1_reload` handler removed and the `pdx.reload` call added to the `initialize` method):
+**NOTE:** To make Pd find the pd-remote.pd abstraction without having to copy it to your project directory, you can add the pdlua external directory (which is where the abstraction gets installed) to your Pd library path, either in your Pd setup, or inside the patch with a `declare -stdpath` object, as shown above.
 
-~~~lua
-local luatab = pd.Class:new():register("luatab")
+The pd-remote.el file can be installed in your Emacs site-lisp directory if needed. However, the easiest way to install it is from [MELPA](https://melpa.org/), a large repository of Emacs packages. Please also check the [pd-remote](https://github.com/agraef/pd-remote) repository on GitHub for the latest pd-remote version and further details. This also includes a pointer to a Visual Studio Code extension written by Baris Altun which can be used as a replacement for pd-remote.el if you prefer VS Code for editing.
 
--- our own pdlua extension, needed for the reload functionality
-local pdx = require 'pdx'
-
-function luatab:initialize(sel, atoms)
-   -- single inlet for the frequency, bang goes to the single outlet when we
-   -- finished generating a new waveform
-   self.inlets = 1
-   self.outlets = 1
-   -- enable the reload callback
-   pdx.reload(self)
-   -- the name of the array/table should be in the 1st creation argument
-   if type(atoms[1]) == "string" then
-      self.tabname = atoms[1]
-      return true
-   else
-      self:error(string.format("luatab: expected array name, got %s",
-                               tostring(atoms[1])))
-      return false
-   end
-end
-
-function luatab:in_1_float(freq)
-   if type(freq) == "number" then
-      -- the waveform we want to compute, adjust this as needed
-      local function f(x)
-         return math.sin(2*math.pi*freq*(x+1))/(x+1)
-      end
-      -- get the Pd array and its length
-      local t = pd.Table:new():sync(self.tabname)
-      if t == nil then
-         self:error(string.format("luatab: array or table %s not found",
-                                  self.tabname))
-         return
-      end
-      local l = t:length()
-      -- Pd array indices are zero-based
-      for i = 0, l-1 do
-         -- normalize arguments to the 0-1 range
-         t:set(i, f(i/l))
-      end
-      -- this is needed to update the graph display
-      t:redraw()
-      -- output a bang to indicate that we've generated a new waveform
-      self:outlet(1, "bang", {})
-   else
-      self:error(string.format("luatab: expected frequency, got %s",
-                               tostring(freq)))
-   end
-end
-~~~
+---
 
 And here's a little gif showing the above patch in action. You may want to watch this in [Typora](https://www.typora.io/) or your favorite web browser to make the animation work.
 
-![Remote control 2](16-remote-control2.gif)
+![Live-coding in action](16-remote-control2.gif)
 
-So there you have it: four different ways to live-code with Pd-Lua. Choose whatever best fits your purpose and is the most convenient for you.
+So there you have it: Not one, not two, but three different ways to live-code with Pd-Lua (or four, if you count in the `pdlua` object). pdx.lua certainly is the most advanced and user-friendly solution among these, but you can choose whatever best fits your purpose and is the most convenient for you.
+
+### Object reinitialization in pdx.lua
+
+If pdx.lua reloads a script file, it normally does *not* run the `initialize` method. This is by design, as we want the reload process to be as smooth as possible while running a patch, and invoking the `initialize` method could potentially be quite disruptive, as it usually reinitializes all your member variables.
+
+However, pdx.lua has another trick up its sleeve if you do need some kind of custom reinitialization. There are two callback methods that you can implement, `prereload` and `postreload` which will be invoked immediately before and after reloading the script file, respectively.  Either method can be used to reinitialize your objects during reloading in any desired way. The only difference between the two methods is that `prereload` still runs in the old script, while `postreload` executes the new code which has just been loaded. Typically you'd use `prereload` to perform any required bookkeeping or state-saving before the script gets loaded, and `postreload` for custom initialization afterwards.
+
+In particular, these callbacks can change any member variables, either directly or by invoking other methods. The most important use cases probably are to change the `inlets` and `outlets` variables, and to add a `paint` method, which can be done on the fly to reconfigure your objects accordingly. To these ends, you can just call the `initialize` method from `postreload`. To demonstrate this, in the tutorial examples you'll find a pdxtest.pd patch and pdxtest~.pd_lua script. The script has the following `reload` method:
+
+~~~lua
+function pdxtest:postreload()
+   -- stuff to do post-reload goes here
+   pd.post("Reloaded!")
+   -- instead of doing a full initialization, you could also just change the
+   -- number of inlets and outlets here
+   self:initialize()
+end
+~~~
+
+Now, if you need to change the number of inlets and outlets of the object, you can just modify the definitions of `inlets` and `outlets` in the script's `initialize` method and reload. Easy as pie. Try it! Instructions can be found in the script.
+
+### Live coding and dsp
+
+One caveat about using any of the above live-coding solutions in conjunction with Pd-Lua's [signal processing capabilities](#signals) is in order. When the Lua code of an object class gets reloaded, the existing code is replaced immediately. There isn't any kind of automatic "cross-fade" between old and new code. If you change the `perform` method of that class, there may well be discontinuities in the generated output signals which result in audible clicks. This won't matter much if you're just developing an object in your studio. But live on stage you may want to avoid this -- unless you accept or even cherish such glitches as part of your live performance.
+
+There are ways to work around this issue, however. To demonstrate this, the tutorial examples include the following live-xfade.pd patch:
+
+![Live cross-fade](17-live-xfade.png)
+
+The `foo~` and `bar~` objects in this example are essentially the same, with some minor variations in the sound generation parameters. The particular sounds in this example are not important, each object just outputs a random walk of sine waves of varying frequencies with some phase distortion. But they *will* produce clicks when switching them abruptly, thus we need a smooth cross-fade between the two sound sources. This is handled by the [`luaxfade~`](#real-world-example-cross-fades) object from the Signals section.
+
+What's special here is that the transitions are being triggered automatically, *by the received reload messages*. By these means, you can edit, say, the `foo~` object while the `bar~` object is playing, then save your edits and send a `reload` message. At this point the new code for `foo~` is loaded while the cross-fade from `bar~` to `foo~` is initiated at the same time.
+
+This method obviously requires some preparation and diligence when being used live on stage. Having some kind of automatic cross-fade functionality for dsp objects baked into Pd-Lua's run-time system would make this a lot easier. Maybe this can be provided by pdx.lua in a future release.
 
 ## Conclusion
 
 Congratulations! If you made it this far, you should have learned more than enough to start using Pd-Lua successfully for your own projects. You should also be able to read and understand the many examples in the Pd-Lua distribution, which illustrate all the various features in much more detail than we could muster in this introduction. You can find these in the examples folder, both in the Pd-Lua sources and the pdlua folder of your Pd installation.
 
-The examples accompanying this tutorial (including the pdx.lua, pdlua-remote.el and pdlua-remote.pd files mentioned at the end of the previous section) are also available for your perusal in the examples subdirectory of the folder where you found this document.
+The examples accompanying this tutorial (including the pdx.lua, pdlua-remote.el and pdlua-remote.pd files mentioned at the end of the pdx.lua section) are also available for your perusal in the examples subdirectory of the folder where you found this document.
 
 Finally, I'd like to thank Claude Heiland-Allen for creating such an amazing tool, it makes programming Pd externals really easy and fun. Kudos also to Roberto Ierusalimschy for Lua, which for me is one of the best-designed, easiest to learn, and most capable multi-paradigm scripting languages there are today, while also being fast, simple, and light-weight.
