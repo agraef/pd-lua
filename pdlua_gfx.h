@@ -236,20 +236,20 @@ static int get_size(lua_State* L)
 
 // we make this global because paths are disconnected from object, but still need to send messages to plugdata
 // it really doesn't matter since all these function callbacks point to the same function anyway
-static void(*plugdata_draw_callback)(void*, t_symbol*, int, t_atom*) = NULL;
+static void(*plugdata_draw_callback)(void*, int, t_symbol*, int, t_atom*) = NULL;
 
 // Wrapper around draw callback to plugdata
-static inline void plugdata_draw(t_pdlua *obj, t_symbol* sym, int argc, t_atom* argv)
+static inline void plugdata_draw(t_pdlua *obj, int layer, t_symbol* sym, int argc, t_atom* argv)
 {
     if(plugdata_draw_callback) {
-        plugdata_draw_callback(obj, sym, argc, argv);
+        plugdata_draw_callback(obj, layer, sym, argc, argv);
     }
 }
 
 static inline void plugdata_draw_path(t_symbol* sym, int argc, t_atom* argv)
 {
     if(plugdata_draw_callback) {
-        plugdata_draw_callback(NULL, sym, argc, argv);
+        plugdata_draw_callback(NULL, -1, sym, argc, argv);
     }
 }
 
@@ -275,7 +275,7 @@ static int set_size(lua_State* L)
     t_atom args[2];
     SETFLOAT(args, obj->gfx.width); // w
     SETFLOAT(args + 1, obj->gfx.height); // h
-    plugdata_draw(obj, gensym("lua_resized"), 2, args);
+    plugdata_draw(obj, -1, gensym("lua_resized"), 2, args);
     return 0;
 }
 
@@ -286,26 +286,21 @@ static int start_paint(lua_State* L) {
     }
     t_pdlua *obj = (t_pdlua*)lua_touserdata(L, 1);
     int layer = luaL_checknumber(L, 2);
-    t_atom layer_atom;
-    SETFLOAT(&layer_atom, layer);
     
     lua_pushlightuserdata(L, &obj->gfx);
     luaL_setmetatable(L, "GraphicsContext");
 
     plugdata_draw_callback = obj->gfx.plugdata_draw_callback;
-    plugdata_draw(obj, gensym("lua_start_paint"), 1, &layer_atom);
+    obj->gfx.current_layer = layer;
+    plugdata_draw(obj, obj->gfx.current_layer, gensym("lua_start_paint"), 0, NULL);
     return 1;
 }
 
 static int end_paint(lua_State* L) {
     t_pdlua_gfx *gfx = pop_graphics_context(L);
     t_pdlua *obj = gfx->object;
-    
-    int layer = luaL_checknumber(L, 1);
-    t_atom layer_atom;
-    SETFLOAT(&layer_atom, layer);
-    
-    plugdata_draw(obj, gensym("lua_end_paint"), 1, &layer_atom);
+    plugdata_draw(obj, gfx->current_layer, gensym("lua_end_paint"), 0, NULL);
+    gfx->current_layer = -1;
     return 0;
 }
 
@@ -315,7 +310,7 @@ static int set_color(lua_State* L) {
     if (lua_gettop(L) == 1) { // Single argument: parse as color ID instead of RGB
         t_atom arg;
         SETFLOAT(&arg, luaL_checknumber(L, 1)); // color ID
-        plugdata_draw(obj, gensym("lua_set_color"), 1, &arg);
+        plugdata_draw(obj, gfx->current_layer, gensym("lua_set_color"), 1, &arg);
         return 0;
     }
 
@@ -331,7 +326,7 @@ static int set_color(lua_State* L) {
     else {
         SETFLOAT(args + 3, 1.0f);
     }
-    plugdata_draw(obj, gensym("lua_set_color"), 4, args);
+    plugdata_draw(obj, gfx->current_layer, gensym("lua_set_color"), 4, args);
     return 0;
 }
 
@@ -342,7 +337,7 @@ static int fill_ellipse(lua_State* L) {
     SETFLOAT(args + 1, luaL_checknumber(L, 2)); // y
     SETFLOAT(args + 2, luaL_checknumber(L, 3)); // w
     SETFLOAT(args + 3, luaL_checknumber(L, 4)); // h
-    plugdata_draw(gfx->object, gensym("lua_fill_ellipse"), 4, args);
+    plugdata_draw(gfx->object, gfx->current_layer, gensym("lua_fill_ellipse"), 4, args);
     return 0;
 }
 
@@ -354,14 +349,14 @@ static int stroke_ellipse(lua_State* L) {
     SETFLOAT(args + 2, luaL_checknumber(L, 3)); // w
     SETFLOAT(args + 3, luaL_checknumber(L, 4)); // h
     SETFLOAT(args + 4, luaL_checknumber(L, 5)); // width
-    plugdata_draw(gfx->object, gensym("lua_stroke_ellipse"), 5, args);
+    plugdata_draw(gfx->object, gfx->current_layer, gensym("lua_stroke_ellipse"), 5, args);
     return 0;
 }
 
 static int fill_all(lua_State* L) {
     t_pdlua_gfx *gfx = pop_graphics_context(L);
     t_pdlua *obj = gfx->object;
-    plugdata_draw(obj, gensym("lua_fill_all"), 0, NULL);
+    plugdata_draw(obj, gfx->current_layer, gensym("lua_fill_all"), 0, NULL);
     return 0;
 }
 
@@ -372,7 +367,7 @@ static int fill_rect(lua_State* L) {
     SETFLOAT(args + 1, luaL_checknumber(L, 2)); // y
     SETFLOAT(args + 2, luaL_checknumber(L, 3)); // w
     SETFLOAT(args + 3, luaL_checknumber(L, 4)); // h
-    plugdata_draw(gfx->object, gensym("lua_fill_rect"), 4, args);
+    plugdata_draw(gfx->object, gfx->current_layer, gensym("lua_fill_rect"), 4, args);
     return 0;
 }
 
@@ -384,7 +379,7 @@ static int stroke_rect(lua_State* L) {
     SETFLOAT(args + 2, luaL_checknumber(L, 3)); // w
     SETFLOAT(args + 3, luaL_checknumber(L, 4)); // h
     SETFLOAT(args + 4, luaL_checknumber(L, 5)); // corner_radius
-    plugdata_draw(gfx->object, gensym("lua_stroke_rect"), 5, args);
+    plugdata_draw(gfx->object, gfx->current_layer, gensym("lua_stroke_rect"), 5, args);
     return 0;
 }
 
@@ -396,7 +391,7 @@ static int fill_rounded_rect(lua_State* L) {
     SETFLOAT(args + 2, luaL_checknumber(L, 3)); // w
     SETFLOAT(args + 3, luaL_checknumber(L, 4)); // h
     SETFLOAT(args + 4, luaL_checknumber(L, 5)); // corner radius
-    plugdata_draw(gfx->object, gensym("lua_fill_rounded_rect"), 5, args);
+    plugdata_draw(gfx->object, gfx->current_layer, gensym("lua_fill_rounded_rect"), 5, args);
     return 0;
 }
 
@@ -409,7 +404,7 @@ static int stroke_rounded_rect(lua_State* L) {
     SETFLOAT(args + 3, luaL_checknumber(L, 4)); // h
     SETFLOAT(args + 4, luaL_checknumber(L, 5)); // corner_radius
     SETFLOAT(args + 5, luaL_checknumber(L, 6)); // width
-    plugdata_draw(gfx->object, gensym("lua_stroke_rounded_rect"), 6, args);
+    plugdata_draw(gfx->object, gfx->current_layer, gensym("lua_stroke_rounded_rect"), 6, args);
     return 0;
 }
 
@@ -421,7 +416,7 @@ static int draw_line(lua_State* L) {
     SETFLOAT(args + 2, luaL_checknumber(L, 3)); // w
     SETFLOAT(args + 3, luaL_checknumber(L, 4)); // h
     SETFLOAT(args + 4, luaL_checknumber(L, 5)); // line width
-    plugdata_draw(gfx->object, gensym("lua_draw_line"), 5, args);
+    plugdata_draw(gfx->object, gfx->current_layer, gensym("lua_draw_line"), 5, args);
 
     return 0;
 }
@@ -435,7 +430,7 @@ static int draw_text(lua_State* L) {
     SETFLOAT(args + 2, luaL_checknumber(L, 3)); // y
     SETFLOAT(args + 3, luaL_checknumber(L, 4)); // w
     SETFLOAT(args + 4, luaL_checknumber(L, 5)); // h
-    plugdata_draw(gfx->object, gensym("lua_draw_text"), 5, args);
+    plugdata_draw(gfx->object, gfx->current_layer, gensym("lua_draw_text"), 5, args);
     return 0;
 }
 
@@ -457,7 +452,7 @@ static int stroke_path(lua_State* L) {
         SETFLOAT(coordinates + (i * 2) + 2, y);
     }
 
-    plugdata_draw(gfx->object, gensym("lua_stroke_path"), path->num_path_segments * 2 + 1, coordinates);
+    plugdata_draw(gfx->object, gfx->current_layer, gensym("lua_stroke_path"), path->num_path_segments * 2 + 1, coordinates);
     free(coordinates);
 
     return 0;
@@ -479,7 +474,7 @@ static int fill_path(lua_State* L) {
         SETFLOAT(coordinates + (i * 2) + 1, y);
     }
 
-    plugdata_draw(gfx->object, gensym("lua_fill_path"), path->num_path_segments * 2, coordinates);
+    plugdata_draw(gfx->object, gfx->current_layer, gensym("lua_fill_path"), path->num_path_segments * 2, coordinates);
     free(coordinates);
 
     return 0;
@@ -492,7 +487,7 @@ static int translate(lua_State* L) {
     t_atom args[2];
     SETFLOAT(args, luaL_checknumber(L, 1)); // tx
     SETFLOAT(args + 1, luaL_checknumber(L, 2)); // ty
-    plugdata_draw(obj, gensym("lua_translate"), 2, args);
+    plugdata_draw(obj, gfx->current_layer, gensym("lua_translate"), 2, args);
     return 0;
 }
 
@@ -502,14 +497,14 @@ static int scale(lua_State* L) {
     t_atom args[2];
     SETFLOAT(args, luaL_checknumber(L, 1)); // sx
     SETFLOAT(args + 1, luaL_checknumber(L, 2)); // sy
-    plugdata_draw(obj, gensym("lua_scale"), 2, args);
+    plugdata_draw(obj, gfx->current_layer, gensym("lua_scale"), 2, args);
     return 0;
 }
 
 static int reset_transform(lua_State* L) {
     t_pdlua_gfx *gfx = pop_graphics_context(L);
     t_pdlua *obj = gfx->object;
-    plugdata_draw(obj, gensym("lua_reset_transform"), 0, NULL);
+    plugdata_draw(obj, gfx->current_layer, gensym("lua_reset_transform"), 0, NULL);
     return 0;
 }
 #else

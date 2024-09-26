@@ -47,7 +47,8 @@ typedef struct _pdlua_gfx
     int first_draw;
     
 #else
-    void(*plugdata_draw_callback)(void*, t_symbol*, int, t_atom*); // Callback to perform drawing in plugdata
+    int current_layer;
+    void(*plugdata_draw_callback)(void*, int, t_symbol*, int, t_atom*); // Callback to perform drawing in plugdata
 #endif
 } t_pdlua_gfx;
 
