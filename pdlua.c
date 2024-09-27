@@ -990,7 +990,7 @@ static void pdlua_menu_open(t_pdlua *o)
     PDLUA_DEBUG3("pdlua_menu_open: L is %p, name is %s stack top is %d", __L(), name, lua_gettop(__L()));
     if (name && *name) // `pdluax` without argument gives empty script name
     {
-        class = o->class;
+        class = o->pdlua_class;
         if (!class) {
             lua_pop(__L(), 2); /* pop name, global "pd"*/
             return;
@@ -1385,7 +1385,7 @@ static int pdlua_object_new(lua_State *L)
                 o->sigoutlets = 0;
                 o->sig_warned = 0;
                 o->canvas = canvas_getcurrent();
-                o->class = c;
+                o->pdlua_class = c;
                 o->class_gfx = c_gfx;
                 
                 o->gfx.width = 80;
