@@ -291,6 +291,7 @@ static int start_paint(lua_State* L) {
 
     plugdata_draw_callback = obj->gfx.plugdata_draw_callback;
     obj->gfx.current_layer = layer;
+    obj->gfx.object = obj;
     plugdata_draw(obj, obj->gfx.current_layer, gensym("lua_start_paint"), 0, NULL);
     return 1;
 }
@@ -770,7 +771,7 @@ static int gfx_initialize(t_pdlua *obj)
     gfx->object = obj;
     gfx->transforms = NULL;
     gfx->num_transforms = 0;
-    gfx->num_layers = 1;
+    gfx->num_layers = 0;
     gfx->layer_tags = malloc(sizeof(char*));
     
     pdlua_gfx_repaint(obj, 0);
@@ -808,7 +809,7 @@ static int start_paint(lua_State* L) {
         return 1;
     }
     
-    int layer = luaL_checknumber(L, 2);
+    int layer = luaL_checknumber(L, 2) - 1;
     if(layer >= gfx->num_layers)
     {
         int new_num_layers = layer + 1;
@@ -890,7 +891,7 @@ static int end_paint(lua_State* L) {
     t_canvas *cnv = glist_getcanvas(obj->canvas);
 
     int scale = glist_getzoom(glist_getcanvas(obj->canvas));
-    int layer = luaL_checknumber(L, 1);
+    int layer = luaL_checknumber(L, 1) - 1;
     
     // Draw iolets on top
     int xpos = text_xpix((t_object*)obj, obj->canvas);
@@ -904,7 +905,7 @@ static int end_paint(lua_State* L) {
         // Move everything to below the order marker, to make sure redrawn stuff isn't always on top
         pdgui_vmess(0, "crss", cnv, "lower", gfx->object_tag, gfx->order_tag);
         
-        if(layer == 1)
+        if(layer == 0 && gfx->num_layers > 1)
         {
             if(layer < gfx->num_layers) pdgui_vmess(0, "crss", cnv, "lower", gfx->current_layer_tag, gfx->layer_tags[layer + 1]);
         }
