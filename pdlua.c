@@ -1386,7 +1386,7 @@ static int pdlua_object_new(lua_State *L)
                 o->sig_warned = 0;
                 o->canvas = canvas_getcurrent();
                 o->pdlua_class = c;
-                o->class_gfx = c_gfx;
+                o->pdlua_class_gfx = c_gfx;
                 
                 o->gfx.width = 80;
                 o->gfx.height = 80;
@@ -1416,7 +1416,7 @@ static int pdlua_object_creategui(lua_State *L)
     t_pdlua *o = lua_touserdata(L, 1);
     t_text *x = (t_text*)o;
     int reinit = lua_tonumber(L, 2);
-    if (!o->class_gfx) return 0; // we're not supposed to be here...
+    if (!o->pdlua_class_gfx) return 0; // we're not supposed to be here...
     // We may need to redraw the object in case it's been reloaded, to get the
     // iolets and patch cords fixed.
     int redraw = reinit && o->pd.te_binbuf && gobj_shouldvis(&o->pd.te_g, o->canvas) && glist_isvisible(o->canvas);
@@ -1427,9 +1427,9 @@ static int pdlua_object_creategui(lua_State *L)
     // We need to switch classes mid-flight here. This is a bit of a hack, but
     // we want to retain the standard text widgetbehavior for regular
     // (non-gui) objects. As soon as we create the gui here, we switch over to
-    // o->class_gfx, which is an exact clone of o->class, except that it has
+    // o->pdlua_class_gfx, which is an exact clone of o->pdlua_class, except that it has
     // our custom widgetbehavior for gui objects.
-    x->te_pd = o->class_gfx;
+    x->te_pd = o->pdlua_class_gfx;
     gfx_initialize(o);
     if (redraw) {
         // force object and its iolets to be redrawn
