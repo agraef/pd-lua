@@ -693,7 +693,10 @@ static void pdlua_gfx_clear(t_pdlua *obj, int layer, int removed) {
     t_pdlua_gfx *gfx = &obj->gfx;
     t_canvas *cnv = glist_getcanvas(obj->canvas);
 #ifndef PURR_DATA
-    pdgui_vmess(0, "crs", cnv, "delete", layer == -1 ? gfx->object_tag : gfx->layer_tags[layer]);
+    
+    if(layer < gfx->num_layers) {
+        pdgui_vmess(0, "crs", cnv, "delete", layer == -1 ? gfx->object_tag : gfx->layer_tags[layer]);
+    }
 
     if(removed && gfx->order_tag[0] != '\0')
     {
@@ -808,17 +811,6 @@ static int start_paint(lua_State* L) {
         lua_pushnil(L);
         return 1;
     }
-    
-    int layer = luaL_checknumber(L, 2) - 1;
-    if(layer >= gfx->num_layers)
-    {
-        int new_num_layers = layer + 1;
-        gfx->layer_tags = resizebytes(gfx->layer_tags, sizeof(char*) * gfx->num_layers, sizeof(char*) * new_num_layers);
-        gfx->num_layers = new_num_layers;
-        gfx->layer_tags[layer] = malloc(64);
-        snprintf(gfx->layer_tags[layer], 64, ".l%i%lx", layer, (long)obj);
-    }
-    gfx->current_layer_tag = gfx->layer_tags[layer];
 
 #ifdef PURR_DATA
     if (gfx->object_tag[0] == '*') {
@@ -843,6 +835,17 @@ static int start_paint(lua_State* L) {
     int can_draw = (glist_isvisible(obj->canvas) && gobj_shouldvis(&obj->pd.te_g, obj->canvas)) || obj->gfx.first_draw;
     if(can_draw)
     {
+        int layer = luaL_checknumber(L, 2) - 1;
+        if(layer >= gfx->num_layers)
+        {
+            int new_num_layers = layer + 1;
+            gfx->layer_tags = resizebytes(gfx->layer_tags, sizeof(char*) * gfx->num_layers, sizeof(char*) * new_num_layers);
+            gfx->num_layers = new_num_layers;
+            gfx->layer_tags[layer] = malloc(64);
+            snprintf(gfx->layer_tags[layer], 64, ".l%i%lx", layer, (long)obj);
+        }
+        gfx->current_layer_tag = gfx->layer_tags[layer];
+        
         if(gfx->transforms) freebytes(gfx->transforms, gfx->num_transforms * sizeof(gfx_transform));
         gfx->num_transforms = 0;
         gfx->transforms = NULL;
