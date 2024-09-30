@@ -693,7 +693,7 @@ static void pdlua_gfx_clear(t_pdlua *obj, int layer, int removed) {
     t_pdlua_gfx *gfx = &obj->gfx;
     t_canvas *cnv = glist_getcanvas(obj->canvas);
 #ifndef PURR_DATA
-    pdgui_vmess(0, "crs", cnv, "delete", layer == 0 ? gfx->object_tag : gfx->layer_tags[layer]);
+    pdgui_vmess(0, "crs", cnv, "delete", layer == -1 ? gfx->object_tag : gfx->layer_tags[layer]);
 
     if(removed && gfx->order_tag[0] != '\0')
     {

@@ -750,7 +750,7 @@ void pdlua_vis(t_gobj *z, t_glist *glist, int vis){
         pdlua_gfx_repaint(x, 1);
     }
     else {
-        pdlua_gfx_clear(x, 0, 1);
+        pdlua_gfx_clear(x, -1, 1);
     }
 }
 
