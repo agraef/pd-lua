@@ -481,7 +481,10 @@ function pd.Class:repaint(layer)
                 self[paint_layer_method](self, g)
                 _gfx_internal.end_paint(g, i)
                 i = i + 1
+            else
+                break;
             end
+
         else
             break -- Exit the loop when no more paint_layer_X methods are found
         end
