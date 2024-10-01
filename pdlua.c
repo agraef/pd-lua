@@ -32,15 +32,18 @@
 #include <sys/types.h> // for open
 #include <sys/stat.h> // for open
 #ifdef _MSC_VER
-#include <io.h>
-#include <fcntl.h> // for open
-#define read _read
-#define close _close
-#define ssize_t int
-#define snprintf _snprintf
+    #include <io.h>
+    #include <fcntl.h> // for open
+    #ifndef PATH_MAX
+        #define PATH_MAX 1024 /* same with Mac OS X's syslimits.h */
+    #endif
+    #define read _read
+    #define close _close
+    #define ssize_t int
+    #define snprintf _snprintf
 #else
-#include <sys/fcntl.h> // for open
-#include <unistd.h>
+    #include <sys/fcntl.h> // for open
+    #include <unistd.h>
 #endif
 /* we use Lua */
 #include <lua.h>
@@ -179,9 +182,6 @@ void initialise_lua_state()
 # define PDLUA_DEBUG2 PDLUA_DEBUG
 # define PDLUA_DEBUG3 PDLUA_DEBUG
 #endif
-
-EXTERN int sys_trytoopenone(const char *dir, const char *name, const char* ext,
-                            char *dirresult, char **nameresult, unsigned int size, int bin);
 
 // In plugdata we're linked statically and thus c_externdir is empty.
 // So we pass a data directory to the setup function instead and store it here.
