@@ -1206,7 +1206,7 @@ static int draw_line(lua_State* L) {
 
 #ifndef PURR_DATA
     pdgui_vmess(0, "crr iiii ri rs rS", cnv, "create", "line", x1, y1, x2, y2,
-                "-width", line_width, "-fill", gfx->current_color, "-tags", 2, tags);
+                "-width", line_width, "-fill", gfx->current_color, "-tags", 3, tags);
 #else // PURR_DATA
     int x0 = text_xpix((t_object*)obj, obj->canvas);
     int y0 = text_ypix((t_object*)obj, obj->canvas);
@@ -1289,7 +1289,7 @@ static int stroke_path(lua_State* L) {
     const char* tags[] = { gfx->object_tag, register_drawing(gfx), gfx->current_layer_tag };
 
 #ifndef PURR_DATA
-    pdgui_vmess(0, "crr iiii ri rs rS", cnv, "create", "line", 0, 0, 0, 0, "-width", stroke_width, "-fill", gfx->current_color, "-tags", 2, tags);
+    pdgui_vmess(0, "crr iiii ri rs rS", cnv, "create", "line", 0, 0, 0, 0, "-width", stroke_width, "-fill", gfx->current_color, "-tags", 3, tags);
     
     sys_vgui(".x%lx.c coords %s", cnv, tags[1]);
     for (int i = 0; i < path->num_path_segments; i++) {
