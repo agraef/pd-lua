@@ -1314,9 +1314,8 @@ static int pdlua_class_new(lua_State *L)
     
     // Let plugdata know this class is a lua object
 #if PLUGDATA
-    // XXXFIXME: @timothyschoen: Not sure whether plugdata needs to know about
-    // name_gfx, too?
     plugdata_register_class(name);
+    plugdata_register_class(name_gfx);
 #endif
 
     if (c) {
@@ -2999,8 +2998,8 @@ void pdlua_setup(void)
             result = lua_pcall(__L(), 0, 0, 0);
             PDLUA_DEBUG ("pdlua lua_pcall returned %d", result);
         }
-        if (0 != result)
-        //if (lua_load(__L(), pdlua_reader, &reader, "pd.lua") || lua_pcall(__L(), 0, 0, 0))
+
+        if (lua_load(__L(), pdlua_reader, &reader, "pd.lua", NULL) || lua_pcall(__L(), 0, 0, 0))
         {
             mylua_error(__L(), NULL, NULL);
             pd_error(NULL, "lua: loader will not be registered!");
