@@ -1363,7 +1363,7 @@ static int pdlua_object_new(lua_State *L)
   * */
 {
     PDLUA_DEBUG("pdlua_object_new: stack top is %d", lua_gettop(L));
-    if (lua_islightuserdata(L, 1))
+    if (lua_islightuserdata(L, 1) && lua_islightuserdata(L, 2))
     {
         t_class *c = lua_touserdata(L, 1);
         t_class *c_gfx = lua_touserdata(L, 2);
@@ -2997,7 +2997,6 @@ void pdlua_setup(void)
             PDLUA_DEBUG ("pdlua lua_pcall returned %d", result);
         }
         if (0 != result)
-        //if (lua_load(__L(), pdlua_reader, &reader, "pd.lua") || lua_pcall(__L(), 0, 0, 0))
         {
             mylua_error(__L(), NULL, NULL);
             pd_error(NULL, "lua: loader will not be registered!");
