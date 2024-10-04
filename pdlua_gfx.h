@@ -87,9 +87,9 @@ void pdlua_gfx_free(t_pdlua_gfx *gfx) {
 #if !PLUGDATA
     for(int i = 0; i < gfx->num_layers; i++)
     {
-        free(gfx->layer_tags[i]);
+        freebytes(gfx->layer_tags[i], 64);
     }
-    free(gfx->layer_tags);
+    freebytes(gfx->layer_tags, gfx->num_layers);
     if(gfx->transforms) freebytes(gfx->transforms, gfx->num_transforms * sizeof(gfx_transform));
 #endif
 }
@@ -454,7 +454,8 @@ static int stroke_path(lua_State* L) {
     t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "Path");
     int stroke_width = luaL_checknumber(L, 2) * glist_getzoom(cnv);
 
-    t_atom* coordinates = malloc((2 * path->num_path_segments + 2) * sizeof(t_atom));
+    int coordinates_size = (2 * path->num_path_segments + 2) * sizeof(t_atom);
+    t_atom* coordinates = getbytes(coordinates_size);
     SETFLOAT(coordinates, stroke_width);
 
     for (int i = 0; i < path->num_path_segments; i++) {
@@ -464,7 +465,7 @@ static int stroke_path(lua_State* L) {
     }
 
     plugdata_draw(gfx->object, gfx->current_layer, gensym("lua_stroke_path"), path->num_path_segments * 2 + 1, coordinates);
-    free(coordinates);
+    freebytes(coordinates, coordinates_size);
 
     return 0;
 }
@@ -477,7 +478,8 @@ static int fill_path(lua_State* L) {
 
     t_path_state* path = (t_path_state*)luaL_checkudata(L, 1, "Path");
 
-    t_atom* coordinates = malloc(2 * path->num_path_segments * sizeof(t_atom));
+    int coordinates_size = (2 * path->num_path_segments + 2) * sizeof(t_atom);
+    t_atom* coordinates = getbytes(coordinates_size);
     
     for (int i = 0; i < path->num_path_segments; i++) {
         float x = path->path_segments[i * 2], y = path->path_segments[i * 2 + 1];        
@@ -486,7 +488,7 @@ static int fill_path(lua_State* L) {
     }
 
     plugdata_draw(gfx->object, gfx->current_layer, gensym("lua_fill_path"), path->num_path_segments * 2, coordinates);
-    free(coordinates);
+    freebytes(coordinates, coordinates_size);
 
     return 0;
 }
@@ -847,17 +849,23 @@ static int start_paint(lua_State* L) {
     if(can_draw)
     {
         int layer = luaL_checknumber(L, 2) - 1;
-        if(layer >= gfx->num_layers)
+        if(layer > gfx->num_layers) // If we get here, we have skipped a layer. This isn't allowed, so we should instead repaint everything
+        {
+            pdlua_gfx_repaint(obj, 0);
+            lua_pushnil(L);
+            return 1;
+        }
+        else if(layer >= gfx->num_layers)
         {
             int new_num_layers = layer + 1;
             if(gfx->layer_tags)
                 gfx->layer_tags = resizebytes(gfx->layer_tags, sizeof(char*) * gfx->num_layers, sizeof(char*) * new_num_layers);
             else
-                gfx->layer_tags = malloc(sizeof(char*));
+                gfx->layer_tags = getbytes(sizeof(char*));
             
-            gfx->num_layers = new_num_layers;
-            gfx->layer_tags[layer] = malloc(64);
+            gfx->layer_tags[layer] = getbytes(64);
             snprintf(gfx->layer_tags[layer], 64, ".l%i%lx", layer, (long)obj);
+            gfx->num_layers = new_num_layers;
         }
         gfx->current_layer_tag = gfx->layer_tags[layer];
         
@@ -915,6 +923,7 @@ static int end_paint(lua_State* L) {
     int xpos = text_xpix((t_object*)obj, obj->canvas);
     int ypos = text_ypix((t_object*)obj, obj->canvas);
 
+    // TODO: I don't think we need to call drawiofor on each layer?
     glist_drawiofor(obj->canvas, (t_object*)obj, 1, gfx->object_tag, xpos, ypos, xpos + (gfx->width * scale), ypos + (gfx->height * scale));
     
 #ifndef PURR_DATA
