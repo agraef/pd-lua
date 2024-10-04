@@ -84,12 +84,14 @@ static int free_path(lua_State* L);
 static void pdlua_gfx_clear(t_pdlua *obj, int layer, int removed); // only for pd-vanilla, to delete all tcl/tk items
 
 void pdlua_gfx_free(t_pdlua_gfx *gfx) {
+#if !PLUGDATA
     for(int i = 0; i < gfx->num_layers; i++)
     {
         free(gfx->layer_tags[i]);
     }
     free(gfx->layer_tags);
     if(gfx->transforms) freebytes(gfx->transforms, gfx->num_transforms * sizeof(gfx_transform));
+#endif
 }
 
 // Trigger repaint callback in lua script
