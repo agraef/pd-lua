@@ -95,7 +95,7 @@ end
 pd._repaint = function (object)
   local obj = pd._objects[object]
   if nil ~= obj and type(obj.repaint) == "function" then
-    obj:repaint(0);
+    obj:repaint(0)
   end
 end
 
@@ -471,7 +471,7 @@ function pd.Class:repaint(layer)
           local paint_layer_method = "paint_layer_" .. tostring(i)
           if type(self[paint_layer_method]) == "function" then
               table.insert(paint_funcs, self[paint_layer_method])
-              i = i + 1;
+              i = i + 1
           else
               break -- Exit the loop when no more paint_layer_X methods are found
           end
@@ -480,21 +480,21 @@ function pd.Class:repaint(layer)
    -- repaint all
    if layer == nil or layer == 0 then
     for i, paint_fn in ipairs(paint_funcs) do
-        local g = _gfx_internal.start_paint(self._object, i);
+        local g = _gfx_internal.start_paint(self._object, i)
         if type(paint_fn) == "function" and g ~= nil then
-            paint_fn(self, g);
-            _gfx_internal.end_paint(g, i);
+            paint_fn(self, g)
+            _gfx_internal.end_paint(g, i)
         else
-            break;
+            break
         end
      end
    -- repaint only chosen index
    elseif layer <= #paint_funcs then
-        local g = _gfx_internal.start_paint(self._object, layer);
+        local g = _gfx_internal.start_paint(self._object, layer)
         local paint_fn = paint_funcs[layer]
         if type(paint_fn) == "function" and g ~= nil then
-            paint_fn(self, g);
-            _gfx_internal.end_paint(g, layer);
+            paint_fn(self, g)
+            _gfx_internal.end_paint(g, layer)
         end
    end
 end
