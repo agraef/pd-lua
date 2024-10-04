@@ -1854,6 +1854,8 @@ static int pdlua_object_free(lua_State *L)
  
         if (o)
         {
+            pdlua_gfx_free(&o->gfx);
+            
             if(o->in)
             {
                 for (i = 0; i < o->inlets; ++i) inlet_free(o->in[i]);

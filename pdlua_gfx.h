@@ -83,6 +83,15 @@ static int free_path(lua_State* L);
 
 static void pdlua_gfx_clear(t_pdlua *obj, int layer, int removed); // only for pd-vanilla, to delete all tcl/tk items
 
+void pdlua_gfx_free(t_pdlua_gfx *gfx) {
+    for(int i = 0; i < gfx->num_layers; i++)
+    {
+        free(gfx->layer_tags[i]);
+    }
+    free(gfx->layer_tags);
+    if(gfx->transforms) freebytes(gfx->transforms, gfx->num_transforms * sizeof(gfx_transform));
+}
+
 // Trigger repaint callback in lua script
 void pdlua_gfx_repaint(t_pdlua *o, int firsttime) {
 #if !PLUGDATA
@@ -775,7 +784,7 @@ static int gfx_initialize(t_pdlua *obj)
     gfx->transforms = NULL;
     gfx->num_transforms = 0;
     gfx->num_layers = 0;
-    gfx->layer_tags = malloc(sizeof(char*));
+    gfx->layer_tags = NULL;
     
     pdlua_gfx_repaint(obj, 0);
     return 0;
@@ -839,7 +848,11 @@ static int start_paint(lua_State* L) {
         if(layer >= gfx->num_layers)
         {
             int new_num_layers = layer + 1;
-            gfx->layer_tags = resizebytes(gfx->layer_tags, sizeof(char*) * gfx->num_layers, sizeof(char*) * new_num_layers);
+            if(gfx->layer_tags)
+                gfx->layer_tags = resizebytes(gfx->layer_tags, sizeof(char*) * gfx->num_layers, sizeof(char*) * new_num_layers);
+            else
+                gfx->layer_tags = malloc(sizeof(char*));
+            
             gfx->num_layers = new_num_layers;
             gfx->layer_tags[layer] = malloc(64);
             snprintf(gfx->layer_tags[layer], 64, ".l%i%lx", layer, (long)obj);
