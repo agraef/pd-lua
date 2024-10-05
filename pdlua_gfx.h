@@ -718,11 +718,15 @@ static void pdlua_gfx_clear(t_pdlua *obj, int layer, int removed) {
     }
 #else // PURR_DATA
     if (removed) {
-      // nuke the gobj container, this gets rid of everything
-      gui_vmess("gui_luagfx_erase", "xs", cnv, gfx->object_tag);
+        // nuke the gobj container, this gets rid of everything
+        gui_vmess("gui_luagfx_erase", "xs", cnv, gfx->object_tag);
+    } else if (layer == -1) {
+        // this clears all layers
+        for (l = 0; l < gfx->num_layers; l++)
+            gui_vmess("gui_luagfx_clear", "xsii", cnv, gfx->layer_tags[l]);
     } else {
-      // this just clears the gobj container
-      gui_vmess("gui_luagfx_clear", "xsii", cnv, gfx->object_tag);
+        // this only clears the specified layer
+        gui_vmess("gui_luagfx_clear", "xsii", cnv, gfx->layer_tags[layer]);
     }
 #endif
 
@@ -849,6 +853,7 @@ static int start_paint(lua_State* L) {
     if(can_draw)
     {
         int layer = luaL_checknumber(L, 2) - 1;
+#ifndef PURR_DATA
         if(layer > gfx->num_layers) // If we get here, we have skipped a layer. This isn't allowed, so we should instead repaint everything
         {
             pdlua_gfx_repaint(obj, 0);
@@ -867,6 +872,24 @@ static int start_paint(lua_State* L) {
             snprintf(gfx->layer_tags[layer], 64, ".l%i%lx", layer, (long)obj);
             gfx->num_layers = new_num_layers;
         }
+#else // PURR_DATA
+        // We need to defer the actual layer creation until later, since at
+        // this point we may not have created the gobj yet.
+        int old_num_layers = gfx->num_layers, new_num_layers = layer + 1;
+        if(layer >= gfx->num_layers)
+        {
+            if(gfx->layer_tags)
+                gfx->layer_tags = resizebytes(gfx->layer_tags, sizeof(char*) * gfx->num_layers, sizeof(char*) * new_num_layers);
+            else
+                gfx->layer_tags = getbytes(sizeof(char*));
+
+            for (int l = old_num_layers; l < new_num_layers; l++) {
+                gfx->layer_tags[l] = getbytes(64);
+                snprintf(gfx->layer_tags[l], 64, ".l%i%lx", layer, (long)obj);
+            }
+            gfx->num_layers = new_num_layers;
+        }
+#endif
         gfx->current_layer_tag = gfx->layer_tags[layer];
         
         if(gfx->transforms) freebytes(gfx->transforms, gfx->num_transforms * sizeof(gfx_transform));
@@ -893,15 +916,21 @@ static int start_paint(lua_State* L) {
                         "-width", 1, "-tags", 1, tags);
         }
 #else // PURR_DATA
+        t_canvas *cnv = glist_getcanvas(obj->canvas);
         if(gfx->first_draw) {
-          t_canvas *cnv = glist_getcanvas(obj->canvas);
-          int xpos = text_xpix((t_object*)obj, obj->canvas);
-          int ypos = text_ypix((t_object*)obj, obj->canvas);
-          // create a gobj graphics container in the GUI
-          gui_vmess("gui_luagfx_new", "xsiiiii", cnv, gfx->object_tag,
-                    xpos, ypos, glist_istoplevel(obj->canvas));
+            int xpos = text_xpix((t_object*)obj, obj->canvas);
+            int ypos = text_ypix((t_object*)obj, obj->canvas);
+            // create a gobj graphics container in the GUI
+            gui_vmess("gui_luagfx_new", "xsiiiii", cnv, gfx->object_tag,
+                      xpos, ypos, glist_istoplevel(obj->canvas));
         } else if (strlen(gfx->object_tag))
-          pdlua_gfx_clear(obj, layer, 0);
+            pdlua_gfx_clear(obj, layer, 0);
+        if (strlen(gfx->object_tag))
+            for (int l = old_num_layers; l < new_num_layers; l++) {
+                // create a new graphics layer in the GUI
+                gui_vmess("gui_luagfx_new_layer", "xss", cnv, gfx->object_tag,
+                          gfx->layer_tags[l]);
+            }
 #endif
 
         return 1;
@@ -1004,7 +1033,7 @@ static int fill_ellipse(lua_State* L) {
     // to the gobj container
     int x0 = text_xpix((t_object*)obj, obj->canvas);
     int y0 = text_ypix((t_object*)obj, obj->canvas);
-    gui_vmess("gui_luagfx_fill_ellipse", "xsssiiiii", cnv, tags[0], tags[1],
+    gui_vmess("gui_luagfx_fill_ellipse", "xsssiiiii", cnv, tags[2], tags[1],
               gfx->current_color, 0,
               x1-x0, y1-y0, x2-x0, y2-y0);
 #endif
@@ -1030,7 +1059,7 @@ static int stroke_ellipse(lua_State* L) {
 #else // PURR_DATA
     int x0 = text_xpix((t_object*)obj, obj->canvas);
     int y0 = text_ypix((t_object*)obj, obj->canvas);
-    gui_vmess("gui_luagfx_stroke_ellipse", "xssssiiiii", cnv, tags[0], tags[1],
+    gui_vmess("gui_luagfx_stroke_ellipse", "xsssiiiii", cnv, tags[2], tags[1],
               gfx->current_color, line_width,
               x1-x0, y1-y0, x2-x0, y2-y0);
 #endif
@@ -1054,7 +1083,7 @@ static int fill_all(lua_State* L) {
 #ifndef PURR_DATA
     pdgui_vmess(0, "crr iiii rs rS", cnv, "create", "rectangle", x1, y1, x2, y2, "-fill", gfx->current_color, "-tags", 3, tags);
 #else // PURR_DATA
-    gui_vmess("gui_luagfx_fill_all", "xsssiiii", cnv, tags[0], tags[1],
+    gui_vmess("gui_luagfx_fill_all", "xsssiiii", cnv, tags[2], tags[1],
               gfx->current_color,
               0, 0, x2-x1, y2-y1);
 #endif
@@ -1078,7 +1107,7 @@ static int fill_rect(lua_State* L) {
 #else // PURR_DATA
     int x0 = text_xpix((t_object*)obj, obj->canvas);
     int y0 = text_ypix((t_object*)obj, obj->canvas);
-    gui_vmess("gui_luagfx_fill_rect", "xsssiiiii", cnv, tags[0], tags[1],
+    gui_vmess("gui_luagfx_fill_rect", "xsssiiiii", cnv, tags[2], tags[1],
               gfx->current_color, 0,
               x1-x0, y1-y0, x2-x0, y2-y0);
 #endif
@@ -1104,7 +1133,7 @@ static int stroke_rect(lua_State* L) {
 #else // PURR_DATA
     int x0 = text_xpix((t_object*)obj, obj->canvas);
     int y0 = text_ypix((t_object*)obj, obj->canvas);
-    gui_vmess("gui_luagfx_stroke_rect", "xsssiiiii", cnv, tags[0], tags[1],
+    gui_vmess("gui_luagfx_stroke_rect", "xsssiiiii", cnv, tags[2], tags[1],
               gfx->current_color, line_width,
               x1-x0, y1-y0, x2-x0, y2-y0);
 #endif
@@ -1140,7 +1169,7 @@ static int fill_rounded_rect(lua_State* L) {
 #else // PURR_DATA
     int x0 = text_xpix((t_object*)obj, obj->canvas);
     int y0 = text_ypix((t_object*)obj, obj->canvas);
-    gui_vmess("gui_luagfx_fill_rounded_rect", "xsssiiiiiii", cnv, tags[0], tags[1],
+    gui_vmess("gui_luagfx_fill_rounded_rect", "xsssiiiiiii", cnv, tags[2], tags[1],
               gfx->current_color, 0,
               x1-x0, y1-y0, x2-x0, y2-y0,
               radius_x, radius_y);
@@ -1189,7 +1218,7 @@ static int stroke_rounded_rect(lua_State* L) {
 #else // PURR_DATA
     int x0 = text_xpix((t_object*)obj, obj->canvas);
     int y0 = text_ypix((t_object*)obj, obj->canvas);
-    gui_vmess("gui_luagfx_stroke_rounded_rect", "xsssiiiiiii", cnv, tags[0], tags[1],
+    gui_vmess("gui_luagfx_stroke_rounded_rect", "xsssiiiiiii", cnv, tags[2], tags[1],
               gfx->current_color, line_width,
               x1-x0, y1-y0, x2-x0, y2-y0,
               radius_x, radius_y);
@@ -1234,7 +1263,7 @@ static int draw_line(lua_State* L) {
 #else // PURR_DATA
     int x0 = text_xpix((t_object*)obj, obj->canvas);
     int y0 = text_ypix((t_object*)obj, obj->canvas);
-    gui_vmess("gui_luagfx_draw_line", "xsssiiiii", cnv, tags[0], tags[1],
+    gui_vmess("gui_luagfx_draw_line", "xsssiiiii", cnv, tags[2], tags[1],
               gfx->current_color, line_width,
               x1-x0, y1-y0, x2-x0, y2-y0);
 #endif
@@ -1286,7 +1315,7 @@ static int draw_text(lua_State* L) {
 #else // PURR_DATA
     int x0 = text_xpix((t_object*)obj, obj->canvas);
     int y0 = text_ypix((t_object*)obj, obj->canvas);
-    gui_vmess("gui_luagfx_draw_text", "xsssiiiis", cnv, tags[0], tags[1],
+    gui_vmess("gui_luagfx_draw_text", "xsssiiiis", cnv, tags[2], tags[1],
               gfx->current_color, w, font_height, x-x0, y-y0, text);
 #endif
 
@@ -1323,7 +1352,7 @@ static int stroke_path(lua_State* L) {
     }
     sys_vgui("\n");
 #else // PURR_DATA
-    gui_start_vmess("gui_luagfx_stroke_path", "xsssi", cnv, tags[0], tags[1],
+    gui_start_vmess("gui_luagfx_stroke_path", "xsssi", cnv, tags[2], tags[1],
                     gfx->current_color, stroke_width);
     gui_start_array();
     for (int i = 0; i < path->num_path_segments; i++) {
@@ -1369,7 +1398,7 @@ static int fill_path(lua_State* L) {
     }
     sys_vgui("\n");
 #else // PURR_DATA
-    gui_start_vmess("gui_luagfx_fill_path", "xsssi", cnv, tags[0], tags[1],
+    gui_start_vmess("gui_luagfx_fill_path", "xsssi", cnv, tags[2], tags[1],
                     gfx->current_color, 0);
     gui_start_array();
     for (int i = 0; i < path->num_path_segments; i++) {
