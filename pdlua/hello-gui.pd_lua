@@ -3,9 +3,9 @@ local hello = pd.Class:new():register("hello-gui")
 -- rendering speed (slows down rendering by the given factor)
 -- In most cases it should be fine to just set this to 1 to run at full speed,
 -- if you have a modern high-speed CPU and GPU. But we use a larger value as
--- default here to deal with low frame rates on some systems (Purr Data on Mac
--- being the main culprit). You may have to increase the value even further
--- when running on low-spec systems like the Raspberry Pi.
+-- default here to deal with low frame rates on some systems. You may have to
+-- increase the value even further when running on low-spec systems like the
+-- Raspberry Pi.
 local R = 3
 
 function hello:initialize(sel, atoms)

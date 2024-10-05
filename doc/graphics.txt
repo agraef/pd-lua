@@ -39,7 +39,7 @@ pd:Class:mouse_drag(x, y)                                      -- Mouse drag cal
 pd:Class:repaint(layer)                                        -- Request a repaint for specified layer (or all layers if no parameter is set
                                                                   or if layer is 0). after this, the "paint" or "paint_layer_n" callback will occur
 
-pd:Class:paint(g) / pd:Class:paint_layer_n(g)                  -- Paint callback, returns a graphics_context object (commonly called g) for main
+pd:Class:paint(g) / pd:Class:paint_layer_n(g)                  -- Paint callback, passes a graphics context object (commonly called g) for main
                                                                   layer or layer n (n > 1) that you can call these drawing functions on:
 
 g:set_size(w, h)                                               -- Sets the size of the object
