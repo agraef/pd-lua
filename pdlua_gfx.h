@@ -885,7 +885,7 @@ static int start_paint(lua_State* L) {
 
             for (int l = old_num_layers; l < new_num_layers; l++) {
                 gfx->layer_tags[l] = getbytes(64);
-                snprintf(gfx->layer_tags[l], 64, ".l%i%lx", layer, (long)obj);
+                snprintf(gfx->layer_tags[l], 64, ".l%i%lx", l, (long)obj);
             }
             gfx->num_layers = new_num_layers;
         }
