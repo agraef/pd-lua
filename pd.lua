@@ -462,6 +462,14 @@ function pd.Class:canvas_realizedollar(s)
 end
 
 function pd.Class:repaint(layer)
+  -- do some argument checking first
+  if type(layer) == "number" then
+    -- make sure that layer is a nonnegative integer
+    layer = math.max(0, math.floor(layer))
+  elseif layer then
+    self:error(string.format("repaint: invalid layer %s, must be number or nil", tostring(layer)))
+    return
+  end
   if layer == nil or layer <= 1 then
     if type(self.paint) == "function" then
       local g = _gfx_internal.start_paint(self._object, 1);
