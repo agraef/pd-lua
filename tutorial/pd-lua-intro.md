@@ -1097,6 +1097,12 @@ end
 
 The `self:set_size()` call in the `initialize` method sets the pixel size of the object rectangle on the canvas (in this case it's a square with a width and height of 127 pixels). Also note the call to `self:repaint()` in the float handler for the inlet, which will redraw the graphical representation after updating the phase value.
 
+---
+
+**NOTE:** We mention in passing that `self:repaint()` always redraws everything, in this example the face, border, center point, and hand, even though only the hand will change with the phase angle. As of Pd-Lua 0.12.19, it is also possible to partition your graphics into *layers*, each with their own paint method, so that you only need to repaint layers that actually changed, which will improve rendering performance for complex drawings. This is beyond the scope of this introduction, however, so you may want to check the graphics subpatch in the main pdlua-help patch for details and an example.
+
+---
+
 We still have to add the `dial:paint()` method to do all the actual drawing:
 
 ~~~lua
