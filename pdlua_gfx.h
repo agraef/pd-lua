@@ -722,7 +722,7 @@ static void pdlua_gfx_clear(t_pdlua *obj, int layer, int removed) {
         gui_vmess("gui_luagfx_erase", "xs", cnv, gfx->object_tag);
     } else if (layer == -1) {
         // this clears all layers
-        for (l = 0; l < gfx->num_layers; l++)
+        for (int l = 0; l < gfx->num_layers; l++)
             gui_vmess("gui_luagfx_clear", "xsii", cnv, gfx->layer_tags[l]);
     } else {
         // this only clears the specified layer

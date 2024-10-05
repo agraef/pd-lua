@@ -562,7 +562,7 @@ static void mylua_error (lua_State *L, t_pdlua *o, const char *descr)
 // o may indicate the object which is the source of the error, if available,
 // otherwise it must be NULL; descr, if not NULL, is to be added to the message
 {
-    char *err = lua_isstring(L, -1) ? lua_tostring(L, -1) : "unknown error";
+    const char *err = lua_isstring(L, -1) ? lua_tostring(L, -1) : "unknown error";
     // some sscanf magic to extract the real source name
     char s[MAXPDSTRING]; int i;
     if (sscanf(err, "[string \"%[^\"]\"]:%n", s, &i) <= 0) strcpy(s, "");
@@ -1290,7 +1290,8 @@ static int pdlua_class_new(lua_State *L)
   * \li \c 1 Pd class pointer.
   * */
 {
-    const char  *name, name_gfx[MAXPDSTRING];
+    const char  *name;
+    char         name_gfx[MAXPDSTRING];
     t_class     *c, *c_gfx = NULL;
 
     name = luaL_checkstring(L, 1);
