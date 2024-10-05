@@ -32,15 +32,18 @@
 #include <sys/types.h> // for open
 #include <sys/stat.h> // for open
 #ifdef _MSC_VER
-#include <io.h>
-#include <fcntl.h> // for open
-#define read _read
-#define close _close
-#define ssize_t int
-#define snprintf _snprintf
+    #include <io.h>
+    #include <fcntl.h> // for open
+    #ifndef PATH_MAX
+        #define PATH_MAX 1024 /* same with Mac OS X's syslimits.h */
+    #endif
+    #define read _read
+    #define close _close
+    #define ssize_t int
+    #define snprintf _snprintf
 #else
-#include <sys/fcntl.h> // for open
-#include <unistd.h>
+    #include <sys/fcntl.h> // for open
+    #include <unistd.h>
 #endif
 /* we use Lua */
 #include <lua.h>
@@ -747,7 +750,7 @@ void pdlua_vis(t_gobj *z, t_glist *glist, int vis){
         pdlua_gfx_repaint(x, 1);
     }
     else {
-        pdlua_gfx_clear(x, 1);
+        pdlua_gfx_clear(x, -1, 1);
     }
 }
 
@@ -987,7 +990,7 @@ static void pdlua_menu_open(t_pdlua *o)
     PDLUA_DEBUG3("pdlua_menu_open: L is %p, name is %s stack top is %d", __L(), name, lua_gettop(__L()));
     if (name && *name) // `pdluax` without argument gives empty script name
     {
-        class = o->class;
+        class = o->pdlua_class;
         if (!class) {
             lua_pop(__L(), 2); /* pop name, global "pd"*/
             return;
@@ -1311,9 +1314,8 @@ static int pdlua_class_new(lua_State *L)
     
     // Let plugdata know this class is a lua object
 #if PLUGDATA
-    // XXXFIXME: @timothyschoen: Not sure whether plugdata needs to know about
-    // name_gfx, too?
     plugdata_register_class(name);
+    plugdata_register_class(name_gfx);
 #endif
 
     if (c) {
@@ -1382,8 +1384,8 @@ static int pdlua_object_new(lua_State *L)
                 o->sigoutlets = 0;
                 o->sig_warned = 0;
                 o->canvas = canvas_getcurrent();
-                o->class = c;
-                o->class_gfx = c_gfx;
+                o->pdlua_class = c;
+                o->pdlua_class_gfx = c_gfx;
                 
                 o->gfx.width = 80;
                 o->gfx.height = 80;
@@ -1413,7 +1415,7 @@ static int pdlua_object_creategui(lua_State *L)
     t_pdlua *o = lua_touserdata(L, 1);
     t_text *x = (t_text*)o;
     int reinit = lua_tonumber(L, 2);
-    if (!o->class_gfx) return 0; // we're not supposed to be here...
+    if (!o->pdlua_class_gfx) return 0; // we're not supposed to be here...
     // We may need to redraw the object in case it's been reloaded, to get the
     // iolets and patch cords fixed.
     int redraw = reinit && o->pd.te_binbuf && gobj_shouldvis(&o->pd.te_g, o->canvas) && glist_isvisible(o->canvas);
@@ -1424,9 +1426,9 @@ static int pdlua_object_creategui(lua_State *L)
     // We need to switch classes mid-flight here. This is a bit of a hack, but
     // we want to retain the standard text widgetbehavior for regular
     // (non-gui) objects. As soon as we create the gui here, we switch over to
-    // o->class_gfx, which is an exact clone of o->class, except that it has
+    // o->pdlua_class_gfx, which is an exact clone of o->pdlua_class, except that it has
     // our custom widgetbehavior for gui objects.
-    x->te_pd = o->class_gfx;
+    x->te_pd = o->pdlua_class_gfx;
     gfx_initialize(o);
     if (redraw) {
         // force object and its iolets to be redrawn
@@ -1852,6 +1854,8 @@ static int pdlua_object_free(lua_State *L)
  
         if (o)
         {
+            pdlua_gfx_free(&o->gfx);
+            
             if(o->in)
             {
                 for (i = 0; i < o->inlets; ++i) inlet_free(o->in[i]);
@@ -2996,6 +3000,7 @@ void pdlua_setup(void)
             result = lua_pcall(__L(), 0, 0, 0);
             PDLUA_DEBUG ("pdlua lua_pcall returned %d", result);
         }
+      
         if (0 != result)
         {
             mylua_error(__L(), NULL, NULL);

@@ -95,7 +95,7 @@ end
 pd._repaint = function (object)
   local obj = pd._objects[object]
   if nil ~= obj and type(obj.repaint) == "function" then
-    obj:repaint();
+    obj:repaint(0)
   end
 end
 
@@ -458,17 +458,48 @@ function pd.Class:set_args(args)
 end
 
 function pd.Class:canvas_realizedollar(s)
-    return pd._canvas_realizedollar(self._object, s)
+  return pd._canvas_realizedollar(self._object, s)
 end
 
-function pd.Class:repaint()
-  if type(self.paint) == "function" then
-    local g = _gfx_internal.start_paint(self._object);
-    if g ~= nil then
-        self:paint(g);
-        _gfx_internal.end_paint(g);
+function pd.Class:repaint(layer)
+  if layer == nil or layer <= 1 then
+    if type(self.paint) == "function" then
+      local g = _gfx_internal.start_paint(self._object, 1);
+      if type(self.paint) == "function" and g ~= nil then
+          self:paint(g)
+          _gfx_internal.end_paint(g, 1)
+      end
     end
   end
+  if layer == nil or layer == 0 then
+    local i = 2
+    while true do
+        local paint_layer_method = "paint_layer_" .. tostring(i)
+        if type(self[paint_layer_method]) == "function" then
+            local g = _gfx_internal.start_paint(self._object, i)
+            if g ~= nil then
+                self[paint_layer_method](self, g)
+                _gfx_internal.end_paint(g, i)
+                i = i + 1
+            else
+                break
+            end
+
+        else
+            break -- Exit the loop when no more paint_layer_X methods are found
+        end
+     end
+  end
+  if layer ~= nil and layer >= 2 then
+    local paint_layer_method = "paint_layer_" .. tostring(layer)
+        if type(self[paint_layer_method]) == "function" then
+            local g = _gfx_internal.start_paint(self._object, layer)
+             if g ~= nil then
+                self[paint_layer_method](self, g)
+                _gfx_internal.end_paint(g, layer)
+            end
+        end
+     end
 end
 
 function pd.Class:get_size()
