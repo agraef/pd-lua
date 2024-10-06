@@ -1057,22 +1057,26 @@ static t_int *pdlua_perform(t_int *w){
     for (int i = 0; i < o->siginlets; i++)
     {
         lua_newtable(__L());
-        t_float *in = (t_float*)w[i + 3];
-        for (int j = 0; j < nblock; j++)
+        t_float *in = (t_float *)(w[3 + i*2]); // FIXME: this feels wrong
+        int nchans = (int)(w[4 + i*2]); // FIXME: this feels wrong
+        int s_n = nblock * nchans; // FIXME: name?
+        PDLUA_DEBUG("pdlua_perform: inlet %d", i);
+        PDLUA_DEBUG2("pdlua_perform: nchans: %d, totalSamples: %d", nchans, s_n);
+        for (int j = 0; j < s_n; j++)
         {
             lua_pushinteger(__L(), j + 1);
             lua_pushnumber(__L(), in[j]);
             lua_settable(__L(), -3);
         }
     }
-    
+
     if (lua_pcall(__L(), 1 + o->siginlets, o->sigoutlets, 0))
     {
         mylua_error(__L(), o, "perform");
         lua_pop(__L(), 1); /* pop the global pd */
-        return w + o->siginlets + o->sigoutlets + 3;
+        return w + 3 + (o->siginlets + o->sigoutlets) * 2;
     }
-    
+
     if (!lua_istable(__L(), -1))
     {
         const char *s = "lua: perform: function should return";
@@ -1088,13 +1092,22 @@ static t_int *pdlua_perform(t_int *w){
             }
         }
         lua_pop(__L(), 1 + o->sigoutlets);
-        return w + o->siginlets + o->sigoutlets + 3;
+        return w + 3 + (o->siginlets + o->sigoutlets) * 2;
     }
-    
+
     for (int i = o->sigoutlets - 1; i >= 0; i--)
     {
-        t_float *out = (t_float*)w[i + 3 + o->siginlets];
-        for (int j = 0; j < nblock; j++)
+        if (!lua_istable(__L(), -1)) {
+            pd_error(o, "pdlua_perform: expected table for outlet %d", i);
+            lua_pop(__L(), 1);
+            continue;
+        }
+        t_float *out = (t_float *)(w[3 + (o->siginlets + i)*2]); // FIXME: this feels wrong
+        int nchans = (int)(w[4 + (o->siginlets + i)*2]); // FIXME: this feels wrong
+        int totalSamples = nblock * nchans;
+        PDLUA_DEBUG("pdlua_perform: outlet %d", i);
+        PDLUA_DEBUG2("nchans: %d, totalSamples: %d", nchans, totalSamples);
+        for (int j = 0; j < totalSamples; j++)
         {
             lua_pushinteger(__L(), (lua_Integer)(j + 1));
             lua_gettable(__L(), -2);
@@ -1108,43 +1121,57 @@ static t_int *pdlua_perform(t_int *w){
         }
         lua_pop(__L(), 1);
     }
-
     lua_pop(__L(), 1); /* pop the global "pd" */
-    
+
     PDLUA_DEBUG("pdlua_perform: end. stack top %d", lua_gettop(__L()));
-    
-    return w + o->siginlets + o->sigoutlets + 3;
+
+    return w + 3 + (o->siginlets + o->sigoutlets) * 2;
 }
 
-static void pdlua_dsp(t_pdlua *x, t_signal **sp){
+static void pdlua_dsp(t_pdlua *x, t_signal **sp) {
     int sum = x->siginlets + x->sigoutlets;
     if(sum == 0) return;
     x->sig_warned = 0;
-    
+
     PDLUA_DEBUG("pdlua_dsp: stack top %d", lua_gettop(__L()));
+
+    x->sp = sp; // FIXME: is this the way? (setting for signal_setmultiout)
+
+    // Call Lua _dsp function
     lua_getglobal(__L(), "pd");
     lua_getfield (__L(), -1, "_dsp");
     lua_pushlightuserdata(__L(), x);
     lua_pushnumber(__L(), sys_getsr());
     lua_pushnumber(__L(), sys_getblksize());
     
-    if (lua_pcall(__L(), 3, 0, 0))
-    {
+    // Pass input channel counts as a table
+    lua_newtable(__L());
+    for (int i = 0; i < x->siginlets; i++) {
+        PDLUA_DEBUG2("pdlua_dsp: inlet: %d, s_nchans: %d", i, sp[i]->s_nchans);
+        lua_pushinteger(__L(), i + 1);
+        lua_pushinteger(__L(), sp[i]->s_nchans);
+        lua_settable(__L(), -3);
+    }
+    
+    if (lua_pcall(__L(), 4, 0, 0)) { // FIXME: check again
         mylua_error(__L(), x, "dsp");
     }
     lua_pop(__L(), 1); /* pop the global "pd" */
-    
+
     PDLUA_DEBUG("pdlua_dsp: end. stack top %d", lua_gettop(__L()));
-    
-    int sigvecsize = sum + 2;
-    t_int* sigvec = getbytes(sigvecsize * sizeof(t_int));
+
+    // Prepare signal vector for dsp_addv
+    int sigvecsize = 2 + sum * 2;  // x, nblock, and (s_vec, s_nchans) for each in/outlet
+    t_int *sigvec = (t_int *)getbytes(sigvecsize * sizeof(t_int));
     
     sigvec[0] = (t_int)x;
-    sigvec[1] = (t_int)sp[0]->s_n;
+    sigvec[1] = (t_int)sp[0]->s_n; // FIXME: check again. similar to s_length? and this should be blocksize if anything
     
-    for (int i = 0; i < sum; i++)
-        sigvec[i + 2] = (t_int)sp[i]->s_vec;
-    
+    for (int i = 0; i < sum; i++) { // FIXME: this feels wrong
+        sigvec[2 + i*2] = (t_int)sp[i]->s_vec;
+        sigvec[3 + i*2] = (t_int)sp[i]->s_nchans;
+    }
+
     dsp_addv(pdlua_perform, sigvecsize, sigvec);
     freebytes(sigvec, sigvecsize * sizeof(t_int));
 }
@@ -1302,14 +1329,14 @@ static int pdlua_class_new(lua_State *L)
     snprintf(name_gfx, MAXPDSTRING-1, "%s:gfx", name);
     PDLUA_DEBUG3("pdlua_class_new: L is %p, name is %s stack top is %d", L, name, lua_gettop(L));
     c = class_new(gensym((char *) name), (t_newmethod) pdlua_new,
-        (t_method) pdlua_free, sizeof(t_pdlua), CLASS_NOINLET, A_GIMME, 0);
+        (t_method) pdlua_free, sizeof(t_pdlua), CLASS_NOINLET | CLASS_MULTICHANNEL, A_GIMME, 0);
     if (strcmp(name, "pdlua") && strcmp(name, "pdluax")) {
         // Shadow class for graphics objects. This is an exact clone of the
         // regular (non-gui) class, except that it has a different
         // widgetbehavior. We only need this for the regular Lua objects, the
         // pdlua and pdluax built-ins don't have this.
         c_gfx = class_new(gensym((char *) name_gfx), (t_newmethod) pdlua_new,
-                          (t_method) pdlua_free, sizeof(t_pdlua), CLASS_NOINLET, A_GIMME, 0);
+                          (t_method) pdlua_free, sizeof(t_pdlua), CLASS_NOINLET | CLASS_MULTICHANNEL, A_GIMME, 0);
         class_sethelpsymbol(c_gfx, gensym((char *) name));
     }
     
@@ -1387,6 +1414,7 @@ static int pdlua_object_new(lua_State *L)
                 o->canvas = canvas_getcurrent();
                 o->pdlua_class = c;
                 o->pdlua_class_gfx = c_gfx;
+                o->sp = NULL;
                 
                 o->gfx.width = 80;
                 o->gfx.height = 80;
@@ -2588,6 +2616,26 @@ static int pdlua_canvas_realizedollar(lua_State *L)
     return 0;
 }
 
+static int pdlua_signal_setmultiout(lua_State *L)
+{
+    if (lua_islightuserdata(L, 1) && lua_isnumber(L, 2) && lua_isnumber(L, 3))
+    {
+        t_pdlua *x = (t_pdlua *)lua_touserdata(L, 1);
+        PDLUA_DEBUG("pdlua_signal_setmultiout: x = %p", x);
+        int outidx = lua_tointeger(L, 2) - 1; // Lua uses 1-based indexing
+        int nchans = lua_tointeger(L, 3);
+        PDLUA_DEBUG2("pdlua_signal_setmultiout: outidx = %d, nchans = %d", outidx, nchans);
+        
+        if (x && outidx >= 0 && outidx < x->sigoutlets)
+        {
+            PDLUA_DEBUG("pdlua_signal_setmultiout: nchans", nchans);
+            signal_setmultiout(&x->sp[x->siginlets + outidx], nchans);
+            return 0;
+        }
+    }
+    return luaL_error(L, "Invalid arguments to signal_setmultiout");
+}
+
 /** Initialize the pd API for Lua. */
 static void pdlua_init(lua_State *L)
 /**< Lua interpreter state. */
@@ -2688,6 +2736,9 @@ static void pdlua_init(lua_State *L)
     lua_settable(L, -3);
     lua_pushstring(L, "_canvas_realizedollar");
     lua_pushcfunction(L, pdlua_canvas_realizedollar);
+    lua_settable(L, -3);
+    lua_pushstring(L, "_signal_setmultiout");
+    lua_pushcfunction(L, pdlua_signal_setmultiout);
     lua_settable(L, -3);
     lua_pushstring(L, "_error");
     lua_pushcfunction(L, pdlua_error);

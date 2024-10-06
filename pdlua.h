@@ -69,6 +69,7 @@ typedef struct pdlua
     t_pdlua_gfx             gfx;              // Holds state for graphics.
     t_class                 *pdlua_class;     // Holds our class pointer.
     t_class                 *pdlua_class_gfx; // Holds our gfx class pointer.
+    t_signal                **sp;             // Array of signal pointers for multichannel audio.
 } t_pdlua;
 
 lua_State* __L();
