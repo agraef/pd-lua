@@ -1047,7 +1047,9 @@ static void pdlua_menu_open(t_pdlua *o)
 
 static t_int *pdlua_perform(t_int *w){
     t_pdlua *o = (t_pdlua *)(w[1]);
-    int nblock = (int)(w[2]);
+    t_signal *first_sig = (t_signal *)(w[2]);
+    int nblock = first_sig->s_n;
+    // FIXME: should we use a o->blocksize here that gets set in dsp?
     
     PDLUA_DEBUG("pdlua_perform: stack top %d", lua_gettop(__L()));
     lua_getglobal(__L(), "pd");
@@ -1057,12 +1059,13 @@ static t_int *pdlua_perform(t_int *w){
     for (int i = 0; i < o->siginlets; i++)
     {
         lua_newtable(__L());
-        t_float *in = (t_float *)(w[3 + i*2]); // FIXME: this feels wrong
-        int nchans = (int)(w[4 + i*2]); // FIXME: this feels wrong
-        int s_n = nblock * nchans; // FIXME: name?
+        t_signal *sig = (t_signal *)(w[2 + i]);
+        t_float *in = sig->s_vec;
+        int nchans = sig->s_nchans;
+        int s_n_allchans = nblock * nchans; // sum of all inlet samples
         PDLUA_DEBUG("pdlua_perform: inlet %d", i);
-        PDLUA_DEBUG2("pdlua_perform: nchans: %d, totalSamples: %d", nchans, s_n);
-        for (int j = 0; j < s_n; j++)
+        PDLUA_DEBUG2("pdlua_perform: nchans: %d, s_n_allchans: %d", nchans, s_n_allchans);
+        for (int j = 0; j < s_n_allchans; j++)
         {
             lua_pushinteger(__L(), j + 1);
             lua_pushnumber(__L(), in[j]);
@@ -1074,7 +1077,7 @@ static t_int *pdlua_perform(t_int *w){
     {
         mylua_error(__L(), o, "perform");
         lua_pop(__L(), 1); /* pop the global pd */
-        return w + 3 + (o->siginlets + o->sigoutlets) * 2;
+        return w + 2 + o->siginlets + o->sigoutlets;
     }
 
     if (!lua_istable(__L(), -1))
@@ -1092,7 +1095,7 @@ static t_int *pdlua_perform(t_int *w){
             }
         }
         lua_pop(__L(), 1 + o->sigoutlets);
-        return w + 3 + (o->siginlets + o->sigoutlets) * 2;
+        return w + 2 + o->siginlets + o->sigoutlets;
     }
 
     for (int i = o->sigoutlets - 1; i >= 0; i--)
@@ -1102,12 +1105,13 @@ static t_int *pdlua_perform(t_int *w){
             lua_pop(__L(), 1);
             continue;
         }
-        t_float *out = (t_float *)(w[3 + (o->siginlets + i)*2]); // FIXME: this feels wrong
-        int nchans = (int)(w[4 + (o->siginlets + i)*2]); // FIXME: this feels wrong
-        int totalSamples = nblock * nchans;
+        t_signal *sig = (t_signal *)(w[2 + o->siginlets + i]);
+        t_float *out = sig->s_vec;
+        int nchans = sig->s_nchans;
+        int s_n_allchans = nblock * nchans; // sum of all outlet samples
         PDLUA_DEBUG("pdlua_perform: outlet %d", i);
-        PDLUA_DEBUG2("nchans: %d, totalSamples: %d", nchans, totalSamples);
-        for (int j = 0; j < totalSamples; j++)
+        PDLUA_DEBUG2("nchans: %d, s_n_allchans: %d", nchans, s_n_allchans);
+        for (int j = 0; j < s_n_allchans; j++)
         {
             lua_pushinteger(__L(), (lua_Integer)(j + 1));
             lua_gettable(__L(), -2);
@@ -1125,7 +1129,7 @@ static t_int *pdlua_perform(t_int *w){
 
     PDLUA_DEBUG("pdlua_perform: end. stack top %d", lua_gettop(__L()));
 
-    return w + 3 + (o->siginlets + o->sigoutlets) * 2;
+    return w + 2 + o->siginlets + o->sigoutlets;
 }
 
 static void pdlua_dsp(t_pdlua *x, t_signal **sp) {
@@ -1135,7 +1139,7 @@ static void pdlua_dsp(t_pdlua *x, t_signal **sp) {
 
     PDLUA_DEBUG("pdlua_dsp: stack top %d", lua_gettop(__L()));
 
-    x->sp = sp; // FIXME: is this the way? (setting for signal_setmultiout)
+    x->sp = sp; // FIXME: is this the way? (setting this for signal_setmultiout)
 
     // Call Lua _dsp function
     lua_getglobal(__L(), "pd");
@@ -1153,7 +1157,7 @@ static void pdlua_dsp(t_pdlua *x, t_signal **sp) {
         lua_settable(__L(), -3);
     }
     
-    if (lua_pcall(__L(), 4, 0, 0)) { // FIXME: check again
+    if (lua_pcall(__L(), 4, 0, 0)) {
         mylua_error(__L(), x, "dsp");
     }
     lua_pop(__L(), 1); /* pop the global "pd" */
@@ -1161,15 +1165,12 @@ static void pdlua_dsp(t_pdlua *x, t_signal **sp) {
     PDLUA_DEBUG("pdlua_dsp: end. stack top %d", lua_gettop(__L()));
 
     // Prepare signal vector for dsp_addv
-    int sigvecsize = 2 + sum * 2;  // x, nblock, and (s_vec, s_nchans) for each in/outlet
+    int sigvecsize = 1 + sum;  // x and sp[i] for each iolet
     t_int *sigvec = (t_int *)getbytes(sigvecsize * sizeof(t_int));
     
     sigvec[0] = (t_int)x;
-    sigvec[1] = (t_int)sp[0]->s_n; // FIXME: check again. similar to s_length? and this should be blocksize if anything
-    
-    for (int i = 0; i < sum; i++) { // FIXME: this feels wrong
-        sigvec[2 + i*2] = (t_int)sp[i]->s_vec;
-        sigvec[3 + i*2] = (t_int)sp[i]->s_nchans;
+    for (int i = 0; i < sum; i++) {
+        sigvec[1 + i] = (t_int)sp[i];
     }
 
     dsp_addv(pdlua_perform, sigvecsize, sigvec);
