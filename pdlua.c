@@ -1073,7 +1073,7 @@ static t_int *pdlua_perform(t_int *w){
         t_signal *sig = (t_signal *)(w[2 + i]);
         t_float *in = sig->s_vec;
 #if PD_HAVE_MULTICHANNEL
-        int nchans = sig->s_nchans;
+        int nchans = sig->s_nchans ? sig->s_nchans : 1;
 #else
         int nchans = 1;
 #endif
@@ -1123,7 +1123,7 @@ static t_int *pdlua_perform(t_int *w){
         t_signal *sig = (t_signal *)(w[2 + o->siginlets + i]);
         t_float *out = sig->s_vec;
 #if PD_HAVE_MULTICHANNEL
-        int nchans = sig->s_nchans;
+        int nchans = sig->s_nchans ? sig->s_nchans : 1;
 #else
         int nchans = 1;
 #endif
@@ -1177,14 +1177,14 @@ static void pdlua_dsp(t_pdlua *x, t_signal **sp) {
     lua_newtable(__L());
     for (int i = 0; i < x->siginlets; i++) {
         lua_pushinteger(__L(), i + 1);
-        PDLUA_DEBUG2("pdlua_dsp: inlet: %d, s_nchans: %d", i, sp[i]->s_nchans);
-        if (g_signal_setmultiout)
+        if (g_signal_setmultiout) {
 #if PD_HAVE_MULTICHANNEL
+            PDLUA_DEBUG2("pdlua_dsp: inlet: %d, s_nchans: %d", i, sp[i]->s_nchans);
             lua_pushinteger(__L(), sp[i]->s_nchans);
 #else
             lua_pushinteger(__L(), 1); // Pd supports multichannel, but pdlua built without
 #endif
-        else
+        } else
             lua_pushinteger(__L(), 1); // Pd doesn't support multichannel
         lua_settable(__L(), -3);
     }
@@ -2687,14 +2687,14 @@ static int pdlua_signal_setmultiout(lua_State *L)
     }
 
 #if PD_HAVE_MULTICHANNEL
-    if (g_signal_setmultiout)
+    if (g_signal_setmultiout) {
         if (x->sp && x->sp[x->siginlets + outidx])
             g_signal_setmultiout(&x->sp[x->siginlets + outidx], nchans);
         else {
             pd_error(x, "%s: signal_setmultiout: invalid signal pointer. must be called from dsp method", src_info(L, msg));
             return 0;
         }
-    else
+    } else
         pd_error(NULL, "%s: signal_setmultiout: Pd version without multichannel support", src_info(L, msg));
 #else
     pd_error(NULL, "%s: signal_setmultiout: pdlua built without multichannel support", src_info(L, msg));
