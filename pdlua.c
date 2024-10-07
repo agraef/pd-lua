@@ -2664,8 +2664,7 @@ static int pdlua_signal_setmultiout(lua_State *L)
 {
     char msg[MAXPDSTRING];
 
-    if (!(lua_islightuserdata(L, 1) && lua_isnumber(L, 2) && lua_isnumber(L, 3)))
-    {
+    if (!lua_islightuserdata(L, 1) || !lua_isnumber(L, 2) || !lua_isnumber(L, 3)) {
         pd_error(NULL, "%s: signal_setmultiout: invalid arguments", src_info(L, msg));
         return 0;
     }
@@ -2673,9 +2672,12 @@ static int pdlua_signal_setmultiout(lua_State *L)
     t_pdlua *x = (t_pdlua *)lua_touserdata(L, 1);
     int outidx = lua_tointeger(L, 2) - 1;
     int nchans = lua_tointeger(L, 3);
-    if (!(x && outidx >= 0 && outidx < x->sigoutlets))
-    {
+    if (!x) {
         pd_error(NULL, "%s: signal_setmultiout: must be called from dsp method", src_info(L, msg));
+        return 0;
+    }
+    if (outidx < 0 || outidx >= x->sigoutlets) {
+        pd_error(NULL, "%s: signal_setmultiout: invalid outlet index. called outside dsp method?", src_info(L, msg));
         return 0;
     }
 
