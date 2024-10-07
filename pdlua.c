@@ -2646,8 +2646,12 @@ static int pdlua_signal_setmultiout(lua_State *L)
     {
         t_pdlua *x = (t_pdlua *)lua_touserdata(L, 1);
         PDLUA_DEBUG("pdlua_signal_setmultiout: x = %p", x);
-        int outidx = lua_tointeger(L, 2) - 1; // Lua uses 1-based indexing
+        int outidx = lua_tointeger(L, 2) - 1;
         int nchans = lua_tointeger(L, 3);
+        if (nchans < 1) {
+            pd_error(NULL, "lua: invalid channel count: %d, setting to 1", nchans);
+            nchans = 1;  // Ensure at least one channel
+        }
         PDLUA_DEBUG2("pdlua_signal_setmultiout: outidx = %d, nchans = %d", outidx, nchans);
         
         if (x && outidx >= 0 && outidx < x->sigoutlets)
