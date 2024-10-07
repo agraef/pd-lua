@@ -1145,13 +1145,20 @@ static void pdlua_dsp(t_pdlua *x, t_signal **sp) {
 
     x->sp = sp; // FIXME: is this the way? (setting this for signal_setmultiout)
 
+#ifdef PD_MULTICHANNEL
+    // Set default channel count to 1 for all signal outlets
+    for (int i = x->siginlets; i < sum; i++) {
+        signal_setmultiout(&sp[i], 1);
+    }
+#endif
+
     // Call Lua _dsp function
     lua_getglobal(__L(), "pd");
     lua_getfield (__L(), -1, "_dsp");
     lua_pushlightuserdata(__L(), x);
     lua_pushnumber(__L(), sys_getsr());
     lua_pushnumber(__L(), sys_getblksize());
-    
+
     // Pass input channel counts as a table
     lua_newtable(__L());
     for (int i = 0; i < x->siginlets; i++) {
