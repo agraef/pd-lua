@@ -1182,12 +1182,10 @@ static void pdlua_dsp(t_pdlua *x, t_signal **sp) {
 #if PD_HAVE_MULTICHANNEL
             lua_pushinteger(__L(), sp[i]->s_nchans);
 #else
-            // Pd supports multichannel, but pdlua built without
-            lua_pushinteger(__L(), 1);
+            lua_pushinteger(__L(), 1); // Pd supports multichannel, but pdlua built without
 #endif
         else
-            // Pd doesn't support multichannel
-            lua_pushinteger(__L(), 1);
+            lua_pushinteger(__L(), 1); // Pd doesn't support multichannel
         lua_settable(__L(), -3);
     }
     
@@ -2664,33 +2662,43 @@ static int pdlua_canvas_realizedollar(lua_State *L)
 
 static int pdlua_signal_setmultiout(lua_State *L)
 {
-    if (lua_islightuserdata(L, 1) && lua_isnumber(L, 2) && lua_isnumber(L, 3))
+    char msg[MAXPDSTRING];
+
+    if (!(lua_islightuserdata(L, 1) && lua_isnumber(L, 2) && lua_isnumber(L, 3)))
     {
-        t_pdlua *x = (t_pdlua *)lua_touserdata(L, 1);
-        PDLUA_DEBUG("pdlua_signal_setmultiout: x = %p", x);
-        int outidx = lua_tointeger(L, 2) - 1;
-        int nchans = lua_tointeger(L, 3);
-        if (nchans < 1) {
-            pd_error(NULL, "lua: invalid channel count: %d, setting to 1", nchans);
-            nchans = 1;  // Ensure at least one channel
-        }
-        PDLUA_DEBUG2("pdlua_signal_setmultiout: outidx = %d, nchans = %d", outidx, nchans);
-        
-        if (x && outidx >= 0 && outidx < x->sigoutlets)
-        {
+        pd_error(NULL, "%s: signal_setmultiout: invalid arguments", src_info(L, msg));
+        return 0;
+    }
+
+    t_pdlua *x = (t_pdlua *)lua_touserdata(L, 1);
+    int outidx = lua_tointeger(L, 2) - 1;
+    int nchans = lua_tointeger(L, 3);
+    if (!(x && outidx >= 0 && outidx < x->sigoutlets))
+    {
+        pd_error(NULL, "%s: signal_setmultiout: must be called from dsp method", src_info(L, msg));
+        return 0;
+    }
+
+    if (nchans < 1) {
+        pd_error(NULL, "%s: signal_setmultiout: invalid channel count: %d, setting to 1", src_info(L, msg), nchans);
+        nchans = 1;  // Ensure at least one channel
+    }
+
 #if PD_HAVE_MULTICHANNEL
-            PDLUA_DEBUG("pdlua_signal_setmultiout: nchans", nchans);
-            if (g_signal_setmultiout)
-                g_signal_setmultiout(&x->sp[x->siginlets + outidx], nchans);
-            else
-                pd_error(NULL, "lua: signal_setmultiout: Pd version without multichannel support");
-#else
-            pd_error(NULL, "lua: signal_setmultiout: pdlua built without multichannel support");
-#endif
+    if (g_signal_setmultiout)
+        if (x->sp && x->sp[x->siginlets + outidx])
+            g_signal_setmultiout(&x->sp[x->siginlets + outidx], nchans);
+        else {
+            pd_error(x, "%s: signal_setmultiout: invalid signal pointer. must be called from dsp method", src_info(L, msg));
             return 0;
         }
-    }
-    return luaL_error(L, "Invalid arguments to signal_setmultiout");
+    else
+        pd_error(NULL, "%s: signal_setmultiout: Pd version without multichannel support", src_info(L, msg));
+#else
+    pd_error(NULL, "%s: signal_setmultiout: pdlua built without multichannel support", src_info(L, msg));
+#endif
+
+    return 0;
 }
 
 /** Initialize the pd API for Lua. */

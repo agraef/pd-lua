@@ -462,7 +462,7 @@ function pd.Class:canvas_realizedollar(s)
 end
 
 function pd.Class:signal_setmultiout(n, channelcount)
-  return pd._signal_setmultiout(self._object, n, channelcount)
+  pd._signal_setmultiout(self._object, n, channelcount)
 end
 
 function pd.Class:repaint(layer)
