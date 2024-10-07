@@ -160,6 +160,10 @@ void initialise_lua_state()
 # error "Pd version is too new, please file a bug report"
 #endif
 
+#if PD_MINOR_VERSION>=54
+# define PD_MULTICHANNEL
+#endif
+
 #ifdef UNUSED
 #elif defined(__GNUC__)
 # define UNUSED(x) UNUSED_ ## x __attribute__((unused))
@@ -1023,7 +1027,7 @@ static void pdlua_menu_open(t_pdlua *o)
         }
         //post("path = %s, name = %s, pathname = %s", path, name, pathname);
         lua_pop(__L(), 2); /* pop name, global "pd"*/
-        
+
 #if PD_MAJOR_VERSION==0 && PD_MINOR_VERSION<43
         post("Opening %s for editing", pathname);
 #else
@@ -1330,14 +1334,26 @@ static int pdlua_class_new(lua_State *L)
     snprintf(name_gfx, MAXPDSTRING-1, "%s:gfx", name);
     PDLUA_DEBUG3("pdlua_class_new: L is %p, name is %s stack top is %d", L, name, lua_gettop(L));
     c = class_new(gensym((char *) name), (t_newmethod) pdlua_new,
-        (t_method) pdlua_free, sizeof(t_pdlua), CLASS_NOINLET | CLASS_MULTICHANNEL, A_GIMME, 0);
+        (t_method) pdlua_free, sizeof(t_pdlua),
+#ifdef PD_MULTICHANNEL
+        CLASS_NOINLET | CLASS_MULTICHANNEL,
+#else
+        CLASS_NOINLET,
+#endif
+        A_GIMME, 0);
     if (strcmp(name, "pdlua") && strcmp(name, "pdluax")) {
         // Shadow class for graphics objects. This is an exact clone of the
         // regular (non-gui) class, except that it has a different
         // widgetbehavior. We only need this for the regular Lua objects, the
         // pdlua and pdluax built-ins don't have this.
         c_gfx = class_new(gensym((char *) name_gfx), (t_newmethod) pdlua_new,
-                          (t_method) pdlua_free, sizeof(t_pdlua), CLASS_NOINLET | CLASS_MULTICHANNEL, A_GIMME, 0);
+                (t_method) pdlua_free, sizeof(t_pdlua),
+#ifdef PD_MULTICHANNEL
+                CLASS_NOINLET | CLASS_MULTICHANNEL,
+#else
+                CLASS_NOINLET,
+#endif
+                A_GIMME, 0);
         class_sethelpsymbol(c_gfx, gensym((char *) name));
     }
     
@@ -2630,7 +2646,13 @@ static int pdlua_signal_setmultiout(lua_State *L)
         if (x && outidx >= 0 && outidx < x->sigoutlets)
         {
             PDLUA_DEBUG("pdlua_signal_setmultiout: nchans", nchans);
+#ifdef PD_MULTICHANNEL
             signal_setmultiout(&x->sp[x->siginlets + outidx], nchans);
+#else
+            // FIXME: does this make sense here at all?
+            pd_error(NULL, "lua: update Pd version for multichannel support");
+#endif
+
             return 0;
         }
     }
