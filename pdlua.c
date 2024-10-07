@@ -1186,14 +1186,12 @@ static void pdlua_dsp(t_pdlua *x, t_signal **sp) {
 
     PDLUA_DEBUG("pdlua_dsp: end. stack top %d", lua_gettop(__L()));
 
-    // Prepare signal vector for dsp_addv
     int sigvecsize = 1 + sum;  // x and sp[i] for each iolet
     t_int *sigvec = (t_int *)getbytes(sigvecsize * sizeof(t_int));
     
     sigvec[0] = (t_int)x;
-    for (int i = 0; i < sum; i++) {
+    for (int i = 0; i < sum; i++)
         sigvec[1 + i] = (t_int)sp[i];
-    }
 
     dsp_addv(pdlua_perform, sigvecsize, sigvec);
     freebytes(sigvec, sigvecsize * sizeof(t_int));
