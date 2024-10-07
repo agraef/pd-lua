@@ -1039,9 +1039,9 @@ static void pdlua_menu_open(t_pdlua *o)
         plugdata_forward_message(o, gensym("open_textfile"), 1, &arg);
 #else
         if (nw_gui_vmess)
-          nw_gui_vmess("open_textfile", "s", pathname);
+            nw_gui_vmess("open_textfile", "s", pathname);
         else
-          sys_vgui("::pd_menucommands::menu_openfile {%s}\n", pathname);
+            sys_vgui("::pd_menucommands::menu_openfile {%s}\n", pathname);
 #endif
     } else {
         lua_pop(__L(), 2); /* pop name, global "pd"*/
@@ -1065,7 +1065,11 @@ static t_int *pdlua_perform(t_int *w){
         lua_newtable(__L());
         t_signal *sig = (t_signal *)(w[2 + i]);
         t_float *in = sig->s_vec;
+#ifdef PD_MULTICHANNEL
         int nchans = sig->s_nchans;
+#else
+        int nchans = 1;
+#endif
         int s_n_allchans = nblock * nchans; // sum of all inlet samples
         PDLUA_DEBUG("pdlua_perform: inlet %d", i);
         PDLUA_DEBUG2("pdlua_perform: nchans: %d, s_n_allchans: %d", nchans, s_n_allchans);
@@ -1111,7 +1115,11 @@ static t_int *pdlua_perform(t_int *w){
         }
         t_signal *sig = (t_signal *)(w[2 + o->siginlets + i]);
         t_float *out = sig->s_vec;
+#ifdef PD_MULTICHANNEL
         int nchans = sig->s_nchans;
+#else
+        int nchans = 1;
+#endif
         int s_n_allchans = nblock * nchans; // sum of all outlet samples
         PDLUA_DEBUG("pdlua_perform: outlet %d", i);
         PDLUA_DEBUG2("nchans: %d, s_n_allchans: %d", nchans, s_n_allchans);
@@ -1147,9 +1155,8 @@ static void pdlua_dsp(t_pdlua *x, t_signal **sp) {
 
 #ifdef PD_MULTICHANNEL
     // Set default channel count to 1 for all signal outlets
-    for (int i = x->siginlets; i < sum; i++) {
+    for (int i = x->siginlets; i < sum; i++)
         signal_setmultiout(&sp[i], 1);
-    }
 #endif
 
     // Call Lua _dsp function
@@ -1164,13 +1171,17 @@ static void pdlua_dsp(t_pdlua *x, t_signal **sp) {
     for (int i = 0; i < x->siginlets; i++) {
         PDLUA_DEBUG2("pdlua_dsp: inlet: %d, s_nchans: %d", i, sp[i]->s_nchans);
         lua_pushinteger(__L(), i + 1);
+#ifdef PD_MULTICHANNEL
         lua_pushinteger(__L(), sp[i]->s_nchans);
+#else
+        lua_pushinteger(__L(), 1);
+#endif
         lua_settable(__L(), -3);
     }
     
-    if (lua_pcall(__L(), 4, 0, 0)) {
+    if (lua_pcall(__L(), 4, 0, 0))
         mylua_error(__L(), x, "dsp");
-    }
+
     lua_pop(__L(), 1); /* pop the global "pd" */
 
     PDLUA_DEBUG("pdlua_dsp: end. stack top %d", lua_gettop(__L()));
@@ -2656,14 +2667,12 @@ static int pdlua_signal_setmultiout(lua_State *L)
         
         if (x && outidx >= 0 && outidx < x->sigoutlets)
         {
-            PDLUA_DEBUG("pdlua_signal_setmultiout: nchans", nchans);
 #ifdef PD_MULTICHANNEL
+            PDLUA_DEBUG("pdlua_signal_setmultiout: nchans", nchans);
             signal_setmultiout(&x->sp[x->siginlets + outidx], nchans);
 #else
-            // FIXME: does this make sense here at all?
-            pd_error(NULL, "lua: update Pd version for multichannel support");
+            post("lua: Pd version without multichannel support, setting output channels to 1");
 #endif
-
             return 0;
         }
     }
@@ -3123,7 +3132,7 @@ void pdlua_setup(void)
     nw_gui_vmess = dlsym(RTLD_DEFAULT, "gui_vmess");
 #endif
     if (nw_gui_vmess)
-      post("pdlua: using JavaScript interface (nw.js)");
+        post("pdlua: using JavaScript interface (nw.js)");
 #endif
 
 }
