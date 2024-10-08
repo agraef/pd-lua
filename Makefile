@@ -18,6 +18,7 @@ pdlua_version := $(shell git describe --tags 2>/dev/null)
 luasrc = $(wildcard lua/onelua.c)
 
 PKG_CONFIG ?= pkg-config
+PD_MULTICHANNEL ?= 1
 
 ifeq ($(luasrc),)
 # compile with installed liblua
@@ -40,6 +41,7 @@ endef
 endif
 
 cflags = ${luaflags} -DPDLUA_VERSION="$(pdlua_version)"
+cflags += -DPD_MULTICHANNEL=$(PD_MULTICHANNEL)
 
 pdlua.class.sources := pdlua.c $(luasrc)
 pdlua.class.ldlibs := $(lualibs)

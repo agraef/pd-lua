@@ -163,12 +163,14 @@ void initialise_lua_state()
 # error "Pd version is too new, please file a bug report"
 #endif
 
-#ifndef PD_HAVE_MULTICHANNEL
-# if PD_MINOR_VERSION>=54
-#  define PD_HAVE_MULTICHANNEL 1
-# else
-#  define PD_HAVE_MULTICHANNEL 0
+#if PD_MINOR_VERSION >= 54
+# ifndef PD_MULTICHANNEL
+#  define PD_MULTICHANNEL 1
 # endif
+#else
+# pragma message("building without multi-channel support; requires Pd 0.54+")
+# define PD_MULTICHANNEL 0
+# define CLASS_MULTICHANNEL 0
 #endif
 
 #ifdef UNUSED
@@ -1072,7 +1074,7 @@ static t_int *pdlua_perform(t_int *w){
         lua_newtable(__L());
         t_signal *sig = (t_signal *)(w[2 + i]);
         t_float *in = sig->s_vec;
-#if PD_HAVE_MULTICHANNEL
+#if PD_MULTICHANNEL
         int nchans = sig->s_nchans ? sig->s_nchans : 1;
 #else
         int nchans = 1;
@@ -1122,7 +1124,7 @@ static t_int *pdlua_perform(t_int *w){
         }
         t_signal *sig = (t_signal *)(w[2 + o->siginlets + i]);
         t_float *out = sig->s_vec;
-#if PD_HAVE_MULTICHANNEL
+#if PD_MULTICHANNEL
         int nchans = sig->s_nchans ? sig->s_nchans : 1;
 #else
         int nchans = 1;
@@ -1177,15 +1179,15 @@ static void pdlua_dsp(t_pdlua *x, t_signal **sp) {
     lua_newtable(__L());
     for (int i = 0; i < x->siginlets; i++) {
         lua_pushinteger(__L(), i + 1);
+#if PD_MULTICHANNEL
         if (g_signal_setmultiout) {
-#if PD_HAVE_MULTICHANNEL
             PDLUA_DEBUG2("pdlua_dsp: inlet: %d, s_nchans: %d", i, sp[i]->s_nchans);
             lua_pushinteger(__L(), sp[i]->s_nchans);
-#else
-            lua_pushinteger(__L(), 1); // Pd supports multichannel, but pdlua built without
-#endif
         } else
-            lua_pushinteger(__L(), 1); // Pd doesn't support multichannel
+            lua_pushinteger(__L(), 1); // Pd version without multichannel support
+#else
+        lua_pushinteger(__L(), 1); // pdlua built without multichannel support
+#endif
         lua_settable(__L(), -3);
     }
     
@@ -1361,26 +1363,14 @@ static int pdlua_class_new(lua_State *L)
     snprintf(name_gfx, MAXPDSTRING-1, "%s:gfx", name);
     PDLUA_DEBUG3("pdlua_class_new: L is %p, name is %s stack top is %d", L, name, lua_gettop(L));
     c = class_new(gensym((char *) name), (t_newmethod) pdlua_new,
-        (t_method) pdlua_free, sizeof(t_pdlua),
-#if PD_HAVE_MULTICHANNEL
-        CLASS_NOINLET | CLASS_MULTICHANNEL,
-#else
-        CLASS_NOINLET,
-#endif
-        A_GIMME, 0);
+        (t_method) pdlua_free, sizeof(t_pdlua), CLASS_NOINLET | CLASS_MULTICHANNEL, A_GIMME, 0);
     if (strcmp(name, "pdlua") && strcmp(name, "pdluax")) {
         // Shadow class for graphics objects. This is an exact clone of the
         // regular (non-gui) class, except that it has a different
         // widgetbehavior. We only need this for the regular Lua objects, the
         // pdlua and pdluax built-ins don't have this.
         c_gfx = class_new(gensym((char *) name_gfx), (t_newmethod) pdlua_new,
-                (t_method) pdlua_free, sizeof(t_pdlua),
-#if PD_HAVE_MULTICHANNEL
-                CLASS_NOINLET | CLASS_MULTICHANNEL,
-#else
-                CLASS_NOINLET,
-#endif
-                A_GIMME, 0);
+                (t_method) pdlua_free, sizeof(t_pdlua), CLASS_NOINLET | CLASS_MULTICHANNEL, A_GIMME, 0);
         class_sethelpsymbol(c_gfx, gensym((char *) name));
     }
     
@@ -2686,7 +2676,7 @@ static int pdlua_signal_setmultiout(lua_State *L)
         nchans = 1;  // Ensure at least one channel
     }
 
-#if PD_HAVE_MULTICHANNEL
+#if PD_MULTICHANNEL
     if (g_signal_setmultiout) {
         if (x->sp && x->sp[x->siginlets + outidx])
             g_signal_setmultiout(&x->sp[x->siginlets + outidx], nchans);
