@@ -169,6 +169,7 @@ void initialise_lua_state()
 # endif
 #else
 # pragma message("building without multi-channel support; requires Pd 0.54+")
+# undef PD_MULTICHANNEL
 # define PD_MULTICHANNEL 0
 # define CLASS_MULTICHANNEL 0
 #endif
