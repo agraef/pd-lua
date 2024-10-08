@@ -1118,11 +1118,6 @@ static t_int *pdlua_perform(t_int *w){
 
     for (int i = o->sigoutlets - 1; i >= 0; i--)
     {
-        if (!lua_istable(__L(), -1)) {
-            pd_error(o, "pdlua_perform: expected table for outlet %d", i);
-            lua_pop(__L(), 1);
-            continue;
-        }
         t_signal *sig = (t_signal *)(w[2 + o->siginlets + i]);
         t_float *out = sig->s_vec;
 #if PD_MULTICHANNEL
