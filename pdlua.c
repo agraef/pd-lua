@@ -1436,6 +1436,7 @@ static int pdlua_object_new(lua_State *L)
                 o->siginlets = 0;
                 o->sigoutlets = 0;
                 o->sig_warned = 0;
+                o->blocksize = 0;
                 o->canvas = canvas_getcurrent();
                 o->pdlua_class = c;
                 o->pdlua_class_gfx = c_gfx;
