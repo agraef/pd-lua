@@ -1061,9 +1061,7 @@ static void pdlua_menu_open(t_pdlua *o)
 
 static t_int *pdlua_perform(t_int *w){
     t_pdlua *o = (t_pdlua *)(w[1]);
-    t_signal *first_sig = (t_signal *)(w[2]);
-    int nblock = first_sig->s_n;
-    // FIXME: should we use a o->blocksize here that gets set in dsp?
+    int nblock = o->blocksize;
     
     PDLUA_DEBUG("pdlua_perform: stack top %d", lua_gettop(__L()));
     lua_getglobal(__L(), "pd");
@@ -1153,10 +1151,10 @@ static void pdlua_dsp(t_pdlua *x, t_signal **sp) {
     int sum = x->siginlets + x->sigoutlets;
     if(sum == 0) return;
     x->sig_warned = 0;
+    x->blocksize = (int)sp[0]->s_n; // local block size instead of sys_getblksize();
+    x->sp = sp; // prepare for Lua signal_setmultiout
 
     PDLUA_DEBUG("pdlua_dsp: stack top %d", lua_gettop(__L()));
-
-    x->sp = sp; // FIXME: is this the way? (setting this for signal_setmultiout)
 
     if (g_signal_setmultiout) {
         // Set default channel count to 1 for all signal outlets
@@ -1169,7 +1167,7 @@ static void pdlua_dsp(t_pdlua *x, t_signal **sp) {
     lua_getfield (__L(), -1, "_dsp");
     lua_pushlightuserdata(__L(), x);
     lua_pushnumber(__L(), sys_getsr());
-    lua_pushnumber(__L(), sys_getblksize());
+    lua_pushnumber(__L(), x->blocksize);
 
     // Pass input channel counts as a table
     lua_newtable(__L());
