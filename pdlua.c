@@ -1037,7 +1037,7 @@ static void pdlua_menu_open(t_pdlua *o)
         }
         //post("path = %s, name = %s, pathname = %s", path, name, pathname);
         lua_pop(__L(), 2); /* pop name, global "pd"*/
-
+        
 #if PD_MAJOR_VERSION==0 && PD_MINOR_VERSION<43
         post("Opening %s for editing", pathname);
 #else
@@ -1049,9 +1049,9 @@ static void pdlua_menu_open(t_pdlua *o)
         plugdata_forward_message(o, gensym("open_textfile"), 1, &arg);
 #else
         if (nw_gui_vmess)
-            nw_gui_vmess("open_textfile", "s", pathname);
+          nw_gui_vmess("open_textfile", "s", pathname);
         else
-            sys_vgui("::pd_menucommands::menu_openfile {%s}\n", pathname);
+          sys_vgui("::pd_menucommands::menu_openfile {%s}\n", pathname);
 #endif
     } else {
         lua_pop(__L(), 2); /* pop name, global "pd"*/
@@ -1079,8 +1079,6 @@ static t_int *pdlua_perform(t_int *w){
         int nchans = 1;
 #endif
         int s_n_allchans = nblock * nchans; // sum of all inlet samples
-        PDLUA_DEBUG("pdlua_perform: inlet %d", i);
-        PDLUA_DEBUG2("pdlua_perform: nchans: %d, s_n_allchans: %d", nchans, s_n_allchans);
         for (int j = 0; j < s_n_allchans; j++)
         {
             lua_pushinteger(__L(), j + 1);
@@ -1088,14 +1086,14 @@ static t_int *pdlua_perform(t_int *w){
             lua_settable(__L(), -3);
         }
     }
-
+    
     if (lua_pcall(__L(), 1 + o->siginlets, o->sigoutlets, 0))
     {
         mylua_error(__L(), o, "perform");
         lua_pop(__L(), 1); /* pop the global pd */
-        return w + 2 + o->siginlets + o->sigoutlets;
+        return w + o->siginlets + o->sigoutlets + 2;
     }
-
+    
     if (!lua_istable(__L(), -1))
     {
         const char *s = "lua: perform: function should return";
@@ -1111,9 +1109,9 @@ static t_int *pdlua_perform(t_int *w){
             }
         }
         lua_pop(__L(), 1 + o->sigoutlets);
-        return w + 2 + o->siginlets + o->sigoutlets;
+        return w + o->siginlets + o->sigoutlets + 2;
     }
-
+    
     for (int i = o->sigoutlets - 1; i >= 0; i--)
     {
         t_signal *sig = (t_signal *)(w[2 + o->siginlets + i]);
@@ -1124,8 +1122,6 @@ static t_int *pdlua_perform(t_int *w){
         int nchans = 1;
 #endif
         int s_n_allchans = nblock * nchans; // sum of all outlet samples
-        PDLUA_DEBUG("pdlua_perform: outlet %d", i);
-        PDLUA_DEBUG2("nchans: %d, s_n_allchans: %d", nchans, s_n_allchans);
         for (int j = 0; j < s_n_allchans; j++)
         {
             lua_pushinteger(__L(), (lua_Integer)(j + 1));
@@ -1140,14 +1136,15 @@ static t_int *pdlua_perform(t_int *w){
         }
         lua_pop(__L(), 1);
     }
+
     lua_pop(__L(), 1); /* pop the global "pd" */
-
+    
     PDLUA_DEBUG("pdlua_perform: end. stack top %d", lua_gettop(__L()));
-
-    return w + 2 + o->siginlets + o->sigoutlets;
+    
+    return w + o->siginlets + o->sigoutlets + 2;
 }
 
-static void pdlua_dsp(t_pdlua *x, t_signal **sp) {
+static void pdlua_dsp(t_pdlua *x, t_signal **sp){
     int sum = x->siginlets + x->sigoutlets;
     if(sum == 0) return;
     x->sig_warned = 0;
@@ -1175,7 +1172,6 @@ static void pdlua_dsp(t_pdlua *x, t_signal **sp) {
         lua_pushinteger(__L(), i + 1);
 #if PD_MULTICHANNEL
         if (g_signal_setmultiout) {
-            PDLUA_DEBUG2("pdlua_dsp: inlet: %d, s_nchans: %d", i, sp[i]->s_nchans);
             lua_pushinteger(__L(), sp[i]->s_nchans);
         } else
             lua_pushinteger(__L(), 1); // Pd version without multichannel support
@@ -1186,19 +1182,21 @@ static void pdlua_dsp(t_pdlua *x, t_signal **sp) {
     }
     
     if (lua_pcall(__L(), 4, 0, 0))
+    {
         mylua_error(__L(), x, "dsp");
-
+    }
     lua_pop(__L(), 1); /* pop the global "pd" */
-
+    
     PDLUA_DEBUG("pdlua_dsp: end. stack top %d", lua_gettop(__L()));
-
-    int sigvecsize = 1 + sum;  // x and sp[i] for each iolet
-    t_int *sigvec = (t_int *)getbytes(sigvecsize * sizeof(t_int));
+    
+    int sigvecsize = sum + 1;
+    t_int* sigvec = getbytes(sigvecsize * sizeof(t_int));
     
     sigvec[0] = (t_int)x;
-    for (int i = 0; i < sum; i++)
-        sigvec[1 + i] = (t_int)sp[i];
 
+    for (int i = 0; i < sum; i++)
+        sigvec[i + 1] = (t_int)sp[i];
+    
     dsp_addv(pdlua_perform, sigvecsize, sigvec);
     freebytes(sigvec, sigvecsize * sizeof(t_int));
 }
@@ -1353,7 +1351,6 @@ static int pdlua_class_new(lua_State *L)
         // fail silently, return nothing
         return 0;
     }
-
     snprintf(name_gfx, MAXPDSTRING-1, "%s:gfx", name);
     PDLUA_DEBUG3("pdlua_class_new: L is %p, name is %s stack top is %d", L, name, lua_gettop(L));
     c = class_new(gensym((char *) name), (t_newmethod) pdlua_new,
@@ -3157,7 +3154,7 @@ void pdlua_setup(void)
     nw_gui_vmess = dlsym(RTLD_DEFAULT, "gui_vmess");
 #endif
     if (nw_gui_vmess)
-        post("pdlua: using JavaScript interface (nw.js)");
+      post("pdlua: using JavaScript interface (nw.js)");
 #endif
 
 }
