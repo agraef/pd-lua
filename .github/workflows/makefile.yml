@@ -21,10 +21,10 @@ jobs:
         fetch-depth: 0
 
     - name: install dependencies
-      run: sudo apt install puredata-dev
+      run: git clone --branch=0.55-0 --depth=1 https://github.com/pure-data/pure-data.git
 
     - name: make
-      run: make install objectsdir=./build floatsize=${{ matrix.floatsize }} extension=linux-amd64-${{ matrix.floatsize }}.so
+      run: make install PDDIR=./pure-data objectsdir=./build floatsize=${{ matrix.floatsize }} extension=linux-amd64-${{ matrix.floatsize }}.so
 
     - name: upload
       uses: actions/upload-artifact@v4
