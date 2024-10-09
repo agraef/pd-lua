@@ -40,6 +40,9 @@ endef
 endif
 
 cflags = ${luaflags} -DPDLUA_VERSION="$(pdlua_version)"
+ifdef PD_MULTICHANNEL
+    cflags += -DPD_MULTICHANNEL=$(PD_MULTICHANNEL)
+endif
 
 pdlua.class.sources := pdlua.c $(luasrc)
 pdlua.class.ldlibs := $(lualibs)

@@ -64,11 +64,13 @@ typedef struct pdlua
     int                     siginlets;        // Number of signal inlets.
     int                     sigoutlets;       // Number of signal outlets.
     int                     sig_warned;       // Flag for perform signal errors.
+    int                     blocksize;        // Blocksize set in dsp method.
     t_canvas                *canvas;          // The canvas that the object was created on.
     int                     has_gui;          // True if graphics are enabled.
     t_pdlua_gfx             gfx;              // Holds state for graphics.
     t_class                 *pdlua_class;     // Holds our class pointer.
     t_class                 *pdlua_class_gfx; // Holds our gfx class pointer.
+    t_signal                **sp;             // Array of signal pointers for multichannel audio.
 } t_pdlua;
 
 lua_State* __L();

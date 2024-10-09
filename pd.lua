@@ -77,10 +77,10 @@ pd._dispatcher = function (object, inlet, sel, atoms)
   end
 end
 
-pd._dsp = function (object, samplerate, blocksize)
+pd._dsp = function (object, samplerate, blocksize, inchans)
   local obj = pd._objects[object]
   if nil ~= obj and type(obj.dsp) == "function" then
-    pd._objects[object]:dsp(samplerate, blocksize)
+    pd._objects[object]:dsp(samplerate, blocksize, inchans)
   end
 end
 
@@ -459,6 +459,10 @@ end
 
 function pd.Class:canvas_realizedollar(s)
   return pd._canvas_realizedollar(self._object, s)
+end
+
+function pd.Class:signal_setmultiout(n, channelcount)
+  pd._signal_setmultiout(self._object, n, channelcount)
 end
 
 function pd.Class:repaint(layer)

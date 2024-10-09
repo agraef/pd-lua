@@ -59,6 +59,9 @@
 
 #include "pdlua_gfx.h"
 
+typedef void (*t_signal_setmultiout)(t_signal **, int); 
+static t_signal_setmultiout g_signal_setmultiout;
+
 // This used to be in s_stuff.h, but not anymore since 0.55.1test1.
 int sys_trytoopenone(const char *dir, const char *name, const char* ext,
     char *dirresult, char **nameresult, unsigned int size, int bin);
@@ -158,6 +161,17 @@ void initialise_lua_state()
 # endif
 #else
 # error "Pd version is too new, please file a bug report"
+#endif
+
+#if PD_MINOR_VERSION >= 54
+# ifndef PD_MULTICHANNEL
+#  define PD_MULTICHANNEL 1
+# endif
+#else
+# pragma message("building without multi-channel support; requires Pd 0.54+")
+# undef PD_MULTICHANNEL
+# define PD_MULTICHANNEL 0
+# define CLASS_MULTICHANNEL 0
 #endif
 
 #ifdef UNUSED
@@ -1047,7 +1061,7 @@ static void pdlua_menu_open(t_pdlua *o)
 
 static t_int *pdlua_perform(t_int *w){
     t_pdlua *o = (t_pdlua *)(w[1]);
-    int nblock = (int)(w[2]);
+    int nblock = o->blocksize;
     
     PDLUA_DEBUG("pdlua_perform: stack top %d", lua_gettop(__L()));
     lua_getglobal(__L(), "pd");
@@ -1057,8 +1071,15 @@ static t_int *pdlua_perform(t_int *w){
     for (int i = 0; i < o->siginlets; i++)
     {
         lua_newtable(__L());
-        t_float *in = (t_float*)w[i + 3];
-        for (int j = 0; j < nblock; j++)
+        t_signal *sig = (t_signal *)(w[2 + i]);
+        t_float *in = sig->s_vec;
+#if PD_MULTICHANNEL
+        int nchans = sig->s_nchans ? sig->s_nchans : 1;
+#else
+        int nchans = 1;
+#endif
+        int s_n_allchans = nblock * nchans; // sum of all inlet samples
+        for (int j = 0; j < s_n_allchans; j++)
         {
             lua_pushinteger(__L(), j + 1);
             lua_pushnumber(__L(), in[j]);
@@ -1070,7 +1091,7 @@ static t_int *pdlua_perform(t_int *w){
     {
         mylua_error(__L(), o, "perform");
         lua_pop(__L(), 1); /* pop the global pd */
-        return w + o->siginlets + o->sigoutlets + 3;
+        return w + o->siginlets + o->sigoutlets + 2;
     }
     
     if (!lua_istable(__L(), -1))
@@ -1088,13 +1109,20 @@ static t_int *pdlua_perform(t_int *w){
             }
         }
         lua_pop(__L(), 1 + o->sigoutlets);
-        return w + o->siginlets + o->sigoutlets + 3;
+        return w + o->siginlets + o->sigoutlets + 2;
     }
     
     for (int i = o->sigoutlets - 1; i >= 0; i--)
     {
-        t_float *out = (t_float*)w[i + 3 + o->siginlets];
-        for (int j = 0; j < nblock; j++)
+        t_signal *sig = (t_signal *)(w[2 + o->siginlets + i]);
+        t_float *out = sig->s_vec;
+#if PD_MULTICHANNEL
+        int nchans = sig->s_nchans ? sig->s_nchans : 1;
+#else
+        int nchans = 1;
+#endif
+        int s_n_allchans = nblock * nchans; // sum of all outlet samples
+        for (int j = 0; j < s_n_allchans; j++)
         {
             lua_pushinteger(__L(), (lua_Integer)(j + 1));
             lua_gettable(__L(), -2);
@@ -1113,22 +1141,47 @@ static t_int *pdlua_perform(t_int *w){
     
     PDLUA_DEBUG("pdlua_perform: end. stack top %d", lua_gettop(__L()));
     
-    return w + o->siginlets + o->sigoutlets + 3;
+    return w + o->siginlets + o->sigoutlets + 2;
 }
 
 static void pdlua_dsp(t_pdlua *x, t_signal **sp){
     int sum = x->siginlets + x->sigoutlets;
     if(sum == 0) return;
     x->sig_warned = 0;
-    
+    x->blocksize = (int)sp[0]->s_n; // local block size instead of sys_getblksize();
+    x->sp = sp; // prepare for Lua signal_setmultiout
+
     PDLUA_DEBUG("pdlua_dsp: stack top %d", lua_gettop(__L()));
+
+    if (g_signal_setmultiout) {
+        // Set default channel count to 1 for all signal outlets
+        for (int i = x->siginlets; i < sum; i++)
+            g_signal_setmultiout(&sp[i], 1);
+    }
+
+    // Call Lua _dsp function
     lua_getglobal(__L(), "pd");
     lua_getfield (__L(), -1, "_dsp");
     lua_pushlightuserdata(__L(), x);
     lua_pushnumber(__L(), sys_getsr());
-    lua_pushnumber(__L(), sys_getblksize());
+    lua_pushnumber(__L(), x->blocksize);
+
+    // Pass input channel counts as a table
+    lua_newtable(__L());
+    for (int i = 0; i < x->siginlets; i++) {
+        lua_pushinteger(__L(), i + 1);
+#if PD_MULTICHANNEL
+        if (g_signal_setmultiout) {
+            lua_pushinteger(__L(), sp[i]->s_nchans);
+        } else
+            lua_pushinteger(__L(), 1); // Pd version without multichannel support
+#else
+        lua_pushinteger(__L(), 1); // pdlua built without multichannel support
+#endif
+        lua_settable(__L(), -3);
+    }
     
-    if (lua_pcall(__L(), 3, 0, 0))
+    if (lua_pcall(__L(), 4, 0, 0))
     {
         mylua_error(__L(), x, "dsp");
     }
@@ -1136,14 +1189,13 @@ static void pdlua_dsp(t_pdlua *x, t_signal **sp){
     
     PDLUA_DEBUG("pdlua_dsp: end. stack top %d", lua_gettop(__L()));
     
-    int sigvecsize = sum + 2;
+    int sigvecsize = sum + 1;
     t_int* sigvec = getbytes(sigvecsize * sizeof(t_int));
     
     sigvec[0] = (t_int)x;
-    sigvec[1] = (t_int)sp[0]->s_n;
-    
+
     for (int i = 0; i < sum; i++)
-        sigvec[i + 2] = (t_int)sp[i]->s_vec;
+        sigvec[i + 1] = (t_int)sp[i];
     
     dsp_addv(pdlua_perform, sigvecsize, sigvec);
     freebytes(sigvec, sigvecsize * sizeof(t_int));
@@ -1302,14 +1354,14 @@ static int pdlua_class_new(lua_State *L)
     snprintf(name_gfx, MAXPDSTRING-1, "%s:gfx", name);
     PDLUA_DEBUG3("pdlua_class_new: L is %p, name is %s stack top is %d", L, name, lua_gettop(L));
     c = class_new(gensym((char *) name), (t_newmethod) pdlua_new,
-        (t_method) pdlua_free, sizeof(t_pdlua), CLASS_NOINLET, A_GIMME, 0);
+        (t_method) pdlua_free, sizeof(t_pdlua), CLASS_NOINLET | CLASS_MULTICHANNEL, A_GIMME, 0);
     if (strcmp(name, "pdlua") && strcmp(name, "pdluax")) {
         // Shadow class for graphics objects. This is an exact clone of the
         // regular (non-gui) class, except that it has a different
         // widgetbehavior. We only need this for the regular Lua objects, the
         // pdlua and pdluax built-ins don't have this.
         c_gfx = class_new(gensym((char *) name_gfx), (t_newmethod) pdlua_new,
-                          (t_method) pdlua_free, sizeof(t_pdlua), CLASS_NOINLET, A_GIMME, 0);
+                (t_method) pdlua_free, sizeof(t_pdlua), CLASS_NOINLET | CLASS_MULTICHANNEL, A_GIMME, 0);
         class_sethelpsymbol(c_gfx, gensym((char *) name));
     }
     
@@ -1384,10 +1436,12 @@ static int pdlua_object_new(lua_State *L)
                 o->siginlets = 0;
                 o->sigoutlets = 0;
                 o->sig_warned = 0;
+                o->blocksize = 0;
                 o->canvas = canvas_getcurrent();
                 o->pdlua_class = c;
                 o->pdlua_class_gfx = c_gfx;
-                
+                o->sp = NULL;
+
                 o->gfx.width = 80;
                 o->gfx.height = 80;
                
@@ -2588,6 +2642,49 @@ static int pdlua_canvas_realizedollar(lua_State *L)
     return 0;
 }
 
+static int pdlua_signal_setmultiout(lua_State *L)
+{
+    char msg[MAXPDSTRING];
+
+    if (!lua_islightuserdata(L, 1) || !lua_isnumber(L, 2) || !lua_isnumber(L, 3)) {
+        pd_error(NULL, "%s: signal_setmultiout: invalid arguments", src_info(L, msg));
+        return 0;
+    }
+
+    t_pdlua *x = (t_pdlua *)lua_touserdata(L, 1);
+    int outidx = lua_tointeger(L, 2) - 1;
+    int nchans = lua_tointeger(L, 3);
+    if (!x) {
+        pd_error(NULL, "%s: signal_setmultiout: must be called from dsp method", src_info(L, msg));
+        return 0;
+    }
+    if (outidx < 0 || outidx >= x->sigoutlets) {
+        pd_error(NULL, "%s: signal_setmultiout: invalid outlet index. called outside dsp method?", src_info(L, msg));
+        return 0;
+    }
+
+    if (nchans < 1) {
+        pd_error(NULL, "%s: signal_setmultiout: invalid channel count: %d, setting to 1", src_info(L, msg), nchans);
+        nchans = 1;  // Ensure at least one channel
+    }
+
+#if PD_MULTICHANNEL
+    if (g_signal_setmultiout) {
+        if (x->sp && x->sp[x->siginlets + outidx])
+            g_signal_setmultiout(&x->sp[x->siginlets + outidx], nchans);
+        else {
+            pd_error(x, "%s: signal_setmultiout: invalid signal pointer. must be called from dsp method", src_info(L, msg));
+            return 0;
+        }
+    } else
+        pd_error(NULL, "%s: signal_setmultiout: Pd version without multichannel support", src_info(L, msg));
+#else
+    pd_error(NULL, "%s: signal_setmultiout: pdlua built without multichannel support", src_info(L, msg));
+#endif
+
+    return 0;
+}
+
 /** Initialize the pd API for Lua. */
 static void pdlua_init(lua_State *L)
 /**< Lua interpreter state. */
@@ -2688,6 +2785,9 @@ static void pdlua_init(lua_State *L)
     lua_settable(L, -3);
     lua_pushstring(L, "_canvas_realizedollar");
     lua_pushcfunction(L, pdlua_canvas_realizedollar);
+    lua_settable(L, -3);
+    lua_pushstring(L, "_signal_setmultiout");
+    lua_pushcfunction(L, pdlua_signal_setmultiout);
     lua_settable(L, -3);
     lua_pushstring(L, "_error");
     lua_pushcfunction(L, pdlua_error);
@@ -2931,6 +3031,23 @@ void pdlua_setup(void)
     post(compiled);
 #endif
     post(luaversionStr);
+
+// multichannel handling copied from https://github.com/Spacechild1/vstplugin/blob/3f0ed8a800ea238bf204a2ead940b2d1324ac909/pd/src/vstplugin~.cpp#L4122-L4136
+#ifdef _WIN32
+    // get a handle to the module containing the Pd API functions.
+    // NB: GetModuleHandle("pd.dll") does not cover all cases.
+    HMODULE module;
+    if (GetModuleHandleEx(
+            GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+            (LPCSTR)&pd_typedmess, &module)) {
+        g_signal_setmultiout = (t_signal_setmultiout)(void *)GetProcAddress(
+            module, "signal_setmultiout");
+    }
+#else
+    // search recursively, starting from the main program
+    g_signal_setmultiout = (t_signal_setmultiout)dlsym(
+        dlopen(NULL, RTLD_NOW), "signal_setmultiout");
+#endif
 
     pdlua_proxyinlet_setup();
     PDLUA_DEBUG("pdlua pdlua_proxyinlet_setup done", 0);

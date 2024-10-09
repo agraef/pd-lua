@@ -35,6 +35,7 @@ pd:Class:mouse_up(x, y)                                        -- Mouse up callb
 pd:Class:mouse_move(x, y)                                      -- Mouse move callback, called when the mouse is moved while not being down
 pd:Class:mouse_drag(x, y)                                      -- Mouse drag callback, called when the mouse is moved while also being down
 
+
 -- Functions you can call
 pd:Class:repaint(layer)                                        -- Request a repaint for specified layer (or all layers if no parameter is set
                                                                   or if layer is 0). after this, the "paint" or "paint_layer_n" callback will occur
@@ -59,7 +60,8 @@ g:stroke_rounded_rect(x, y, w, h, corner_radius, line_width)   -- Draws the outl
 g:draw_line(x1, y1, x2, y2)                                    -- Draws a line between two points
 g:draw_text(text, x, y, w, fontsize)                           -- Draws text at the specified position and size
 
-g:fill_all()                                                   -- Fills the entire drawing area with the current color. Also will draw an object outline in the style of the host (ie. pure-data or plugdata)
+g:fill_all()                                                   -- Fills the entire drawing area with the current color. Also will draw
+                                                                  an object outline in the style of the host (ie. pure-data or plugdata)
 
 g:translate(tx, ty)                                            -- Translates the coordinate system by the specified amounts
 g:scale(sx, sy)                                                -- Scales the coordinate system by the specified factors. This will always happen after the translation
@@ -73,6 +75,14 @@ p:close_path()                                                 -- Closes the pat
 
 g:stroke_path(p, line_width)                                   -- Draws the outline of the path with the specified line width
 g:fill_path(p)                                                 -- Fills the current path
+
+
+-- Audio callbacks
+pd:Class:dsp(samplerate, blocksize, channel_counts)            -- Called when DSP is activated and whenever the DSP graph is updated
+pd:Class:perform(in1, in2, ..., in_n)                          -- Called for every audio block, passing tables of samples per inlet and
+                                                                  expecting tables of samples per outlet
+pd:Class:signal_setmultiout(outlet_index, channel_count)       -- Used in dsp function to achieve multichannel output for specific outlets
+
 
 -- Additional functions
 expandedsymbol = pd:Class:canvas_realizedollar(s)              -- Expand dollar symbols in patch canvas context
