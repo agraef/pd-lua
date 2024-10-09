@@ -66,12 +66,13 @@ repository at https://anonscm.debian.org/git/pkg-multimedia/pd-lua.git, which
 in turn was based on the 0.7.3 version of pdlua in Pd's svn repository.
 
 The current version (0.8 and later) is actively maintained by Albert Gräf,
-with contributions by Claude Heiland-Allen (Lua 5.4 update, bugfixes),
-Alexandre Porres (documentation updates), sebshader (relative path loading),
-Timothy Schoen (plugdata compatibility, signal and graphics support), and Ben
-Wesch (Deken tests and uploads on GitHub). This is also the version included
-in Purr Data (https://github.com/agraef/purr-data) and Timothy Schoen's
-plugdata (https://github.com/plugdata-team/plugdata).
+with contributions by many people: Claude Heiland-Allen (Lua 5.4 update,
+bugfixes), Alexandre Porres (documentation updates), sebshader (relative path
+loading), Timothy Schoen (plugdata compatibility, signal and graphics
+support), and Ben Wesch (multi-channel signal support, Deken tests and uploads
+on GitHub). This is also the version included in Purr Data
+(https://github.com/agraef/purr-data) and Timothy Schoen's plugdata
+(https://github.com/plugdata-team/plugdata).
 
 Please file bugs and requests at https://github.com/agraef/pd-lua. I maintain
 a lot of packages and thus it may take a while at times, but I look at all the
