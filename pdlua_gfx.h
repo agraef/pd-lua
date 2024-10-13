@@ -723,10 +723,10 @@ static void pdlua_gfx_clear(t_pdlua *obj, int layer, int removed) {
     } else if (layer == -1) {
         // this clears all layers
         for (int l = 0; l < gfx->num_layers; l++)
-            gui_vmess("gui_luagfx_clear", "xsii", cnv, gfx->layer_tags[l]);
+            gui_vmess("gui_luagfx_clear", "xs", cnv, gfx->layer_tags[l]);
     } else {
         // this only clears the specified layer
-        gui_vmess("gui_luagfx_clear", "xsii", cnv, gfx->layer_tags[layer]);
+        gui_vmess("gui_luagfx_clear", "xs", cnv, gfx->layer_tags[layer]);
     }
 #endif
 
@@ -923,14 +923,21 @@ static int start_paint(lua_State* L) {
             // create a gobj graphics container in the GUI
             gui_vmess("gui_luagfx_new", "xsiiiii", cnv, gfx->object_tag,
                       xpos, ypos, glist_istoplevel(obj->canvas));
-        } else if (strlen(gfx->object_tag))
-            pdlua_gfx_clear(obj, layer, 0);
+            for (int l = 0; l < old_num_layers; l++) {
+                // re-create old graphics layers in the GUI
+                gui_vmess("gui_luagfx_new_layer", "xss", cnv,
+                          gfx->object_tag,
+                          gfx->layer_tags[l]);
+            }
+        }
         if (strlen(gfx->object_tag))
             for (int l = old_num_layers; l < new_num_layers; l++) {
                 // create a new graphics layer in the GUI
                 gui_vmess("gui_luagfx_new_layer", "xss", cnv, gfx->object_tag,
                           gfx->layer_tags[l]);
             }
+        if (!gfx->first_draw && strlen(gfx->object_tag))
+            pdlua_gfx_clear(obj, layer, 0);
 #endif
 
         return 1;
