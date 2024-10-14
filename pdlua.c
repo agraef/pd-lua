@@ -1275,7 +1275,10 @@ static int pdlua_set_arguments(lua_State *L)
 
             // check whether we need to redraw the object
             t_text *x = (t_text*)o;
-            int redraw = gobj_shouldvis(&o->pd.te_g, o->canvas) &&
+            // we never need to redraw gui objects here since they render
+            // themselves on the canvas
+            int redraw = !o->has_gui &&
+                gobj_shouldvis(&o->pd.te_g, o->canvas) &&
                 glist_isvisible(o->canvas);
 
             // Get the number of elements in the table
@@ -1307,18 +1310,18 @@ static int pdlua_set_arguments(lua_State *L)
 
                 // Pop the value from the stack
                 lua_pop(L, 1);
+            }
 
-                if (redraw) {
-                    // update the text in the object box; this makes sure that
-                    // the arguments in the display are what we just set
-                    t_rtext *y = glist_findrtext(o->canvas, x);
-                    rtext_retext(y);
-                    // redraw the object and its iolets (including incident
-                    // cord lines), in case the object box size has changed
-                    gobj_vis(&o->pd.te_g, o->canvas, 0);
-                    gobj_vis(&o->pd.te_g, o->canvas, 1);
-                    canvas_fixlinesfor(o->canvas, x);
-                }
+            if (redraw) {
+                // update the text in the object box; this makes sure that
+                // the arguments in the display are what we just set
+                t_rtext *y = glist_findrtext(o->canvas, x);
+                rtext_retext(y);
+                // redraw the object and its iolets (including incident
+                // cord lines), in case the object box size has changed
+                gobj_vis(&o->pd.te_g, o->canvas, 0);
+                gobj_vis(&o->pd.te_g, o->canvas, 1);
+                canvas_fixlinesfor(o->canvas, x);
             }
         } else {
             pd_error(o, "%s: set_args: argument must be a table", src_info(L, msg));
@@ -1481,8 +1484,8 @@ static int pdlua_object_creategui(lua_State *L)
     // We need to switch classes mid-flight here. This is a bit of a hack, but
     // we want to retain the standard text widgetbehavior for regular
     // (non-gui) objects. As soon as we create the gui here, we switch over to
-    // o->pdlua_class_gfx, which is an exact clone of o->pdlua_class, except that it has
-    // our custom widgetbehavior for gui objects.
+    // o->pdlua_class_gfx, which is an exact clone of o->pdlua_class, except
+    // that it has our custom widgetbehavior for gui objects.
     x->te_pd = o->pdlua_class_gfx;
     gfx_initialize(o);
     if (redraw) {
