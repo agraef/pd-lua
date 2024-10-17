@@ -52,6 +52,14 @@ typedef struct _pdlua_gfx
 #endif
 } t_pdlua_gfx;
 
+/** Structure to hold signal information. */
+typedef struct pdlua_siginfo
+{
+    t_float *vec;  // Signal vector
+    int nchans;    // Number of channels
+} t_pdlua_siginfo;
+
+
 /** Pd object data. */
 typedef struct pdlua 
 {
@@ -70,6 +78,7 @@ typedef struct pdlua
     t_pdlua_gfx             gfx;              // Holds state for graphics.
     t_class                 *pdlua_class;     // Holds our class pointer.
     t_class                 *pdlua_class_gfx; // Holds our gfx class pointer.
+    t_pdlua_siginfo         *sig_info;        // Array of signal info structures
     t_signal                **sp;             // Array of signal pointers for multichannel audio.
 } t_pdlua;
 
