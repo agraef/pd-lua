@@ -1071,14 +1071,10 @@ static t_int *pdlua_perform(t_int *w){
     for (int i = 0; i < o->siginlets; i++)
     {
         lua_newtable(__L());
-        t_signal *sig = (t_signal *)(w[2 + i]);
-        t_float *in = sig->s_vec;
-#if PD_MULTICHANNEL
-        int nchans = sig->s_nchans ? sig->s_nchans : 1;
-#else
-        int nchans = 1;
-#endif
-        int s_n_allchans = nblock * nchans; // sum of all inlet samples
+        t_float *in = o->sig_info[i].vec;
+        int nchans = o->sig_info[i].nchans;
+        int s_n_allchans = nblock * nchans;
+        
         for (int j = 0; j < s_n_allchans; j++)
         {
             lua_pushinteger(__L(), j + 1);
@@ -1091,7 +1087,7 @@ static t_int *pdlua_perform(t_int *w){
     {
         mylua_error(__L(), o, "perform");
         lua_pop(__L(), 1); /* pop the global pd */
-        return w + o->siginlets + o->sigoutlets + 2;
+        return w + 2;
     }
     
     if (!lua_istable(__L(), -1))
@@ -1109,21 +1105,16 @@ static t_int *pdlua_perform(t_int *w){
             }
         }
         lua_pop(__L(), 1 + o->sigoutlets);
-        return w + o->siginlets + o->sigoutlets + 2;
+        return w + 2;
     }
     
     for (int i = o->sigoutlets - 1; i >= 0; i--)
     {
-        t_signal *sig = (t_signal *)(w[2 + o->siginlets + i]);
-        t_float *out = sig->s_vec;
-#if PD_MULTICHANNEL
-        int nchans = sig->s_nchans ? sig->s_nchans : 1;
-#else
-        int nchans = 1;
-#endif
-        int s_n_allchans = nblock * nchans; // sum of all outlet samples
-        for (int j = 0; j < s_n_allchans; j++)
-        {
+        t_float *out = o->sig_info[o->siginlets + i].vec;
+        int nchans = o->sig_info[o->siginlets + i].nchans;
+        int s_n_allchans = nblock * nchans;
+        
+        for (int j = 0; j < s_n_allchans; j++) {
             lua_pushinteger(__L(), (lua_Integer)(j + 1));
             lua_gettable(__L(), -2);
             if (lua_isnumber(__L(), -1))
@@ -1141,14 +1132,14 @@ static t_int *pdlua_perform(t_int *w){
     
     PDLUA_DEBUG("pdlua_perform: end. stack top %d", lua_gettop(__L()));
     
-    return w + o->siginlets + o->sigoutlets + 2;
+    return w + 2;
 }
 
 static void pdlua_dsp(t_pdlua *x, t_signal **sp){
     int sum = x->siginlets + x->sigoutlets;
     if(sum == 0) return;
     x->sig_warned = 0;
-    x->blocksize = (int)sp[0]->s_n; // local block size instead of sys_getblksize();
+    x->blocksize = (int)sp[0]->s_n;
     x->sp = sp; // prepare for Lua signal_setmultiout
 
     PDLUA_DEBUG("pdlua_dsp: stack top %d", lua_gettop(__L()));
@@ -1182,24 +1173,33 @@ static void pdlua_dsp(t_pdlua *x, t_signal **sp){
     }
     
     if (lua_pcall(__L(), 4, 0, 0))
-    {
         mylua_error(__L(), x, "dsp");
-    }
+
     lua_pop(__L(), 1); /* pop the global "pd" */
     
     PDLUA_DEBUG("pdlua_dsp: end. stack top %d", lua_gettop(__L()));
     
-    int sigvecsize = sum + 1;
-    t_int* sigvec = getbytes(sigvecsize * sizeof(t_int));
-    
-    sigvec[0] = (t_int)x;
+    // Free existing sig_info if it exists, using the old sig_count
+    if (x->sig_info) {
+        freebytes(x->sig_info, x->sig_count * sizeof(t_pdlua_siginfo));
+        x->sig_info = NULL;
+    }
 
-    for (int i = 0; i < sum; i++)
-        sigvec[i + 1] = (t_int)sp[i];
+    x->sig_info = (t_pdlua_siginfo *)getbytes(sum * sizeof(t_pdlua_siginfo));
+    x->sig_count = sum;
+
+    for (int i = 0; i < sum; i++) {
+        x->sig_info[i].vec = sp[i]->s_vec;
+#if PD_MULTICHANNEL
+        x->sig_info[i].nchans = sp[i]->s_nchans ? sp[i]->s_nchans : 1;
+#else
+        x->sig_info[i].nchans = 1;
+#endif
+    }
     
-    dsp_addv(pdlua_perform, sigvecsize, sigvec);
-    freebytes(sigvec, sigvecsize * sizeof(t_int));
+    dsp_add(pdlua_perform, 1, x);
 }
+
 
 static int pdlua_get_arguments(lua_State *L)
 {
@@ -1444,6 +1444,8 @@ static int pdlua_object_new(lua_State *L)
                 o->pdlua_class = c;
                 o->pdlua_class_gfx = c_gfx;
                 o->sp = NULL;
+                o->sig_info = NULL;
+                o->sig_count = 0;
 
                 o->gfx.width = 80;
                 o->gfx.height = 80;
@@ -1928,6 +1930,12 @@ static int pdlua_object_free(lua_State *L)
                 for (i = 0; i < o->outlets; ++i) outlet_free(o->out[i]);
                 free(o->out);
                 o->out = NULL;
+            }
+
+            if (o->sig_info)
+            {
+                freebytes(o->sig_info, o->sig_count * sizeof(t_pdlua_siginfo));
+                o->sig_info = NULL;
             }
         }
     }
