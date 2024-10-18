@@ -1061,8 +1061,9 @@ static void pdlua_menu_open(t_pdlua *o)
 
 static t_int *pdlua_perform(t_int *w){
     t_pdlua *o = (t_pdlua *)(w[1]);
-    int nblock = o->blocksize;
-    
+    int blocksize = (int)(w[2]);
+    t_float **sig_vecs = (t_float **)(w + 3);
+
     PDLUA_DEBUG("pdlua_perform: stack top %d", lua_gettop(__L()));
     lua_getglobal(__L(), "pd");
     lua_getfield (__L(), -1, "_perform_dsp");
@@ -1071,9 +1072,9 @@ static t_int *pdlua_perform(t_int *w){
     for (int i = 0; i < o->siginlets; i++)
     {
         lua_newtable(__L());
-        t_float *in = o->sig_info[i].vec;
-        int nchans = o->sig_info[i].nchans;
-        int s_n_allchans = nblock * nchans;
+        t_float *in = sig_vecs[i];
+        int nchans = o->sig_nchans[i];
+        int s_n_allchans = blocksize * nchans;
         
         for (int j = 0; j < s_n_allchans; j++)
         {
@@ -1087,7 +1088,7 @@ static t_int *pdlua_perform(t_int *w){
     {
         mylua_error(__L(), o, "perform");
         lua_pop(__L(), 1); /* pop the global pd */
-        return w + 2;
+        return w + o->siginlets + o->sigoutlets + 3;
     }
     
     if (!lua_istable(__L(), -1))
@@ -1105,14 +1106,14 @@ static t_int *pdlua_perform(t_int *w){
             }
         }
         lua_pop(__L(), 1 + o->sigoutlets);
-        return w + 2;
+        return w + o->siginlets + o->sigoutlets + 3;
     }
     
     for (int i = o->sigoutlets - 1; i >= 0; i--)
     {
-        t_float *out = o->sig_info[o->siginlets + i].vec;
-        int nchans = o->sig_info[o->siginlets + i].nchans;
-        int s_n_allchans = nblock * nchans;
+        t_float *out = sig_vecs[o->siginlets + i];
+        int nchans = o->sig_nchans[o->siginlets + i];
+        int s_n_allchans = blocksize * nchans;
         
         for (int j = 0; j < s_n_allchans; j++) {
             lua_pushinteger(__L(), (lua_Integer)(j + 1));
@@ -1132,14 +1133,14 @@ static t_int *pdlua_perform(t_int *w){
     
     PDLUA_DEBUG("pdlua_perform: end. stack top %d", lua_gettop(__L()));
     
-    return w + 2;
+    return w + o->siginlets + o->sigoutlets + 3;
 }
 
 static void pdlua_dsp(t_pdlua *x, t_signal **sp){
     int sum = x->siginlets + x->sigoutlets;
     if(sum == 0) return;
     x->sig_warned = 0;
-    x->blocksize = (int)sp[0]->s_n;
+    int blocksize = (int)sp[0]->s_n;
     x->sp = sp; // prepare for Lua signal_setmultiout
 
     PDLUA_DEBUG("pdlua_dsp: stack top %d", lua_gettop(__L()));
@@ -1155,17 +1156,14 @@ static void pdlua_dsp(t_pdlua *x, t_signal **sp){
     lua_getfield (__L(), -1, "_dsp");
     lua_pushlightuserdata(__L(), x);
     lua_pushnumber(__L(), sys_getsr());
-    lua_pushnumber(__L(), x->blocksize);
+    lua_pushnumber(__L(), blocksize);
 
     // Pass input channel counts as a table
     lua_newtable(__L());
     for (int i = 0; i < x->siginlets; i++) {
         lua_pushinteger(__L(), i + 1);
 #if PD_MULTICHANNEL
-        if (g_signal_setmultiout) {
-            lua_pushinteger(__L(), sp[i]->s_nchans);
-        } else
-            lua_pushinteger(__L(), 1); // Pd version without multichannel support
+        lua_pushinteger(__L(), sp[i]->s_nchans ? sp[i]->s_nchans : 1);
 #else
         lua_pushinteger(__L(), 1); // pdlua built without multichannel support
 #endif
@@ -1179,27 +1177,29 @@ static void pdlua_dsp(t_pdlua *x, t_signal **sp){
     
     PDLUA_DEBUG("pdlua_dsp: end. stack top %d", lua_gettop(__L()));
     
-    // Free existing sig_info if it exists, using the old sig_count
-    if (x->sig_info) {
-        freebytes(x->sig_info, x->sig_count * sizeof(t_pdlua_siginfo));
-        x->sig_info = NULL;
-    }
-
-    x->sig_info = (t_pdlua_siginfo *)getbytes(sum * sizeof(t_pdlua_siginfo));
+    // Allocate memory for sigvec and sig_nchans
+    int sigvecsize = sum + 2;  // +1 for x, +1 for blocksize
+    t_int* sigvec = getbytes(sigvecsize * sizeof(t_int));
+    x->sig_nchans = (t_int *)resizebytes(x->sig_nchans, 
+                                         x->sig_count * sizeof(t_int),
+                                         sum * sizeof(t_int));
     x->sig_count = sum;
+    
+    sigvec[0] = (t_int)x;
+    sigvec[1] = (t_int)blocksize;
 
     for (int i = 0; i < sum; i++) {
-        x->sig_info[i].vec = sp[i]->s_vec;
+        sigvec[i + 2] = (t_int)sp[i]->s_vec;
 #if PD_MULTICHANNEL
-        x->sig_info[i].nchans = sp[i]->s_nchans ? sp[i]->s_nchans : 1;
+        x->sig_nchans[i] = sp[i]->s_nchans ? sp[i]->s_nchans : 1;
 #else
-        x->sig_info[i].nchans = 1;
+        x->sig_nchans[i] = 1;
 #endif
     }
     
-    dsp_add(pdlua_perform, 1, x);
+    dsp_addv(pdlua_perform, sigvecsize, sigvec);
+    freebytes(sigvec, sigvecsize * sizeof(t_int));
 }
-
 
 static int pdlua_get_arguments(lua_State *L)
 {
@@ -1439,13 +1439,12 @@ static int pdlua_object_new(lua_State *L)
                 o->siginlets = 0;
                 o->sigoutlets = 0;
                 o->sig_warned = 0;
-                o->blocksize = 0;
+                o->sig_count = 0;
+                o->sig_nchans = NULL;
                 o->canvas = canvas_getcurrent();
                 o->pdlua_class = c;
                 o->pdlua_class_gfx = c_gfx;
                 o->sp = NULL;
-                o->sig_info = NULL;
-                o->sig_count = 0;
 
                 o->gfx.width = 80;
                 o->gfx.height = 80;
@@ -1932,10 +1931,10 @@ static int pdlua_object_free(lua_State *L)
                 o->out = NULL;
             }
 
-            if (o->sig_info)
+            if (o->sig_nchans)
             {
-                freebytes(o->sig_info, o->sig_count * sizeof(t_pdlua_siginfo));
-                o->sig_info = NULL;
+                freebytes(o->sig_nchans, o->sig_count * sizeof(t_int));
+                o->sig_nchans = NULL;
             }
         }
     }
