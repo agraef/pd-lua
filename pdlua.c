@@ -742,9 +742,8 @@ static void pdlua_free( t_pdlua *o /**< The object to destruct. */)
     PDLUA_DEBUG("pdlua_free: end. stack top %d", lua_gettop(__L()));
     
     // Free sig_info if it exists
-    // FIXME: necessary?
     if (o->sig_info) {
-        freebytes(o->sig_info, (o->siginlets + o->sigoutlets) * sizeof(t_pdlua_siginfo));
+        freebytes(o->sig_info, o->sig_count * sizeof(t_pdlua_siginfo));
         o->sig_info = NULL;
     }
 
@@ -1186,13 +1185,14 @@ static void pdlua_dsp(t_pdlua *x, t_signal **sp){
     
     PDLUA_DEBUG("pdlua_dsp: end. stack top %d", lua_gettop(__L()));
     
-    // Free existing sig_info if it exists
+    // Free existing sig_info if it exists, using the old sig_count
     if (x->sig_info) {
-        freebytes(x->sig_info, sum * sizeof(t_pdlua_siginfo));
+        freebytes(x->sig_info, x->sig_count * sizeof(t_pdlua_siginfo));
         x->sig_info = NULL;
     }
     
     x->sig_info = (t_pdlua_siginfo *)getbytes(sum * sizeof(t_pdlua_siginfo));
+    x->sig_count = sum;
     
     for (int i = 0; i < sum; i++) {
         x->sig_info[i].vec = sp[i]->s_vec;
@@ -1451,6 +1451,7 @@ static int pdlua_object_new(lua_State *L)
                 o->pdlua_class_gfx = c_gfx;
                 o->sp = NULL;
                 o->sig_info = NULL;
+                o->sig_count = 0;
 
                 o->gfx.width = 80;
                 o->gfx.height = 80;
