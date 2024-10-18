@@ -741,12 +741,6 @@ static void pdlua_free( t_pdlua *o /**< The object to destruct. */)
     lua_pop(__L(), 1); /* pop the global "pd" */
     PDLUA_DEBUG("pdlua_free: end. stack top %d", lua_gettop(__L()));
     
-    // Free sig_info if it exists
-    if (o->sig_info) {
-        freebytes(o->sig_info, o->sig_count * sizeof(t_pdlua_siginfo));
-        o->sig_info = NULL;
-    }
-
     // Collect garbage
     // If we don't do this here, it could potentially leak if no other pdlua objects are used afterwards
     lua_gc(__L(), LUA_GCCOLLECT);
@@ -1190,10 +1184,10 @@ static void pdlua_dsp(t_pdlua *x, t_signal **sp){
         freebytes(x->sig_info, x->sig_count * sizeof(t_pdlua_siginfo));
         x->sig_info = NULL;
     }
-    
+
     x->sig_info = (t_pdlua_siginfo *)getbytes(sum * sizeof(t_pdlua_siginfo));
     x->sig_count = sum;
-    
+
     for (int i = 0; i < sum; i++) {
         x->sig_info[i].vec = sp[i]->s_vec;
 #if PD_MULTICHANNEL
@@ -1936,6 +1930,12 @@ static int pdlua_object_free(lua_State *L)
                 for (i = 0; i < o->outlets; ++i) outlet_free(o->out[i]);
                 free(o->out);
                 o->out = NULL;
+            }
+
+            if (o->sig_info)
+            {
+                freebytes(o->sig_info, o->sig_count * sizeof(t_pdlua_siginfo));
+                o->sig_info = NULL;
             }
         }
     }
